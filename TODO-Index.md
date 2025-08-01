@@ -11,18 +11,18 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 | gui/index.html | 1383 | Status-Anzeigen auf eigene Seite auslagern | **erledigt** |
 | gui/index.html | 1396 | Texteingabe und Senden-Button unten fixieren | **erledigt** |
 | gui/index.html | 1407 | Neues Icon verwenden und Beschriftung entfernen | **erledigt** |
-| gui/index.html | 1430 | Antworttext als Matrix-Regen einblenden |
+| gui/index.html | 1430 | Antworttext als Matrix-Regen einblenden | **erledigt** |
 | gui/index.html | 1439 | Sprachaufnahme-Button neben Senden-Button | **erledigt** |
 | gui/index.html | 1443 | Neue minimalistische Icons | **erledigt** |
 | gui/index.html | 1859 | Status-Anzeigen auf separater Seite darstellen | **erledigt** |
 | voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen |
-| voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren |
+| voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren | **erledigt** |
 | voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten | **erledigt** |
 | voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter | **erledigt** |
 | voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar |
 | voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten |
 | voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden |
-| voice-assistant-apps/shared/index.html | 1428 | Matrix-Stil Antwortanimation |
+| voice-assistant-apps/shared/index.html | 1428 | Matrix-Stil Antwortanimation | **erledigt** |
 | voice-assistant-apps/shared/index.html | 1437 | Sprachaufnahme-Button verschieben |
 | voice-assistant-apps/shared/index.html | 1441 | Icon ersetzen, Beschriftung entfernen |
 | voice-assistant-apps/shared/index.html | 1857 | Status-Seite über Menü |
