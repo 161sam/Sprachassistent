@@ -3,7 +3,7 @@
  * Optimized for low latency, real-time audio streaming, and mobile UX
  */
 
-class EnhancedVoiceAssistantCore {
+class VoiceAssistantCore {
   constructor() {
     this.isInitialized = false;
     this.platform = this.detectPlatform();
@@ -757,10 +757,10 @@ class EnhancedVoiceAssistantCore {
 
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = EnhancedVoiceAssistantCore;
+  module.exports = VoiceAssistantCore;
 }
 
 // Global initialization
 if (typeof window !== 'undefined') {
-  window.EnhancedVoiceAssistantCore = EnhancedVoiceAssistantCore;
+  window.VoiceAssistantCore = VoiceAssistantCore;
 }
