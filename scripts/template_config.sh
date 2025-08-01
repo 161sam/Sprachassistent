@@ -8,8 +8,32 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
+# === ERWARTETE VARIABLEN ===
+REQUIRED_VARS=(
+  WS_TOKEN RASPI4_HOST RASPI400_HOST ODROID_HOST
+  FLOWISE_ID FLOWISE_URL FLOWISE_API_KEY N8N_URL
+  STT_MODEL STT_DEVICE STT_PRECISION
+  TTS_MODEL TTS_SPEED TTS_VOLUME
+)
+
+# === LADEN ===
 export $(grep -v '^#' .env | xargs)
 
+# === PRÜFEN ===
+missing=0
+for var in "${REQUIRED_VARS[@]}"; do
+  if [ -z "${!var}" ]; then
+    echo "❗ FEHLT: $var"
+    missing=1
+  fi
+done
+
+if [ $missing -eq 1 ]; then
+  echo "⛔ Fehlende Variablen in .env. Abbruch."
+  exit 1
+fi
+
+# === ERSETZUNG ===
 replace_vars() {
   local input=$1
   local output=$2
