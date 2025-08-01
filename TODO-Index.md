@@ -36,6 +36,10 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 639: docs/development.md erstellen oder Link entfernen
 - **docs/skill-system.md**
   - Zeile 1: Dokumentation des Skill-Systems ergänzen
+- **docs/hardware-setup.md**
+  - Zeile 1: Anleitung zum Hardware-Setup erstellen
+- **docs/development.md**
+  - Zeile 1: Ausführlichen Development Guide verfassen
 - **.gitignore**
   - Zeile 161: Pfade für mobile Build-Artefakte korrigieren
 - **voice-assistant-apps/shared/ index.html**
@@ -53,5 +57,7 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 2: TTS-Dienst Startskript implementieren
 - **scripts/ws-server/install.sh**
   - Zeile 11: Service-Datei mit installieren
+- **scripts/install_all_nodes.sh**
+  - Zeile 58: Pfad zum Installationsskript korrigieren
 - **ws-server/ws-server.py**
   - Zeile 95: Lokale Skill-Implementierung anbinden
