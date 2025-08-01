@@ -5,8 +5,8 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 | Datei | Zeile | Kommentar |
 |-------|------:|-----------|
 | gui/app.js | 1-6 | Grundlegende Aufgaben zur neuen Web-GUI |
-| gui/index.html | 568 | Buttons rund gestalten |
-| gui/index.html | 799 | Container transparenter gestalten |
+| gui/index.html | 568 | Buttons rund gestalten | **erledigt** |
+| gui/index.html | 799 | Container transparenter gestalten | **erledigt** |
 | gui/index.html | 1136 | Status-Anzeigen sollen ein neues Fenster öffnen |
 | gui/index.html | 1383 | Status-Anzeigen auf eigene Seite auslagern |
 | gui/index.html | 1396 | Texteingabe und Senden-Button unten fixieren |
@@ -17,8 +17,8 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 | gui/index.html | 1859 | Status-Anzeigen auf separater Seite darstellen |
 | voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen |
 | voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren |
-| voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten |
-| voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter |
+| voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten | **erledigt** |
+| voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter | **erledigt** |
 | voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar |
 | voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten |
 | voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden |
@@ -35,11 +35,11 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 636: docs/hardware-setup.md erstellen oder Link anpassen
   - Zeile 639: docs/development.md erstellen oder Link entfernen
 - **docs/skill-system.md**
-  - Zeile 1: Dokumentation des Skill-Systems ergänzen
+  - Zeile 1: Dokumentation des Skill-Systems ergänzen **erledigt**
 - **docs/hardware-setup.md**
-  - Zeile 1: Anleitung zum Hardware-Setup erstellen
+  - Zeile 1: Anleitung zum Hardware-Setup erstellen **erledigt**
 - **docs/development.md**
-  - Zeile 1: Ausführlichen Development Guide verfassen
+  - Zeile 1: Ausführlichen Development Guide verfassen **erledigt**
 - **docs/Build-Anleitung.md**
   - Zeile 58: Quelle der Vorlagen angeben
   - Zeile 139: Template-Pfad dokumentieren
@@ -72,4 +72,4 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
 - **docs/architecture.md**
   - Verweis auf tailscale-setup.md aktualisiert
 - **docs/GUI-TODO.md**
-  - Zeile 20: Weitere Animationsideen ergänzen
+  - Zeile 20: Weitere Animationsideen ergänzen **erledigt**
