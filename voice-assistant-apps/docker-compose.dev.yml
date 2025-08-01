@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # Voice Assistant Backend (Raspberry Pi Simulation)
+  voice-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8123:8123"  # WebSocket Server
+      - "3001:3001"  # HTTP API
+    environment:
+      - NODE_ENV=development
+      - WEBSOCKET_PORT=8123
+      - HTTP_PORT=3001
+      - DEBUG=voice-assistant:*
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run dev
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  # Desktop Development Server
+  desktop-dev:
+    build:
+      context: ./desktop
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"  # Electron Serve
+    environment:
+      - NODE_ENV=development
+      - ELECTRON_DEV=true
+    volumes:
+      - ./desktop:/app
+      - ./shared:/app/shared
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - voice-backend
+    networks:
+      - voice-network
+    # Electron benötigt X11 für GUI (Linux)
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    stdin_open: true
+    tty: true
+
+  # Mobile Development Server (für Browser-Testing)
+  mobile-dev:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"  # Cordova Serve
+      - "35729:35729" # LiveReload
+    environment:
+      - NODE_ENV=development
+      - CORDOVA_DEV=true
+    volumes:
+      - ./mobile:/app
+      - ./shared:/app/shared
+      - /app/node_modules
+      - /app/platforms
+      - /app/plugins
+    command: cordova serve --port 8080
+    depends_on:
+      - voice-backend
+    networks:
+      - voice-network
+
+  # Redis für Session/Cache Management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  # PostgreSQL für Conversation History
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=voice_assistant
+      - POSTGRES_USER=voice_user
+      - POSTGRES_PASSWORD=voice_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  # Nginx Reverse Proxy für Development
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/dev.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - voice-backend
+      - desktop-dev
+      - mobile-dev
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  # Monitoring mit Grafana + Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - voice-network
+
+  # Development Tools Container
+  dev-tools:
+    build:
+      context: ./docker/dev-tools
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    command: tail -f /dev/null
+    networks:
+      - voice-network
+    profiles:
+      - tools
+
+networks:
+  voice-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+# Development Profiles
+# docker-compose -f docker-compose.dev.yml --profile tools up
+# docker-compose -f docker-compose.dev.yml --profile monitoring up
