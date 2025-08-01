@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>KI-Sprachassistent</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  
+  <style>
+    :root {
+      /* Enhanced Color System */
+      --primary-color: #6366f1;
+      --primary-hover: #5855eb;
+      --primary-light: rgba(99, 102, 241, 0.1);
+      --secondary-color: #10b981;
+      --secondary-light: rgba(16, 185, 129, 0.1);
+      --accent-color: #f59e0b;
+      --accent-light: rgba(245, 158, 11, 0.1);
+      
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --success-color: #10b981;
+      
+      /* Dark Theme (Mobile-First) */
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #151520;
+      --bg-tertiary: #1f1f2e;
+      --bg-card: rgba(255, 255, 255, 0.03);
+      
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      
+      /* Glass Morphism */
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      
+      /* Shadows & Effects */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
+      --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
+      
+      /* Mobile-Optimized Spacing */
+      --spacing-xs: 0.25rem;
+      --spacing-sm: 0.5rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      --spacing-2xl: 3rem;
+      
+      /* Touch-Friendly Sizes */
+      --touch-target: 44px;
+      --button-height: 56px;
+      --input-height: 48px;
+      
+      /* Dynamic Variables */
+      --safe-area-top: env(safe-area-inset-top);
+      --safe-area-bottom: env(safe-area-inset-bottom);
+      --safe-area-left: env(safe-area-inset-left);
+      --safe-area-right: env(safe-area-inset-right);
+      
+      /* Animation Variables */
+      --animation-speed: 0.3s;
+      --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+      --bounce-easing: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    /* Reset & Base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height for mobile */
+      position: relative;
+      
+      /* Mobile optimizations */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      touch-action: manipulation;
+    }
+
+    /* Enhanced Background with Mobile Performance */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 25% 25%, var(--primary-light) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, var(--secondary-light) 0%, transparent 50%),
+        radial-gradient(circle at 50% 100%, var(--accent-light) 0%, transparent 70%);
+      opacity: 0.6;
+      z-index: -1;
+      will-change: transform;
+      animation: backgroundFloat 20s ease-in-out infinite;
+    }
+
+    @keyframes backgroundFloat {
+      0%, 100% { 
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      33% { 
+        transform: translate3d(-5px, -10px, 0) scale(1.02);
+      }
+      66% { 
+        transform: translate3d(10px, -5px, 0) scale(0.98);
+      }
+    }
+
+    /* Main Layout */
+    .app-container {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
+    }
+
+    /* Top Navigation Bar */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: var(--spacing-md);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 64px;
+    }
+
+    .app-logo {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .nav-button {
+      width: var(--touch-target);
+      height: var(--touch-target);
+      border-radius: 50%;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all var(--animation-speed) var(--animation-easing);
+      font-size: 1.2rem;
+    }
+
+    .nav-button:hover, .nav-button:active {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(0.95);
+    }
+
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+      padding-bottom: 120px; /* Space for bottom controls */
+      overflow-y: auto;
+      gap: var(--spacing-lg);
+    }
+
+    /* Header Section */
+    .header-section {
+      text-align: center;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .main-title {
+      font-size: clamp(1.8rem, 5vw, 2.5rem);
+      font-weight: 800;
+      margin-bottom: var(--spacing-sm);
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .main-subtitle {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    /* Status Section */
+    .status-section {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: var(--spacing-lg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-info {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--warning-color);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--success-color);
+      animation: glow 2s infinite;
+    }
+
+    .status-dot.error {
+      background: var(--danger-color);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes glow {
+      0%, 100% { 
+        box-shadow: 0 0 10px var(--success-color);
+        transform: scale(1);
+      }
+      50% { 
+        box-shadow: 0 0 20px var(--success-color);
+        transform: scale(1.1);
+      }
+    }
+
+    .status-text {
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .status-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .status-button {
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: 12px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--animation-speed) var(--animation-easing);
+    }
+
+    .status-button:hover, .status-button:active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+
+    /* Avatar Section */
+    .avatar-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: var(--spacing-xl) 0;
+      position: relative;
+    }
+
+    .avatar {
+      width: clamp(120px, 25vw, 180px);
+      height: clamp(120px, 25vw, 180px);
+      border-radius: 50%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 2px solid var(--glass-border);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s var(--animation-easing);
+      box-shadow: var(--shadow-lg);
+      will-change: transform;
+    }
+
+    .avatar.active {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
+      transform: scale(1.05);
+    }
+
+    .avatar.recording {
+      animation: recordingPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes recordingPulse {
+      0%, 100% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 60px rgba(239, 68, 68, 0.4);
+      }
+      50% { 
+        transform: scale(1.1);
+        box-shadow: 0 0 80px rgba(239, 68, 68, 0.6);
+      }
+    }
+
+    /* Enhanced Nebel Animation */
+    .avatar-nebel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+    }
+
+    .nebel-layer {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+      opacity: 0.6;
+      animation: nebelFlow 6s ease-in-out infinite;
+    }
+
+    .nebel-layer:nth-child(1) {
+      width: 90%;
+      height: 90%;
+      animation-delay: 0s;
+      background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+    }
+
+    .nebel-layer:nth-child(2) {
+      width: 70%;
+      height: 70%;
+      animation-delay: 2s;
+      animation-direction: reverse;
+      background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+    }
+
+    .nebel-layer:nth-child(3) {
+      width: 50%;
+      height: 50%;
+      animation-delay: 4s;
+      background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+    }
+
+    @keyframes nebelFlow {
+      0%, 100% { 
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+        opacity: 0.4;
+      }
+      25% { 
+        transform: translate(-50%, -50%) rotate(90deg) scale(1.2);
+        opacity: 0.8;
+      }
+      50% { 
+        transform: translate(-50%, -50%) rotate(180deg) scale(0.8);
+        opacity: 0.3;
+      }
+      75% { 
+        transform: translate(-50%, -50%) rotate(270deg) scale(1.1);
+        opacity: 0.6;
+      }
+    }
+
+    .avatar-core {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
+      animation: coreGlow 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes coreGlow {
+      0% { 
+        transform: translate(-50%, -50%) scale(1);
+        box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
+      }
+      100% { 
+        transform: translate(-50%, -50%) scale(1.2);
+        box-shadow: 0 0 50px rgba(99, 102, 241, 1);
+      }
+    }
+
+    /* Response Section */
+    .response-section {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: var(--spacing-xl);
+      min-height: 200px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .response-content {
+      font-size: 1.1rem;
+      line-height: 1.7;
+      text-align: center;
+      max-width: 100%;
+      word-wrap: break-word;
+      position: relative;
+      z-index: 2;
+    }
+
+    .response-empty {
+      color: var(--text-secondary);
+      font-style: italic;
+      opacity: 0.7;
+    }
+
+    /* Processing Animation */
+    .processing-animation {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 150px;
+      height: 150px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .processing-animation.active {
+      opacity: 1;
+    }
+
+    .processing-circle {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+      animation: processingWave 2s ease-in-out infinite;
+    }
+
+    .processing-circle:nth-child(2) {
+      animation-delay: 0.7s;
+      background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+      transform: scale(0.8);
+    }
+
+    .processing-circle:nth-child(3) {
+      animation-delay: 1.4s;
+      background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+      transform: scale(0.6);
+    }
+
+    @keyframes processingWave {
+      0%, 100% { 
+        transform: scale(var(--scale, 1)) rotate(0deg);
+        opacity: 0.3;
+      }
+      50% { 
+        transform: scale(calc(var(--scale, 1) * 1.5)) rotate(180deg);
+        opacity: 0.8;
+      }
+    }
+
+    /* Bottom Controls */
+    .bottom-controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--glass-border);
+      padding: var(--spacing-lg);
+      padding-bottom: calc(var(--spacing-lg) + var(--safe-area-bottom));
+      z-index: 50;
+    }
+
+    .input-container {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .text-input {
+      flex: 1;
+      height: var(--input-height);
+      background: var(--glass-bg);
+      border: 2px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 0 var(--spacing-lg);
+      font-size: 1rem;
+      color: var(--text-primary);
+      backdrop-filter: blur(10px);
+      transition: all var(--animation-speed) var(--animation-easing);
+    }
+
+    .text-input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.05);
+      transform: scale(1.02);
+    }
+
+    .text-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .action-button {
+      width: var(--button-height);
+      height: var(--button-height);
+      border-radius: 50%;
+      border: none;
+      background: var(--primary-color);
+      color: white;
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: all var(--animation-speed) var(--bounce-easing);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-button:hover {
+      background: var(--primary-hover);
+      transform: scale(1.1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .action-button:active {
+      transform: scale(0.95);
+    }
+
+    .action-button.voice {
+      background: var(--secondary-color);
+      margin-left: var(--spacing-sm);
+    }
+
+    .action-button.voice:hover {
+      background: #059669;
+    }
+
+    .action-button.recording {
+      background: var(--danger-color);
+      animation: recordingButtonPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes recordingButtonPulse {
+      0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+      50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+    }
+
+    /* Recording Indicator */
+    .recording-indicator {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 20px;
+      color: var(--danger-color);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .recording-indicator.active {
+      display: flex;
+      animation: slideUp 0.3s var(--bounce-easing);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .recording-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--danger-color);
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+
+    /* Gesture Hint */
+    .gesture-hint {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-radius: 12px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      animation: hintFade 3s ease-in-out;
+      pointer-events: none;
+    }
+
+    @keyframes hintFade {
+      0%, 80% { opacity: 0; }
+      10%, 70% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Notification System */
+    .notification-container {
+      position: fixed;
+      top: 80px;
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      z-index: 200;
+      pointer-events: none;
+    }
+
+    .notification {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-100px);
+      opacity: 0;
+      transition: all 0.4s var(--bounce-easing);
+      pointer-events: auto;
+    }
+
+    .notification.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .notification.success {
+      border-left: 4px solid var(--success-color);
+    }
+
+    .notification.error {
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .notification.warning {
+      border-left: 4px solid var(--warning-color);
+    }
+
+    .notification-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-title {
+      font-weight: 600;
+      margin-bottom: var(--spacing-xs);
+      font-size: 0.95rem;
+    }
+
+    .notification-message {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: var(--spacing-xs);
+      border-radius: 8px;
+      transition: all var(--animation-speed) var(--animation-easing);
+    }
+
+    .notification-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 480px) {
+      .main-content {
+        padding: var(--spacing-md);
+      }
+      
+      .main-title {
+        font-size: 1.8rem;
+      }
+      
+      .response-section {
+        padding: var(--spacing-lg);
+        min-height: 160px;
+      }
+      
+      .bottom-controls {
+        padding: var(--spacing-md);
+        padding-bottom: calc(var(--spacing-md) + var(--safe-area-bottom));
+      }
+    }
+
+    /* Dark/Light Mode Support */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #f8fafc;
+        --bg-secondary: #f1f5f9;
+        --bg-tertiary: #e2e8f0;
+        --bg-card: rgba(0, 0, 0, 0.03);
+        
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        
+        --glass-bg: rgba(0, 0, 0, 0.03);
+        --glass-border: rgba(0, 0, 0, 0.08);
+        --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    /* High Contrast Mode */
+    @media (prefers-contrast: high) {
+      :root {
+        --glass-bg: rgba(255, 255, 255, 0.1);
+        --glass-border: rgba(255, 255, 255, 0.2);
+      }
+    }
+
+    /* Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      
+      .avatar.active {
+        transform: none;
+      }
+    }
+
+    /* Landscape Orientation */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .avatar {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .main-content {
+        padding-bottom: 90px;
+      }
+      
+      .header-section {
+        margin-bottom: var(--spacing-md);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+      <div class="app-logo">
+        <span>🤖</span>
+        <span>KI-Assistent</span>
+      </div>
+      <div class="nav-actions">
+        <button class="nav-button" id="settingsBtn" title="Einstellungen">
+          ⚙️
+        </button>
+        <button class="nav-button" id="infoBtn" title="Information">
+          ℹ️
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header Section -->
+      <section class="header-section">
+        <h1 class="main-title">KI-Sprachassistent</h1>
+        <p class="main-subtitle">Sprechen Sie mit Ihrem intelligenten Assistenten</p>
+      </section>
+
+      <!-- Status Section -->
+      <section class="status-section">
+        <div class="status-info">
+          <div class="status-dot" id="statusDot"></div>
+          <span class="status-text" id="statusText">Verbindung wird hergestellt...</span>
+        </div>
+        <div class="status-actions">
+          <button class="status-button" onclick="clearResponse()">
+            🗑️ Löschen
+          </button>
+        </div>
+      </section>
+
+      <!-- Avatar Section -->
+      <section class="avatar-section">
+        <div class="avatar" id="avatar">
+          <div class="avatar-nebel">
+            <div class="nebel-layer"></div>
+            <div class="nebel-layer"></div>
+            <div class="nebel-layer"></div>
+          </div>
+          <div class="avatar-core"></div>
+        </div>
+      </section>
+
+      <!-- Response Section -->
+      <section class="response-section">
+        <div class="response-content" id="response">
+          <div class="response-empty">Ihre Antwort erscheint hier...</div>
+        </div>
+        
+        <!-- Processing Animation -->
+        <div class="processing-animation" id="processingAnimation">
+          <div class="processing-circle" style="--scale: 1"></div>
+          <div class="processing-circle" style="--scale: 0.8"></div>
+          <div class="processing-circle" style="--scale: 0.6"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Controls -->
+    <div class="bottom-controls">
+      <!-- Recording Indicator -->
+      <div class="recording-indicator" id="recordingIndicator">
+        <div class="recording-dot"></div>
+        <span>Aufnahme läuft... <span id="recordingTime">0s</span></span>
+      </div>
+
+      <!-- Input Container -->
+      <div class="input-container">
+        <input
+          type="text"
+          id="textInput"
+          class="text-input"
+          placeholder="Fragen Sie mich etwas..."
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="sentences"
+        />
+        <button onclick="sendText()" class="action-button" id="sendBtn" title="Senden">
+          ➤
+        </button>
+        <button onclick="toggleRecording()" class="action-button voice" id="voiceBtn" title="Spracheingabe">
+          <span id="voiceIcon">🎤</span>
+        </button>
+      </div>
+
+      <!-- Gesture Hint -->
+      <div class="gesture-hint" id="gestureHint">
+        Wischen Sie nach oben für Spracheingabe
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Container -->
+  <div class="notification-container" id="notificationContainer"></div>
+
+  <script>
+    // Enhanced Voice Assistant with Mobile-First optimizations
+    let voiceAssistant = null;
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    let gestureHintShown = false;
+
+    // Initialize when DOM is ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // Initialize enhanced voice assistant
+        voiceAssistant = new EnhancedVoiceAssistantCore();
+        await voiceAssistant.initialize();
+        
+        // Setup UI event handlers
+        setupEventHandlers();
+        
+        // Show gesture hint on mobile
+        if (voiceAssistant.platform === 'mobile' && !gestureHintShown) {
+          showGestureHint();
+        }
+        
+        // Focus input on desktop
+        if (voiceAssistant.platform === 'desktop') {
+          document.getElementById('textInput').focus();
+        }
+        
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        showNotification('error', 'Fehler', 'Initialisierung fehlgeschlagen');
+      }
+    });
+
+    function setupEventHandlers() {
+      // Text input handlers
+      const textInput = document.getElementById('textInput');
+      textInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          sendText();
+        }
+      });
+
+      // Prevent zoom on input focus (iOS)
+      textInput.addEventListener('focus', (e) => {
+        if (voiceAssistant.platform === 'mobile') {
+          document.body.style.transform = 'scale(1)';
+        }
+      });
+
+      // Voice button long press for continuous recording
+      const voiceBtn = document.getElementById('voiceBtn');
+      let longPressTimer;
+      
+      voiceBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        longPressTimer = setTimeout(() => {
+          if (!voiceAssistant.isRecording) {
+            startRecording();
+            if (voiceAssistant.hapticFeedback) {
+              voiceAssistant.hapticFeedback([200, 100, 200]);
+            }
+          }
+        }, 200);
+      });
+
+      voiceBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        clearTimeout(longPressTimer);
+      });
+
+      // Settings button
+      document.getElementById('settingsBtn').addEventListener('click', () => {
+        showSettings();
+      });
+
+      // Info button
+      document.getElementById('infoBtn').addEventListener('click', () => {
+        showSystemInfo();
+      });
+
+      // Intersection Observer for animations
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.style.opacity = '1';
+              entry.target.style.transform = 'translateY(0)';
+            }
+          });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.main-content > section').forEach(section => {
+          section.style.opacity = '0';
+          section.style.transform = 'translateY(20px)';
+          section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+          observer.observe(section);
+        });
+      }
+    }
+
+    function sendText() {
+      const input = document.getElementById('textInput');
+      if (!input.value.trim()) return;
+
+      const userText = input.value.trim();
+      input.value = '';
+
+      if (voiceAssistant) {
+        showProcessingAnimation();
+        voiceAssistant.sendMessage({
+          type: 'text',
+          content: userText,
+          timestamp: Date.now()
+        });
+      }
+
+      // Show temporary user message
+      displayResponse(`Verarbeite: "${userText}"`);
+    }
+
+    function toggleRecording() {
+      if (voiceAssistant.isRecording) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    }
+
+    async function startRecording() {
+      try {
+        await voiceAssistant.startRecording();
+        updateRecordingUI(true);
+        showProcessingAnimation();
+        
+        recordingStartTime = Date.now();
+        recordingTimer = setInterval(updateRecordingTime, 100);
+        
+      } catch (error) {
+        console.error('Recording start failed:', error);
+        showNotification('error', 'Aufnahme fehlgeschlagen', error.message);
+      }
+    }
+
+    async function stopRecording() {
+      try {
+        await voiceAssistant.stopRecording();
+        updateRecordingUI(false);
+        
+        if (recordingTimer) {
+          clearInterval(recordingTimer);
+          recordingTimer = null;
+        }
+        
+      } catch (error) {
+        console.error('Recording stop failed:', error);
+        showNotification('error', 'Aufnahme stoppen fehlgeschlagen', error.message);
+      }
+    }
+
+    function updateRecordingUI(recording) {
+      const voiceBtn = document.getElementById('voiceBtn');
+      const voiceIcon = document.getElementById('voiceIcon');
+      const indicator = document.getElementById('recordingIndicator');
+      const avatar = document.getElementById('avatar');
+
+      if (recording) {
+        voiceBtn.classList.add('recording');
+        voiceIcon.textContent = '⏹️';
+        indicator.classList.add('active');
+        avatar.classList.add('recording');
+      } else {
+        voiceBtn.classList.remove('recording');
+        voiceIcon.textContent = '🎤';
+        indicator.classList.remove('active');
+        avatar.classList.remove('recording');
+      }
+    }
+
+    function updateRecordingTime() {
+      if (recordingStartTime) {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const timeElement = document.getElementById('recordingTime');
+        if (timeElement) {
+          timeElement.textContent = `${elapsed}s`;
+        }
+      }
+    }
+
+    function displayResponse(content) {
+      const responseElement = document.getElementById('response');
+      hideProcessingAnimation();
+      
+      responseElement.innerHTML = '';
+      
+      // Matrix rain effect for responses
+      if (content && content !== "Ihre Antwort erscheint hier...") {
+        matrixRain(responseElement, content);
+      } else {
+        responseElement.innerHTML = '<div class="response-empty">Ihre Antwort erscheint hier...</div>';
+      }
+    }
+
+    function matrixRain(element, text) {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let iteration = 0;
+      
+      const interval = setInterval(() => {
+        element.textContent = text
+          .split('')
+          .map((char, index) => {
+            if (index < iteration) {
+              return char;
+            }
+            return letters[Math.floor(Math.random() * letters.length)];
+          })
+          .join('');
+          
+        if (iteration >= text.length) {
+          clearInterval(interval);
+          element.textContent = text;
+        }
+        iteration += 1;
+      }, 30);
+    }
+
+    function showProcessingAnimation() {
+      const animation = document.getElementById('processingAnimation');
+      const avatar = document.getElementById('avatar');
+      
+      animation.classList.add('active');
+      avatar.classList.add('active');
+    }
+
+    function hideProcessingAnimation() {
+      const animation = document.getElementById('processingAnimation');
+      const avatar = document.getElementById('avatar');
+      
+      animation.classList.remove('active');
+      avatar.classList.remove('active');
+    }
+
+    function clearResponse() {
+      displayResponse('');
+      hideProcessingAnimation();
+      showNotification('success', 'Gelöscht', 'Antwort wurde gelöscht');
+    }
+
+    function showNotification(type, title, message, duration = 4000) {
+      const container = document.getElementById('notificationContainer');
+      const notification = document.createElement('div');
+      
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <div class="notification-icon">
+          ${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}
+        </div>
+        <div class="notification-content">
+          <div class="notification-title">${title}</div>
+          <div class="notification-message">${message}</div>
+        </div>
+        <button class="notification-close" onclick="closeNotification(this)">×</button>
+      `;
+      
+      container.appendChild(notification);
+      
+      // Animate in
+      setTimeout(() => notification.classList.add('show'), 100);
+      
+      // Auto remove
+      setTimeout(() => {
+        closeNotification(notification.querySelector('.notification-close'));
+      }, duration);
+    }
+
+    function closeNotification(button) {
+      const notification = button.closest('.notification');
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 400);
+    }
+
+    function showGestureHint() {
+      const hint = document.getElementById('gestureHint');
+      hint.style.display = 'block';
+      setTimeout(() => {
+        hint.style.display = 'none';
+        gestureHintShown = true;
+      }, 3000);
+    }
+
+    function showSettings() {
+      // Placeholder for settings modal
+      showNotification('info', 'Einstellungen', 'Einstellungen-Modal wird implementiert');
+    }
+
+    function showSystemInfo() {
+      if (voiceAssistant) {
+        const metrics = voiceAssistant.getMetrics();
+        const info = `Platform: ${metrics.platform}\nLatenz: ${metrics.latency.average.toFixed(0)}ms\nVerbindungen: ${metrics.connection.reconnections}`;
+        showNotification('info', 'System-Information', info, 8000);
+      }
+    }
+
+    // Handle status updates from voice assistant
+    window.updateConnectionStatus = function(type, message) {
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      
+      statusDot.className = `status-dot ${type}`;
+      statusText.textContent = message;
+    };
+
+    // Handle PWA install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      showNotification('info', 'App installieren', 'Diese App kann installiert werden');
+    });
+
+    // Service worker registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('SW registered: ', registration);
+          })
+          .catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+  </script>
+</body>
+</html>
