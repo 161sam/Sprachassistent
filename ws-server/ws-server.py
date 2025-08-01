@@ -12,17 +12,17 @@ import ssl
 # === KONFIGURATION ===
 PORT = 8123
 AUTHORIZED_TOKENS = ["mein-geheimer-token"]
-ALLOWED_IPS = ["127.0.0.1", "100.100.100.23"]  # Tailscale-IP-Adressen
+ALLOWED_IPS = ["127.0.0.1", "100.100.100.23"]  # Headscale-IP-Adressen
 
 USE_TLS = False
 CERT_PATH = "cert.pem"
 KEY_PATH = "key.pem"
 
-FLOWISE_HOST = "http://odroid-n2.tailnet-name.ts.net:3000"
+FLOWISE_HOST = "http://odroid.headscale.lan:3000"
 FLOW_ID = "dein-flowise-flow-id"
 FLOWISE_API_KEY = ""
 
-N8N_URL = "http://odroid-n2.tailnet-name.ts.net:5678/webhook/intent"
+N8N_URL = "http://odroid.headscale.lan:5678/webhook/intent"
 
 # === STT-MODELL LADEN ===
 model = WhisperModel("base", device="cpu", compute_type="int8")

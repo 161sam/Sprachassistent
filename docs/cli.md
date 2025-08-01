@@ -91,7 +91,7 @@ chmod +x setup_cli.sh
 
 * Der WS-Server verwendet Faster-Whisper und Piper lokal.
 * Flowise kann sowohl lokal (npm) als auch via Docker genutzt werden.
-* Tailscale wird für sichere Verbindung empfohlen (`scripts/setup-tailscale.sh`).
+* Headscale wird für sichere Verbindung empfohlen (`scripts/setup-headscale.sh`).
 
 ## 📞 Support
 

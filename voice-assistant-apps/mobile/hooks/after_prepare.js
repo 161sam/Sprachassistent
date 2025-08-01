@@ -54,8 +54,8 @@ function createNetworkSecurityConfig(platformPath) {
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">raspi4.local</domain>
-        <domain includeSubdomains="true">*.tailscale.net</domain>
-        <domain includeSubdomains="true">*.ts.net</domain>
+        <domain includeSubdomains="true">*.headscale.lan</domain>
+        <domain includeSubdomains="true">*.headscale.lan</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>`;

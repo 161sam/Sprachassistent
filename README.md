@@ -68,7 +68,7 @@ flowchart TB
 
   %% Network
   subgraph Network
-    VPN[Tailscale VPN]
+    VPN[Headscale VPN]
   end
 
   Clients -.-> VPN
@@ -86,7 +86,7 @@ flowchart TB
 - **🧠 Intelligentes Routing** zwischen lokalen Skills und Cloud-LLMs
 - **🌊 Moderne animierte UI** mit konfigurierbaren Effekten
 - **🔄 Automatisierung** mit n8n Workflows
-- **🔐 Sichere Vernetzung** über Tailscale VPN
+- **🔐 Sichere Vernetzung** über Headscale VPN
 
 ### 🏠 Hardware-Backend Features
 - **Lokale STT/TTS** ohne Cloud-Abhängigkeit
@@ -120,7 +120,7 @@ flowchart TB
 - 🗣 **Voice OS**: [RaspOVOS](https://openvoiceos.github.io/raspOVOS/) – Wakeword-Erkennung
 - 🧠 **LLM-Routing**: [FlowiseAI](https://github.com/FlowiseAI/Flowise) – No-Code Agent-Flows
 - 🔁 **Automation**: [n8n](https://n8n.io/) – Workflow-Automatisierung
-- 🔐 **Networking**: [Tailscale](https://tailscale.com) – sicheres privates VPN
+- 🔐 **Networking**: [Headscale](https://github.com/juanfont/headscale) – sicheres privates VPN
 
 ### Client-Apps
 | Komponente | Desktop | Mobile | Web |
@@ -141,7 +141,7 @@ Sprachassistent/
 │   │   ├── raspi400/           # GUI Interface Konfiguration  
 │   │   └── odroid/             # Gateway Konfiguration
 │   ├── scripts/                # Setup & Wartungs-Skripte
-│   │   ├── setup-tailscale.sh
+│   │   ├── setup-headscale.sh
 │   │   ├── install-piper.sh
 │   │   ├── start-stt.sh
 │   │   └── start-tts.sh
@@ -233,13 +233,13 @@ npm start  # Flowise
 # n8n läuft bereits im Docker Container
 ```
 
-#### Tailscale VPN Setup (alle Geräte)
+#### Headscale Setup (Odroid & Clients)
 ```bash
 # Auf jedem Gerät ausführen
-curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up --hostname raspi4-stt    # entsprechend anpassen
-sudo tailscale up --hostname raspi400-gui
-sudo tailscale up --hostname odroid-gateway
+./scripts/setup-headscale.sh
+sudo headscale up --hostname raspi4-stt    # entsprechend anpassen
+sudo headscale up --hostname raspi400-gui
+sudo headscale up --hostname odroid-gateway
 ```
 
 ### 2. 📱 Client-Apps Setup
@@ -275,11 +275,11 @@ Das System routet Anfragen intelligent zwischen lokalen Skills und Remote-Servic
   "intents": {
     "weather": {
       "target": "n8n-workflow",
-      "endpoint": "odroid-n2.tailnet:5678/webhook/weather"
+      "endpoint": "odroid-n2.headscale:5678/webhook/weather"
     },
     "ai_question": {
       "target": "flowise-agent", 
-      "endpoint": "odroid-n2.tailnet:3000/api/v1/prediction/agent-id"
+      "endpoint": "odroid-n2.headscale:3000/api/v1/prediction/agent-id"
     },
     "smart_home": {
       "target": "local-skill",
@@ -300,17 +300,17 @@ Das System routet Anfragen intelligent zwischen lokalen Skills und Remote-Servic
 const config = {
   // Hauptverbindung zum Raspberry Pi STT/TTS Node
   websocket: {
-    url: 'ws://raspi4-stt.tailnet:8123',
+    url: 'ws://raspi4-stt.headscale:8123',
     fallback: 'ws://192.168.1.100:8123'
   },
   
   // Direkte Verbindung zu Flowise/n8n (optional)
   flowise: {
-    url: 'http://odroid-gateway.tailnet:3000'
+    url: 'http://odroid-gateway.headscale:3000'
   },
   
   n8n: {
-    url: 'http://odroid-gateway.tailnet:5678'  
+    url: 'http://odroid-gateway.headscale:5678'  
   }
 };
 ```
@@ -331,7 +331,7 @@ const config = {
 ### Hardware-Backend (Direct)
 ```bash
 # Direkt mit Raspberry Pi GUI interagieren
-# Web-Interface: http://raspi400-gui.tailnet:8080
+# Web-Interface: http://raspi400-gui.headscale:8080
 
 # Voice Command via Mikrofon
 "Hey Assistant, wie ist das Wetter heute?"
@@ -375,17 +375,17 @@ cordova run android --device
 ### Hardware-Backend Testing
 ```bash
 # STT Service testen
-curl -X POST http://raspi4-stt.tailnet:8123/stt \
+curl -X POST http://raspi4-stt.headscale:8123/stt \
   -H "Content-Type: application/json" \
   -d '{"audio": "base64_audio_data"}'
 
 # TTS Service testen  
-curl -X POST http://raspi4-stt.tailnet:8123/tts \
+curl -X POST http://raspi4-stt.headscale:8123/tts \
   -H "Content-Type: application/json" \
   -d '{"text": "Hallo Welt", "voice": "de-thorsten"}'
 
 # Intent Routing testen
-curl -X POST http://raspi4-stt.tailnet:8123/query \
+curl -X POST http://raspi4-stt.headscale:8123/query \
   -H "Content-Type: application/json" \
   -d '{"text": "Wie ist das Wetter?", "session": "test"}'
 ```
@@ -525,9 +525,9 @@ journalctl -u faster-whisper -f
 alsamixer  # Audio-Level prüfen
 aplay /usr/share/sounds/alsa/Front_Left.wav
 
-# Tailscale Verbindung
-tailscale ping raspi4-stt
-tailscale status
+# Headscale Verbindung
+headscale ping raspi4-stt
+headscale status
 ```
 
 ### Client-App Probleme
@@ -546,15 +546,15 @@ cordova platform rm android && cordova platform add android
 ### Netzwerk & Verbindung
 ```bash
 # WebSocket-Verbindung testen
-wscat -c ws://raspi4-stt.tailnet:8123
+wscat -c ws://raspi4-stt.headscale:8123
 
 # Firewall prüfen
 sudo ufw status
 sudo iptables -L
 
 # DNS Resolution  
-nslookup raspi4-stt.tailnet
-ping raspi4-stt.tailnet
+nslookup raspi4-stt.headscale
+ping raspi4-stt.headscale
 ```
 
 ## 📊 Roadmap
@@ -614,7 +614,7 @@ Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert.
 - **RaspOVOS** Community für Wakeword-Integration
 - **FlowiseAI** für No-Code LLM-Workflows
 - **n8n** für offene Automatisierungsplattform
-- **Tailscale** für sichere Vernetzung
+- **Headscale** für sichere Vernetzung
 
 ### Client-Apps  
 - **Electron** Team für Desktop-Framework

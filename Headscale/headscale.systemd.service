@@ -1,7 +1,7 @@
 [Unit]
 After=syslog.target
 After=network.target
-Description=headscale coordination server for Tailscale
+Description=headscale coordination server
 X-Restart-Triggers=/etc/headscale/config.yaml
 
 [Service]
