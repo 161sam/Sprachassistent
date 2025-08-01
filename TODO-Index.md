@@ -4,7 +4,7 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 
 | Datei | Zeile | Kommentar | Status |
 |-------|------:|-----------|-----------|
-| gui/app.js | 1-6 | Grundlegende Aufgaben zur neuen Web-GUI |
+| gui/app.js | 1-6 | Grundlegende Aufgaben zur neuen Web-GUI | **erledigt** |
 | gui/index.html | 568 | Buttons rund gestalten | **erledigt** |
 | gui/index.html | 799 | Container transparenter gestalten | **erledigt** |
 | gui/index.html | 1136 | Status-Anzeigen sollen ein neues Fenster öffnen | **erledigt** |
@@ -15,19 +15,19 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 | gui/index.html | 1439 | Sprachaufnahme-Button neben Senden-Button | **erledigt** |
 | gui/index.html | 1443 | Neue minimalistische Icons | **erledigt** |
 | gui/index.html | 1859 | Status-Anzeigen auf separater Seite darstellen | **erledigt** |
-| voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen |
+| voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen | **erledigt** |
 | voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren | **erledigt** |
 | voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten | **erledigt** |
 | voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar |
-| voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten |
-| voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden |
+| voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar | **erledigt** |
+| voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten | **erledigt** |
+| voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden | **erledigt** |
 | voice-assistant-apps/shared/index.html | 1428 | Matrix-Stil Antwortanimation | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1437 | Sprachaufnahme-Button verschieben |
-| voice-assistant-apps/shared/index.html | 1441 | Icon ersetzen, Beschriftung entfernen |
-| voice-assistant-apps/shared/index.html | 1857 | Status-Seite über Menü |
-| voice-assistant-apps/desktop/src/index.html | 4 | GUI anpassen laut TODO-Liste |
-| voice-assistant-apps/desktop/src/desktop-app.js | 2 | Umsetzung der GUI-TODOs |
+| voice-assistant-apps/shared/index.html | 1437 | Sprachaufnahme-Button verschieben | **erledigt** |
+| voice-assistant-apps/shared/index.html | 1441 | Icon ersetzen, Beschriftung entfernen | **erledigt** |
+| voice-assistant-apps/shared/index.html | 1857 | Status-Seite über Menü | **erledigt** |
+| voice-assistant-apps/desktop/src/index.html | 4 | GUI anpassen laut TODO-Liste | **erledigt** |
+| voice-assistant-apps/desktop/src/desktop-app.js | 2 | Umsetzung der GUI-TODOs | **erledigt** |
 
 Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
 
@@ -50,7 +50,7 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
 - **voice-assistant-apps/desktop/src/index.html**
   - Tippfehler behoben
 - **gui/app.js**
-  - Zeilen 1–6: Web-GUI Logik und Animationen implementieren
+  - Zeilen 1–6: Web-GUI Logik und Animationen implementieren **erledigt**
 - **gui/index.html**
   - Diverse TODOs ab Zeile 568 für Design- und Layoutanpassungen
 - **scripts/start-stt.sh**

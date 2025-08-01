@@ -1,6 +1,5 @@
 // Gemeinsame Sprachassistent-Logik für Desktop und Mobile
 // Kann sowohl in Electron als auch Cordova verwendet werden
-// TODO: GUI-Anpassungen aus docs/GUI-TODO.md berücksichtigen
 
 class VoiceAssistantCore {
   constructor() {
