@@ -17,4 +17,8 @@
 
 - Die Antwort (der Text der Antwort Nachricht) soll aus dem "Wabendern Nebel Icon" heraus regnen (Matrix Style Animation).
 
-<!-- TODO: Weitere Animationsideen ergänzen und Beispiele verlinken -->
+<!-- Weitere Animationsideen -->
+- Avatar soll beim Sprechen leicht pulsieren
+- Chat-Fenster bei neuer Nachricht kurz aufleuchten
+- Antworttext könnte von oben nach unten "herunterfallen"
+<!-- Beispiel: https://github.com/fireship-io/threejs-matrix-rain -->
