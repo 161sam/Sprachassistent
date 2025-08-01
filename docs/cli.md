@@ -1,6 +1,6 @@
 # 🛠 Sprachassistent Setup CLI
 
-Dieses CLI-Skript (`setup_cli.sh`) ermöglicht dir die einfache und interaktive Installation, Konfiguration und Wartung aller Bestandteile des Sprachassistenten-Projekts.
+Dieses CLI-Skript (`cli.sh`) ermöglicht dir die einfache und interaktive Installation, Konfiguration und Wartung aller Bestandteile des Sprachassistenten-Projekts.
 
 ## 📦 Voraussetzungen
 
@@ -73,14 +73,14 @@ Beendet die CLI.
 
 ```bash
 chmod +x setup_cli.sh
-./setup_cli.sh
+./cli.sh
 ```
 
 ## 📁 Typische Projektstruktur
 
 ```
 ├── .env
-├── setup_cli.sh
+├── cli.sh
 ├── config/
 ├── scripts/
 ├── voice-assistant-apps/
