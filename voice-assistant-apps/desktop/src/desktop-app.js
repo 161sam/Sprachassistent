@@ -1,4 +1,5 @@
 // Desktop-spezifische Erweiterungen für Electron
+// TODO: Umsetzung der GUI-TODOs (Status-Seite, Icons, Animation)
 class DesktopVoiceAssistant {
   constructor() {
     this.isElectron = window.electronAPI?.isElectron || false;

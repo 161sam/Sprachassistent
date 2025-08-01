@@ -483,6 +483,7 @@ class VoiceAssistantCore {
     const responseElement = document.getElementById('response');
     if (responseElement) {
       responseElement.innerHTML = `<div class="response-content">${content}</div>`;
+      // TODO: Antworttext per Matrix-Regen animieren (siehe docs/GUI-TODO.md)
       responseElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   }
