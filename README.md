@@ -633,10 +633,8 @@ Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert.
 ## 🔗 Weiterführende Links
 
 - 📚 **[Hardware Setup Guide](docs/hardware-setup.md)**
-- <!-- TODO: docs/hardware-setup.md erstellen oder Link anpassen -->
 - 🏗️ **[Architecture Deep Dive](docs/architecture.md)**
 - 🔧 **[Development Guide](docs/development.md)**
-- <!-- TODO: docs/development.md erstellen oder Link entfernen -->
 - 🤝 **[Contributing Guidelines](CONTRIBUTING.md)**
 - 🐛 **[Issues & Support](https://github.com/your-repo/issues)**
 - 💬 **[Discussions](https://github.com/your-repo/discussions)**

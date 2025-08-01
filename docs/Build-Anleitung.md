@@ -55,7 +55,7 @@ cd desktop
 # Package.json erstellen (vom Artifact)
 # main.js erstellen (vom Artifact)
 # preload.js erstellen (vom Artifact)
-<!-- TODO: Quelle der Vorlagen angeben -->
+# Die Vorlagendateien liegen im Ordner `voice-assistant-apps/desktop/templates`.
 
 # Dependencies installieren
 npm install
@@ -136,7 +136,7 @@ cd mobile
 cordova platform add android
 
 # Config.xml überschreiben (vom Artifact)
-<!-- TODO: Template-Pfad dokumentieren -->
+# Template liegt unter `voice-assistant-apps/mobile/templates/config.xml`
 # mobile.js zu www/js/ hinzufügen
 
 # Plugins installieren (werden automatisch aus config.xml installiert)
@@ -371,3 +371,4 @@ console.log('Device Info:', window.mobileApp?.getDeviceInfo());
 ---
 
 Diese Anleitung deckt alle wichtigen Aspekte für die Entwicklung und Deployment beider Plattformen ab. Die modulare Struktur ermöglicht es, gemeinsame Komponenten zu teilen und platform-spezifische Features zu nutzen.
+
