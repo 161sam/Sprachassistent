@@ -50,7 +50,7 @@ flowchart LR
 
 ## 🔐 Netzwerk & Sicherheit
 
-* **Tailscale VPN** verbindet alle Geräte sicher
+* **Headscale VPN** verbindet alle Geräte sicher
 * Token-Auth + IP-Filterung im WS-Server
 * Optional: HTTPS mit lokalen Zertifikaten
 
@@ -80,6 +80,6 @@ voice-assistant-apps/
 ## 📌 Nächste Schritte
 
 * Skill-System dokumentieren (`docs/skill-system.md`)
-* Netzwerk-Setup in `docs/tailscale-setup.md`
+* Netzwerk-Setup in `docs/headscale-setup.md`
 * Routing-Logik in `docs/routing.md`
 

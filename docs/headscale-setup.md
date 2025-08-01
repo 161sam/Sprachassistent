@@ -1,6 +1,6 @@
 # 🔐 Headscale Setup für Sprachassistent-Netzwerk
 
-Dieses Dokument beschreibt die Einrichtung von Headscale als selbstgehostete Alternative zu Tailscale für ein sicheres Mesh-VPN zwischen den Nodes (Raspi 4, Raspi 400, Odroid, Server).
+Dieses Dokument beschreibt die Einrichtung von Headscale als selbstgehostete Alternative für ein sicheres Mesh-VPN zwischen den Nodes (Raspi 4, Raspi 400, Odroid, Server).
 
 Um den Dienst automatisch zu starten, kopiere die bereitgestellte
 `headscale.service` Datei aus dem Headscale Repository nach
@@ -24,8 +24,7 @@ sudo systemctl enable --now headscale.service
 
 ## 🧠 Was ist Headscale?
 
-Headscale ist ein Open-Source-Server, der mit dem offiziellen Tailscale-Client kompatibel ist – du behältst also volle Kontrolle über das VPN.
-
+Headscale ist ein Open-Source-Server für sichere Mesh-VPNs.
 ---
 
 ## 🖥 Installation (Server mit Headscale)
@@ -40,7 +39,15 @@ wget -O headscale.deb \
   "https://github.com/juanfont/headscale/releases/download/v${HEADSCALE_VERSION}/headscale_${HEADSCALE_VERSION}_linux_${HEADSCALE_ARCH}.deb"
 
 sudo apt install ./headscale.deb
+### Odroid ARM64 Installation
+
+```bash
+HEADSCALE_VERSION="0.26.1"
+HEADSCALE_ARCH="arm64"
+wget -O headscale.deb "https://github.com/juanfont/headscale/releases/download/v${HEADSCALE_VERSION}/headscale_${HEADSCALE_VERSION}_linux_${HEADSCALE_ARCH}.deb"
+sudo apt install ./headscale.deb
 ```
+
 
 ### Option B – Snap-Paket (für Raspberry Pi)
 
@@ -216,7 +223,7 @@ RASPI4_HOST=raspi4.headscale.lan
 ## 🔍 Verbindung prüfen
 
 ```bash
-tailscale status
+headscale nodes list
 ping raspi400
 ```
 
@@ -234,7 +241,6 @@ ping raspi400
 ## 🔗 Referenzen
 
 * [Headscale GitHub](https://github.com/juanfont/headscale)
-* [Tailscale Client](https://tailscale.com)
 * [Headscale Doku](https://headscale.net)
 * [Snap Install Guide](https://snapcraft.io/install/headscale/raspbian)
 

@@ -65,11 +65,11 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Erste lokale Skill-Implementierung eingebunden
 - **scripts/install-piper.sh**
   - Installationsschritte implementiert
-- **scripts/setup-tailscale.sh**
+- **scripts/setup-headscale.sh**
   - Grundlegendes Setup-Skript erstellt
 - **docs/headscale-setup.md**
   - Anleitung zum systemd-Service ergänzt
 - **docs/architecture.md**
-  - Verweis auf tailscale-setup.md aktualisiert
+  - Verweis auf headscale-setup.md aktualisiert
 - **docs/GUI-TODO.md**
   - Zeile 20: Weitere Animationsideen ergänzen **erledigt**
