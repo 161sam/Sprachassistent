@@ -55,8 +55,7 @@ apply_configs $ODROID_HOST odroid
 
 ## WebSocket-Server (lokal)
 log "🧠 Starte lokale ws-server Installation..."
-# TODO: Pfad anpassen – Skript heißt install.sh, nicht install-ws.sh
-bash ./scripts/ws-server/install-ws.sh || abort "Fehler bei ws-server Installation"
+bash ./scripts/ws-server/install.sh || abort "Fehler bei ws-server Installation"
 sudo cp ./ws-server/ws-server.service /etc/systemd/system/ws-server.service
 sudo systemctl daemon-reload && sudo systemctl enable ws-server && sudo systemctl start ws-server
 

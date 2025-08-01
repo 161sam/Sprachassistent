@@ -81,5 +81,5 @@ voice-assistant-apps/
 
 * Skill-System dokumentieren (`docs/skill-system.md`)
 * Netzwerk-Setup in `docs/tailscale-setup.md`
-  <!-- TODO: Datei erstellen oder Verweis entfernen -->
 * Routing-Logik in `docs/routing.md`
+

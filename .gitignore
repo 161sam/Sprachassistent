@@ -154,44 +154,41 @@ desktop/logs/
 desktop/dist-electron/
 
 # MOBILE APP SPECIFIC (Cordova)
-mobile/platforms/
-mobile/plugins/
 voice-assistant-apps/mobile/platforms/
 voice-assistant-apps/mobile/plugins/
-# TODO: Obige Pfade anpassen, damit Build-Artefakte im Subordner ignoriert werden
-mobile/node_modules/
-mobile/www/cordova.js
-mobile/www/cordova_plugins.js
-mobile/www/plugins/
+voice-assistant-apps/mobile/node_modules/
+voice-assistant-apps/mobile/www/cordova.js
+voice-assistant-apps/mobile/www/cordova_plugins.js
+voice-assistant-apps/mobile/www/plugins/
 
 # Generated resources
-mobile/resources/
-mobile/www/lib/
+voice-assistant-apps/mobile/resources/
+voice-assistant-apps/mobile/www/lib/
 
 # Platform specific files
-mobile/platforms/android/.gradle/
-mobile/platforms/android/app/build/
-mobile/platforms/android/app/src/main/assets/www/
-mobile/platforms/android/CordovaLib/build/
-mobile/platforms/android/gradle/
-mobile/platforms/android/gradlew
-mobile/platforms/android/gradlew.bat
-mobile/platforms/android/local.properties
+voice-assistant-apps/mobile/platforms/android/.gradle/
+voice-assistant-apps/mobile/platforms/android/app/build/
+voice-assistant-apps/mobile/platforms/android/app/src/main/assets/www/
+voice-assistant-apps/mobile/platforms/android/CordovaLib/build/
+voice-assistant-apps/mobile/platforms/android/gradle/
+voice-assistant-apps/mobile/platforms/android/gradlew
+voice-assistant-apps/mobile/platforms/android/gradlew.bat
+voice-assistant-apps/mobile/platforms/android/local.properties
 
 # iOS specific (wenn später hinzugefügt)
-mobile/platforms/ios/build/
-mobile/platforms/ios/www/
-mobile/platforms/ios/CordovaLib/build/
+voice-assistant-apps/mobile/platforms/ios/build/
+voice-assistant-apps/mobile/platforms/ios/www/
+voice-assistant-apps/mobile/platforms/ios/CordovaLib/build/
 
 # Cordova hooks (außer den wichtigen)
-mobile/hooks/
-!mobile/hooks/after_prepare.js
-!mobile/hooks/before_build.js
+voice-assistant-apps/mobile/hooks/
+!voice-assistant-apps/mobile/hooks/after_prepare.js
+!voice-assistant-apps/mobile/hooks/before_build.js
 
 # Auto-generated files
-mobile/www/js/build-info.js
-mobile/www/build-stats.json
-mobile/www/js/debug-config.js
+voice-assistant-apps/mobile/www/js/build-info.js
+voice-assistant-apps/mobile/www/build-stats.json
+voice-assistant-apps/mobile/www/js/debug-config.js
 
 # Keystores und Zertifikate (NIEMALS committen!)
 *.keystore

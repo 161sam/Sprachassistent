@@ -2,7 +2,16 @@
 
 Dieses Dokument beschreibt die Einrichtung von Headscale als selbstgehostete Alternative zu Tailscale für ein sicheres Mesh-VPN zwischen den Nodes (Raspi 4, Raspi 400, Odroid, Server).
 
-<!-- TODO: Schritte zum Einrichten der systemd-Datei aus Headscale/headscale.systemd.service beschreiben -->
+Um den Dienst automatisch zu starten, kopiere die bereitgestellte
+`headscale.service` Datei aus dem Headscale Repository nach
+`/etc/systemd/system/` und passe bei Bedarf den Pfad zum Binary an.
+Danach `systemctl daemon-reload` ausführen und den Service aktivieren:
+
+```bash
+sudo cp Headscale/headscale.systemd.service /etc/systemd/system/headscale.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now headscale.service
+```
 ---
 
 ## 📦 Voraussetzungen
@@ -228,3 +237,4 @@ ping raspi400
 * [Tailscale Client](https://tailscale.com)
 * [Headscale Doku](https://headscale.net)
 * [Snap Install Guide](https://snapcraft.io/install/headscale/raspbian)
+

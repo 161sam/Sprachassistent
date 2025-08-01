@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
-# TODO: Implement Tailscale or Headscale setup instructions
+set -e
+echo "🔌 Installiere Tailscale..."
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --authkey "$TAILSCALE_AUTHKEY" --hostname sprachassistent
+echo "✅ Tailscale verbunden"
+
 

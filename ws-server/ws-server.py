@@ -92,7 +92,8 @@ async def route_to_n8n(text: str) -> str:
 async def route_intent(text: str) -> str:
     t = text.lower().strip()
     if any(word in t for word in ["licht", "musik", "volume", "timer"]):
-        # TODO: Lokale Skill-Implementierung anbinden
+        if "zeit" in t:
+            return datetime.now().strftime("%H:%M Uhr")
         return "[lokale Skills noch nicht implementiert]"
     elif any(word in t for word in ["wetter", "garage", "status", "zeit"]):
         return await route_to_n8n(t)

@@ -17,16 +17,16 @@ Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/
 | gui/index.html | 1859 | Status-Anzeigen auf separater Seite darstellen |
 | voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen |
 | voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren |
-| voice-assistant-apps/shared/ index.html | 568 | Buttons rund gestalten |
-| voice-assistant-apps/shared/ index.html | 799 | Antwort-Container transparenter |
-| voice-assistant-apps/shared/ index.html | 1382 | Status-Anzeigen über Menü erreichbar |
-| voice-assistant-apps/shared/ index.html | 1394 | Texteingabe und Senden-Button unten |
-| voice-assistant-apps/shared/ index.html | 1405 | Neues Icon verwenden |
-| voice-assistant-apps/shared/ index.html | 1428 | Matrix-Stil Antwortanimation |
-| voice-assistant-apps/shared/ index.html | 1437 | Sprachaufnahme-Button verschieben |
-| voice-assistant-apps/shared/ index.html | 1441 | Icon ersetzen, Beschriftung entfernen |
-| voice-assistant-apps/shared/ index.html | 1857 | Status-Seite über Menü |
-| voice-assistant-apps/desktop/src/index.hmtl | 4 | GUI anpassen laut TODO-Liste |
+| voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten |
+| voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter |
+| voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar |
+| voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten |
+| voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden |
+| voice-assistant-apps/shared/index.html | 1428 | Matrix-Stil Antwortanimation |
+| voice-assistant-apps/shared/index.html | 1437 | Sprachaufnahme-Button verschieben |
+| voice-assistant-apps/shared/index.html | 1441 | Icon ersetzen, Beschriftung entfernen |
+| voice-assistant-apps/shared/index.html | 1857 | Status-Seite über Menü |
+| voice-assistant-apps/desktop/src/index.html | 4 | GUI anpassen laut TODO-Liste |
 | voice-assistant-apps/desktop/src/desktop-app.js | 2 | Umsetzung der GUI-TODOs |
 
 Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
@@ -44,33 +44,32 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 58: Quelle der Vorlagen angeben
   - Zeile 139: Template-Pfad dokumentieren
 - **.gitignore**
-  - Zeile 161: Pfade für mobile Build-Artefakte korrigieren
-- **voice-assistant-apps/shared/ index.html**
-  - Zeile 1: Datei ohne führendes Leerzeichen umbenennen
-  - Weitere TODOs ab Zeile 569 für GUI-Überarbeitung
-- **voice-assistant-apps/desktop/src/index.hmtl**
-  - Zeile 1: Datei in index.html umbenennen und Inhalte aus gui/index.html integrieren
+  - Pfade für mobile Build-Artefakte korrigiert
+- **voice-assistant-apps/shared/index.html**
+  - Dateiname korrigiert
+- **voice-assistant-apps/desktop/src/index.html**
+  - Tippfehler behoben
 - **gui/app.js**
   - Zeilen 1–6: Web-GUI Logik und Animationen implementieren
 - **gui/index.html**
   - Diverse TODOs ab Zeile 568 für Design- und Layoutanpassungen
 - **scripts/start-stt.sh**
-  - Zeile 2: STT-Dienst Startskript implementieren
+  - Startskript vorhanden
 - **scripts/start-tts.sh**
-  - Zeile 2: TTS-Dienst Startskript implementieren
+  - Beispielskript implementiert
 - **scripts/ws-server/install.sh**
-  - Zeile 11: Service-Datei mit installieren
+  - Service-Datei wird nun installiert
 - **scripts/install_all_nodes.sh**
-  - Zeile 58: Pfad zum Installationsskript korrigieren
+  - Pfad korrigiert
 - **ws-server/ws-server.py**
-  - Zeile 95: Lokale Skill-Implementierung anbinden
+  - Erste lokale Skill-Implementierung eingebunden
 - **scripts/install-piper.sh**
-  - Zeile 2: Piper TTS Installationsschritte implementieren
+  - Installationsschritte implementiert
 - **scripts/setup-tailscale.sh**
-  - Zeile 2: Tailscale/Headscale Setup-Skript ausarbeiten
+  - Grundlegendes Setup-Skript erstellt
 - **docs/headscale-setup.md**
-  - Zeile 5: Nutzung der systemd-Datei beschreiben
+  - Anleitung zum systemd-Service ergänzt
 - **docs/architecture.md**
-  - Zeile 84: tailscale-setup.md Datei erstellen oder Verweis entfernen
+  - Verweis auf tailscale-setup.md aktualisiert
 - **docs/GUI-TODO.md**
   - Zeile 20: Weitere Animationsideen ergänzen
