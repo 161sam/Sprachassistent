@@ -1,8 +1,8 @@
 {
   "ttsEngine": "piper",
   "model": "${TTS_MODEL}",
-  "speed": ${TTS_SPEED},
-  "volume": ${TTS_VOLUME},
+  "speed": "${TTS_SPEED}",
+  "volume": "${TTS_VOLUME}",
   "voice": "de-thorsten-low",
   "outputFormat": "wav"
 }
