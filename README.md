@@ -18,60 +18,62 @@ Electron Desktop-App und Cordova Mobile-App für universellen Zugriff
 
 ```mermaid
 flowchart TB
-  subgraph Clients [🖥️📱 Client Apps]
-    Desktop[Desktop App<br/>Electron]
-    Mobile[Mobile App<br/>Cordova]
-    WebGUI[Web GUI<br/>Local Interface]
+  subgraph Clients
+    Desktop[Desktop App]
+    Mobile[Mobile App]
+    WebGUI[Web GUI]
   end
 
-  subgraph LocalBackend [🏠 Lokales Hardware-Backend]
-    subgraph Interface [Raspi 400 – GUI Interface]
-      Mic400[🎤 Mikrofon]
-      GUI400[🖥️ Local GUI]
+  subgraph LocalBackend
+    subgraph Interface
+      Mic400[Mikrofon]
+      GUI400[Lokale GUI]
     end
 
-    subgraph AudioNode [Raspi 4 – STT/TTS Node]
-      STT[🎤 STT Engine<br/>faster-whisper]
-      TTS[🔊 TTS Engine<br/>piper]
-      IntentRouting[🧠 Intent Routing]
-      Skills[⚡ Local Skills]
+    subgraph AudioNode
+      STT[STT Engine]
+      TTS[TTS Engine]
+      IntentRouting[Intent Routing]
+      Skills[Lokale Skills]
     end
 
-    subgraph Gateway [Odroid N2 – Gateway]
-      Flowise[🤖 Flowise<br/>LLM Routing]
-      n8nLight[🔄 n8n Light<br/>Workflows]
+    subgraph Gateway
+      Flowise[Flowise]
+      n8nLight[n8n Light]
     end
   end
 
-  subgraph CloudServer [☁️ Server (Optional)]
-    ServerFlowise[🧠 Flowise Full]
-    ServerN8n[🔄 n8n Backend]
-    ServerLLM[🤖 Lokale LLMs]
+  subgraph CloudServer
+    ServerFlowise[Flowise Full]
+    ServerN8n[n8n Backend]
+    ServerLLM[Lokale LLMs]
   end
 
   %% Connections
   Desktop -.->|WebSocket/HTTP| AudioNode
   Mobile -.->|WebSocket/HTTP| AudioNode
   WebGUI --> AudioNode
-  
+
   Mic400 --> AudioNode
   GUI400 <--> AudioNode
-  
+
   AudioNode -->|Complex Queries| Gateway
   Gateway -->|Heavy Tasks| CloudServer
-  
+
   IntentRouting -->|Simple Tasks| Skills
   IntentRouting -->|Complex Tasks| Flowise
-  
+
   %% Network
-  subgraph Network [🔐 Tailscale VPN]
-    VPN[Sichere Verbindung<br/>zwischen allen Komponenten]
+  subgraph Network
+    VPN[Tailscale VPN]
   end
-  
-  Clients -.-> Network
-  LocalBackend -.-> Network
-  CloudServer -.-> Network
+
+  Clients -.-> VPN
+  LocalBackend -.-> VPN
+  CloudServer -.-> VPN
 ```
+
+
 
 ## ✨ Features
 
