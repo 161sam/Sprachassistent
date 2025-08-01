@@ -202,7 +202,7 @@ cd faster-whisper && pip install .
 sudo apt install piper
 
 # Projekt klonen und konfigurieren
-git clone https://github.com/your-repo/Sprachassistent.git
+git clone https://github.com/161sam/Sprachassistent.git
 cd Sprachassistent
 cp env.example .env
 # .env bearbeiten mit deinen Einstellungen
