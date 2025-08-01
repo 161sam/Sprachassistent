@@ -565,6 +565,7 @@
       background: var(--primary-color);
       border: none;
       border-radius: 16px;
+      /* TODO: Buttons rund gestalten */
       padding: 1rem 1.5rem;
       font-size: 1rem;
       font-weight: 600;
@@ -795,6 +796,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      /* TODO: Container transparenter gestalten */
     }
 
     .response-content {
@@ -1131,6 +1133,7 @@
           <span class="icon">📊</span>
           <span class="label">System-Info</span>
         </div>
+        <!-- TODO: Status-Anzeigen sollen hier ein neues Fenster öffnen -->
         <div class="settings-menu-item" onclick="showAbout()">
           <span class="icon">ℹ️</span>
           <span class="label">Über</span>
@@ -1377,6 +1380,8 @@
 
     <div class="main-card">
       <!-- Status Bar (Order 1) -->
+      <!-- TODO: Status-Anzeigen auf eigene Seite auslagern und
+           über Menü erreichbar machen -->
       <div class="status-bar">
         <div class="status-indicator">
           <div class="status-dot" id="statusDot"></div>
@@ -1388,6 +1393,7 @@
       </div>
 
       <!-- Text Input Section (Order 2) -->
+      <!-- TODO: Texteingabe und Senden-Button dauerhaft am unteren Rand platzieren -->
       <div class="input-section">
         <input 
           type="text" 
@@ -1397,7 +1403,8 @@
           onkeypress="handleKeyPress(event)"
         />
         <button onclick="sendText()" class="btn" id="sendBtn">
-          <span>📤</span> Senden
+          <span>📤</span>
+          <!-- TODO: Neues Icon verwenden und Beschriftung entfernen -->
         </button>
       </div>
 
@@ -1420,6 +1427,7 @@
         </div>
         
         <!-- Waberner Nebel Animation -->
+        <!-- TODO: Antworttext als Matrix-Regen aus dem Nebel einblenden -->
         <div class="nebel-animation" id="nebelAnimation">
           <div class="nebel-circle" style="--scale: 1"></div>
           <div class="nebel-circle" style="--scale: 0.8"></div>
@@ -1428,9 +1436,11 @@
       </div>
 
       <!-- Voice Controls (Order 4) -->
+      <!-- TODO: Sprachaufnahme-Button neben den Senden-Button verschieben -->
       <div class="voice-controls">
         <button onclick="toggleRecording()" class="btn voice-button" id="voiceBtn">
           <span id="voiceIcon">🎤</span>
+          <!-- TODO: Neue minimalistisches Icon verwenden -->
           <span id="voiceText">Spracheingabe starten</span>
         </button>
         
