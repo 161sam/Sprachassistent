@@ -9,6 +9,5 @@ Die entsprechenden Einträge im TODO-Index wurden aktualisiert.
 
 Neu umgesetzt in diesem PR:
 
-- gui/index.html: Matrix-Regen Animation für Antworttext implementiert.
-- voice-assistant-apps/shared/app.js: matrixRain-Funktion integriert.
-- voice-assistant-apps/shared/index.html: Matrix-Effekt aktiviert.
+- ws-server/ws-server.py: Konfiguration kann nun über Umgebungsvariablen angepasst werden.
+- docs/routing.md: Hinweise zu den neuen Variablen ergänzt.

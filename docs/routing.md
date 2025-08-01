@@ -37,7 +37,7 @@ Die Logik befindet sich in `ws-server.py` unter `IntentRouting`.
 
 ## ⚙️ Flowise-Weiterleitung
 
-* Flow-ID wird aus `.env` geladen
+* Flow-ID und Host werden aus `.env` oder den Umgebungsvariablen `FLOWISE_HOST`, `FLOWISE_FLOW_ID` gelesen
 * HTTP POST an Flowise REST API
 * Antworttext wird an TTS/GUI gesendet
 
@@ -45,7 +45,7 @@ Die Logik befindet sich in `ws-server.py` unter `IntentRouting`.
 
 ## 🔁 n8n-Webhook-Aufruf
 
-* URL wird aus `.env` geladen
+* URL wird aus `.env` oder der Umgebungsvariable `N8N_URL` geladen
 * Übertragung per `requests.post`
 * Eingabe als JSON `{ "query": input_text, "token": WS_TOKEN }`
 
