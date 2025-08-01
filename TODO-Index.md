@@ -40,6 +40,9 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 1: Anleitung zum Hardware-Setup erstellen
 - **docs/development.md**
   - Zeile 1: Ausführlichen Development Guide verfassen
+- **docs/Build-Anleitung.md**
+  - Zeile 58: Quelle der Vorlagen angeben
+  - Zeile 139: Template-Pfad dokumentieren
 - **.gitignore**
   - Zeile 161: Pfade für mobile Build-Artefakte korrigieren
 - **voice-assistant-apps/shared/ index.html**
@@ -67,5 +70,7 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 2: Tailscale/Headscale Setup-Skript ausarbeiten
 - **docs/headscale-setup.md**
   - Zeile 5: Nutzung der systemd-Datei beschreiben
+- **docs/architecture.md**
+  - Zeile 84: tailscale-setup.md Datei erstellen oder Verweis entfernen
 - **docs/GUI-TODO.md**
   - Zeile 20: Weitere Animationsideen ergänzen

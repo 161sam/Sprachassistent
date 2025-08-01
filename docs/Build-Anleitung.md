@@ -53,8 +53,9 @@ mkdir desktop
 cd desktop
 
 # Package.json erstellen (vom Artifact)
-# main.js erstellen (vom Artifact)  
+# main.js erstellen (vom Artifact)
 # preload.js erstellen (vom Artifact)
+<!-- TODO: Quelle der Vorlagen angeben -->
 
 # Dependencies installieren
 npm install
@@ -135,6 +136,7 @@ cd mobile
 cordova platform add android
 
 # Config.xml überschreiben (vom Artifact)
+<!-- TODO: Template-Pfad dokumentieren -->
 # mobile.js zu www/js/ hinzufügen
 
 # Plugins installieren (werden automatisch aus config.xml installiert)
