@@ -2,6 +2,7 @@
 
 Dieses Dokument beschreibt die Einrichtung von Headscale als selbstgehostete Alternative zu Tailscale für ein sicheres Mesh-VPN zwischen den Nodes (Raspi 4, Raspi 400, Odroid, Server).
 
+<!-- TODO: Schritte zum Einrichten der systemd-Datei aus Headscale/headscale.systemd.service beschreiben -->
 ---
 
 ## 📦 Voraussetzungen

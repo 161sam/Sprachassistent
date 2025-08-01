@@ -61,3 +61,11 @@ Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
   - Zeile 58: Pfad zum Installationsskript korrigieren
 - **ws-server/ws-server.py**
   - Zeile 95: Lokale Skill-Implementierung anbinden
+- **scripts/install-piper.sh**
+  - Zeile 2: Piper TTS Installationsschritte implementieren
+- **scripts/setup-tailscale.sh**
+  - Zeile 2: Tailscale/Headscale Setup-Skript ausarbeiten
+- **docs/headscale-setup.md**
+  - Zeile 5: Nutzung der systemd-Datei beschreiben
+- **docs/GUI-TODO.md**
+  - Zeile 20: Weitere Animationsideen ergänzen
