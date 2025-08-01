@@ -1,0 +1,9 @@
+{
+  "deviceRole": "interface",
+  "wsServer": "ws://raspi4.local:8123",
+  "authToken": "${WS_TOKEN}",
+  "language": "de",
+  "theme": "light",
+  "defaultMic": "USB Microphone",
+  "autoConnect": true
+}
