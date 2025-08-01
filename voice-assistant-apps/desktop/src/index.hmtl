@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KI-Sprachassistent</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss:; connect-src 'self' ws: wss: http: https:;" />
+  <style>
+    :root {
+      --primary-color: #6366f1;
+      --primary-hover: #5855eb;
+      --secondary-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --bg-primary: #0f0f23;
+      --bg-secondary: #1a1a2e;
+      --bg-tertiary: #16213e;
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+      
+      /* Dynamic Settings */
+      --nebel-primary: #6366f1;
+      --nebel-secondary: #10b981;
+      --nebel-accent: #f59e0b;
+      --animation-speed: 4s;
+      --avatar-speed: 4s;
+      --nebel-speed: 3s;
+    }
+
+    .reduced-motion * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-tertiary) 100%);
+      min-height: 100vh;
+      color: var(--text-primary);
+      overflow-x: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Desktop-specific styles */
+    .desktop-app {
+      padding-top: 0; /* No status bar on desktop */
+    }
+
+    .desktop-app .container {
+      padding: 2rem;
+    }
+
+    .desktop-app .settings-header {
+      padding: 1rem 2rem;
+    }
+
+    /* Titlebar for frameless window */
+    .custom-titlebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 30px;
+      background: var(--bg-primary);
+      -webkit-app-region: drag;
+      z-index: 10000;
+      display: none; /* Show only if frameless */
+    }
+
+    .titlebar-controls {
+      position: absolute;
+      top: 0;
+      right: 0;
+      height: 100%;
+      display: flex;
+      -webkit-app-region: no-drag;
+    }
+
+    .titlebar-button {
+      width: 46px;
+      height: 30px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .titlebar-button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .titlebar-button.close:hover {
+      background: #e81123;
+      color: white;
+    }
+
+    /* Enhanced desktop notifications */
+    .desktop-notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1rem;
+      max-width: 300px;
+      box-shadow: var(--shadow-lg);
+      transform: translateX(400px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 10001;
+    }
+
+    .desktop-notification.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    /* Enhanced settings for desktop */
+    .desktop-settings {
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+
+    .desktop-setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      transition: background 0.2s ease;
+    }
+
+    .desktop-setting-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Copy all previous CSS styles here */
+    /* Animated background elements */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 80%, rgba(245, 158, 11, 0.1) 0%, transparent 50%);
+      animation: backgroundShift 15s ease-in-out infinite;
+      z-index: -1;
+    }
+
+    @keyframes backgroundShift {
+      0%, 100% { transform: translate(0, 0); }
+      33% { transform: translate(-10px, -10px); }
+      66% { transform: translate(10px, -5px); }
+    }
+
+    /* Settings Header */
+    .settings-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 1rem 2rem;
+      z-index: 1000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .settings-btn {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 0.75rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 1.2rem;
+      backdrop-filter: blur(10px);
+      position: relative;
+    }
+
+    .settings-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .settings-icon {
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+
+    .settings-btn:hover .settings-icon {
+      transform: rotate(90deg);
+    }
+
+    /* Settings Menu */
+    .settings-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 0.5rem;
+      min-width: 220px;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      z-index: 1500;
+    }
+
+    .settings-menu.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .settings-menu-item {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+      font-weight: 500;
+    }
+
+    .settings-menu-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-menu-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      transform: translateX(2px);
+    }
+
+    .settings-menu-item.divider {
+      border-top: 1px solid var(--glass-border);
+      margin-top: 0.5rem;
+      padding-top: 0.75rem;
+    }
+
+    .settings-menu-item .icon {
+      font-size: 1.1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .settings-menu-item .label {
+      flex: 1;
+    }
+
+    .settings-menu-item .shortcut {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Continue with all other CSS from the original GUI... */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 6rem 2rem 2rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    .main-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Include all other styles from the original GUI here... */
+    /* This is a condensed version - in practice, copy all CSS from the original */
+
+  </style>
+</head>
+<body class="desktop-app">
+  <!-- Custom Titlebar (hidden by default) -->
+  <div class="custom-titlebar" id="customTitlebar">
+    <div class="titlebar-controls">
+      <button class="titlebar-button minimize" onclick="desktopAPI.minimize()" title="Minimieren">−</button>
+      <button class="titlebar-button maximize" onclick="desktopAPI.maximize()" title="Maximieren">☐</button>
+      <button class="titlebar-button close" onclick="desktopAPI.close()" title="Schließen">×</button>
+    </div>
+  </div>
+
+  <!-- Settings Header -->
+  <div class="settings-header">
+    <div class="logo">🤖 KI-Assistent</div>
+    <div class="settings-btn" onclick="toggleSettingsMenu()" id="settingsBtn">
+      <span class="settings-icon">⚙️</span>
+      <div class="settings-menu" id="settingsMenu">
+        <div class="settings-menu-item" onclick="openSettingsTab('audio')">
+          <span class="icon">🎤</span>
+          <span class="label">Audio-Einstellungen</span>
+          <span class="shortcut">A</span>
+        </div>
+        <div class="settings-menu-item" onclick="openSettingsTab('connection')">
+          <span class="icon">🌐</span>
+          <span class="label">Verbindung</span>
+          <span class="shortcut">V</span>
+        </div>
+        <div class="settings-menu-item" onclick="openLanguageSettings()">
+          <span class="icon">🌍</span>
+          <span class="label">Sprache</span>
+          <span class="shortcut">S</span>
+        </div>
+        <div class="settings-menu-item divider" onclick="openSettingsTab('animations')">
+          <span class="icon">🌊</span>
+          <span class="label">Animationen</span>
+        </div>
+        <div class="settings-menu-item" onclick="openSettingsTab('appearance')">
+          <span class="icon">🎨</span>
+          <span class="label">Erscheinungsbild</span>
+        </div>
+        <div class="settings-menu-item" onclick="openSettingsModal()">
+          <span class="icon">⚙️</span>
+          <span class="label">Alle Einstellungen</span>
+          <span class="shortcut">Ctrl+,</span>
+        </div>
+        <div class="settings-menu-item divider" onclick="showSystemInfo()">
+          <span class="icon">📊</span>
+          <span class="label">System-Info</span>
+        </div>
+        <div class="settings-menu-item" onclick="showAbout()">
+          <span class="icon">ℹ️</span>
+          <span class="label">Über</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Container -->
+  <div class="notification-container" id="notificationContainer"></div>
+
+  <!-- Main App Content -->
+  <div class="container">
+    <div class="header">
+      <h1>🤖 KI-Sprachassistent</h1>
+      <p>Sprechen Sie mit Ihrem intelligenten Assistenten</p>
+    </div>
+
+    <div class="main-card">
+      <!-- Copy all content from original GUI here -->
+      <!-- This includes status bar, input section, avatar, response section, voice controls -->
+      <!-- And settings modal with all panels -->
+    </div>
+  </div>
+
+  <!-- Include the desktop-specific JavaScript -->
+  <script src="desktop-app.js"></script>
+</body>
+</html>
