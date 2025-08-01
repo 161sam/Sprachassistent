@@ -156,6 +156,9 @@ desktop/dist-electron/
 # MOBILE APP SPECIFIC (Cordova)
 mobile/platforms/
 mobile/plugins/
+voice-assistant-apps/mobile/platforms/
+voice-assistant-apps/mobile/plugins/
+# TODO: Obige Pfade anpassen, damit Build-Artefakte im Subordner ignoriert werden
 mobile/node_modules/
 mobile/www/cordova.js
 mobile/www/cordova_plugins.js
