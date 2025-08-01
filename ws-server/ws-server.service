@@ -1,0 +1,16 @@
+[Unit]
+Description=WebSocket Server für STT/TTS und Intent-Routing
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/pi/ws-server/ws-server.py
+WorkingDirectory=/home/pi/ws-server
+Restart=always
+RestartSec=3
+User=pi
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
