@@ -1,0 +1,359 @@
+name: Build and Test Voice Assistant Apps
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+      options:
+        - debug
+        - release
+
+env:
+  NODE_VERSION: '18'
+  ELECTRON_VERSION: '28'
+  CORDOVA_VERSION: '12'
+
+jobs:
+  # Code Quality Checks
+  lint-and-test:
+    name: 🔍 Code Quality & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📚 Install Dependencies
+        run: |
+          npm install -g cordova@${{ env.CORDOVA_VERSION }}
+          cd desktop && npm ci
+          cd ../mobile && npm ci
+
+      - name: 🔍 Lint Code
+        run: |
+          cd desktop && npm run lint
+          cd ../mobile && npm run lint
+
+      - name: 🧪 Run Tests
+        run: |
+          cd desktop && npm test
+          cd ../mobile && npm test
+
+      - name: 📊 Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./desktop/coverage/lcov.info,./mobile/coverage/lcov.info
+          flags: desktop,mobile
+          name: voice-assistant-coverage
+
+  # Security Scan
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔒 Run Security Audit
+        run: |
+          cd desktop && npm audit --audit-level=high
+          cd ../mobile && npm audit --audit-level=high
+
+      - name: 🛡️ CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+
+      - name: 🛡️ Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # Desktop Build Matrix
+  build-desktop:
+    name: 🖥️ Build Desktop
+    needs: [lint-and-test]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            ext: AppImage
+          - os: windows-latest
+            platform: windows
+            ext: exe
+          - os: macos-latest
+            platform: mac
+            ext: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🐍 Setup Python (for native modules)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 🔧 Install System Dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libnotify-dev libnss3-dev libxss1 libxtst6 xauth xvfb
+
+      - name: 📚 Install Dependencies
+        working-directory: ./desktop
+        run: |
+          npm ci
+          npm run postinstall
+
+      - name: 🏗️ Build Desktop App
+        working-directory: ./desktop
+        run: |
+          if [ "${{ github.event_name }}" == "push" ] && [ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]; then
+            npm run build-${{ matrix.platform }} -- --publish=never
+          else
+            npm run build-${{ matrix.platform }} -- --publish=never
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📦 Upload Desktop Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: |
+            desktop/dist/*.${{ matrix.ext }}
+            desktop/dist/latest*.yml
+          retention-days: 30
+
+  # Mobile Build (Android)
+  build-mobile:
+    name: 📱 Build Mobile (Android)
+    needs: [lint-and-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: ☕ Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 33
+          build-tools: 33.0.0
+
+      - name: 📚 Install Cordova
+        run: npm install -g cordova@${{ env.CORDOVA_VERSION }}
+
+      - name: 📚 Install Dependencies
+        working-directory: ./mobile
+        run: npm ci
+
+      - name: 🔧 Setup Android Project
+        working-directory: ./mobile
+        run: |
+          cordova platform add android
+          cordova prepare android
+
+      - name: 🏗️ Build Android APK
+        working-directory: ./mobile
+        run: |
+          if [ "${{ github.event.inputs.build_type }}" == "release" ] || [ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]; then
+            cordova build android --release
+          else
+            cordova build android --debug
+          fi
+
+      - name: 🔐 Sign APK (Release only)
+        if: github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/')
+        working-directory: ./mobile
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 -d > release-key.keystore
+          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
+            -keystore release-key.keystore \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.KEY_PASSWORD }}" \
+            platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            "${{ secrets.KEY_ALIAS }}"
+          ${ANDROID_HOME}/build-tools/33.0.0/zipalign -v 4 \
+            platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            platforms/android/app/build/outputs/apk/release/app-release.apk
+
+      - name: 📦 Upload Mobile Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-android
+          path: |
+            mobile/platforms/android/app/build/outputs/apk/**/*.apk
+          retention-days: 30
+
+  # Docker Build
+  build-docker:
+    name: 🐳 Build Docker Images
+    needs: [lint-and-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔑 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract Metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 🏗️ Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile.production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Release Creation
+  create-release:
+    name: 🚀 Create Release
+    needs: [build-desktop, build-mobile, build-docker]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📦 Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+
+      - name: 📝 Generate Changelog
+        id: changelog
+        run: |
+          # Generate changelog from commits since last tag
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%h)" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/desktop-linux/*.AppImage
+            dist/desktop-windows/*.exe
+            dist/desktop-mac/*.dmg
+            dist/mobile-android/*.apk
+          body: |
+            ## 🎉 Voice Assistant ${{ github.ref_name }}
+            
+            ### 📋 Changes
+            ${{ steps.changelog.outputs.CHANGELOG }}
+            
+            ### 📦 Downloads
+            
+            **🖥️ Desktop Apps:**
+            - Windows: `KI-Sprachassistent-Setup-${{ github.ref_name }}.exe`
+            - macOS: `KI-Sprachassistent-${{ github.ref_name }}.dmg`
+            - Linux: `KI-Sprachassistent-${{ github.ref_name }}.AppImage`
+            
+            **📱 Mobile Apps:**
+            - Android: `app-release.apk`
+            
+            ### 🔧 Installation
+            
+            **Desktop:** Download und ausführen des entsprechenden Installers
+            **Mobile:** APK herunterladen und installieren (Developer-Modus erforderlich)
+            
+            ### 🐛 Known Issues
+            - Siehe [Issues](https://github.com/${{ github.repository }}/issues)
+            
+            ---
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.event.before }}...${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Deployment (Optional)
+  deploy:
+    name: 🌐 Deploy to Staging
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - name: 🚀 Deploy to Staging Server
+        run: |
+          echo "Deploying to staging environment..."
+          # Add deployment logic here
+
+  # Notification
+  notify:
+    name: 📢 Notify
+    runs-on: ubuntu-latest
+    needs: [build-desktop, build-mobile]
+    if: always()
+    steps:
+      - name: 📢 Notify Success
+        if: needs.build-desktop.result == 'success' && needs.build-mobile.result == 'success'
+        run: |
+          echo "✅ All builds completed successfully!"
+          # Add notification logic (Slack, Discord, etc.)
+
+      - name: 📢 Notify Failure
+        if: needs.build-desktop.result == 'failure' || needs.build-mobile.result == 'failure'
+        run: |
+          echo "❌ Some builds failed!"
+          # Add failure notification logic
