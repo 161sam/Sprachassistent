@@ -1,0 +1,7 @@
+{
+  "sttEngine": "faster-whisper",
+  "modelSize": "${STT_MODEL}",
+  "device": "${STT_DEVICE}",
+  "precision": "${STT_PRECISION}",
+  "port": 8123
+}
