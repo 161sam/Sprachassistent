@@ -2,8 +2,8 @@
 
 Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/GUI-TODO.md](docs/GUI-TODO.md) beziehen.
 
-| Datei | Zeile | Kommentar |
-|-------|------:|-----------|
+| Datei | Zeile | Kommentar | Status |
+|-------|------:|-----------|-----------|
 | gui/app.js | 1-6 | Grundlegende Aufgaben zur neuen Web-GUI |
 | gui/index.html | 568 | Buttons rund gestalten | **erledigt** |
 | gui/index.html | 799 | Container transparenter gestalten | **erledigt** |
