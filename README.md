@@ -75,7 +75,7 @@ flowchart TB
   LocalBackend -.-> VPN
   CloudServer -.-> VPN
 ```
-
+</details>
 
 
 ## ✨ Features
