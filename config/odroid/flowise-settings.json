@@ -1,0 +1,8 @@
+{
+  "flowiseUrl": "${FLOWISE_URL}",
+  "flowId": "${FLOWISE_ID}",
+  "apiKey": "${FLOWISE_API_KEY}",
+  "n8nWebhookUrl": "${N8N_URL}",
+  "n8nToken": "${WS_TOKEN}",
+  "useDocker": true
+}
