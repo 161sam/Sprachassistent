@@ -16,6 +16,9 @@ Raspberry Pi/Odroid-basiertes Backend mit lokaler STT/TTS und KI-Integration
 ### 📱 Client-Apps (Cross-Platform)
 Electron Desktop-App und Cordova Mobile-App für universellen Zugriff
 
+<details>
+<summary>Klicken zum Einblenden des Architekturdiagramms</summary>
+  
 ```mermaid
 flowchart TB
   subgraph Clients
