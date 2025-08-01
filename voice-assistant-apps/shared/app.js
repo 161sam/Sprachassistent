@@ -482,10 +482,33 @@ class VoiceAssistantCore {
   displayResponse(content) {
     const responseElement = document.getElementById('response');
     if (responseElement) {
-      responseElement.innerHTML = `<div class="response-content">${content}</div>`;
-      // TODO: Antworttext per Matrix-Regen animieren (siehe docs/GUI-TODO.md)
+      // Text zunächst leeren und Matrix-Effekt starten
+      responseElement.innerHTML = '<div class="response-content"></div>';
+      const container = responseElement.firstElementChild;
+      this.matrixRain(container, content);
       responseElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+  }
+
+  matrixRain(element, text) {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let iteration = 0;
+    const interval = setInterval(() => {
+      element.textContent = text
+        .split('')
+        .map((char, index) => {
+          if (index < iteration) {
+            return char;
+          }
+          return letters[Math.floor(Math.random() * letters.length)];
+        })
+        .join('');
+      if (iteration >= text.length) {
+        clearInterval(interval);
+        element.textContent = text;
+      }
+      iteration += 1;
+    }, 50);
   }
 
   showNebelAnimation() {

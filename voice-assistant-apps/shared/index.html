@@ -1423,8 +1423,7 @@
           <div class="response-empty">Ihre Antwort erscheint hier...</div>
         </div>
         
-        <!-- Waberner Nebel Animation -->
-        <!-- TODO: Antworttext im Matrix-Stil aus Nebel animieren -->
+        <!-- Waberner Nebel Animation mit Matrix-Regen -->
         <div class="nebel-animation" id="nebelAnimation">
           <div class="nebel-circle" style="--scale: 1"></div>
           <div class="nebel-circle" style="--scale: 0.8"></div>
@@ -1922,10 +1921,33 @@ Modulares Design mit WebSocket-Verbindung
     // Antwort anzeigen
     function displayResponse(content) {
       const responseElement = document.getElementById('response');
-      responseElement.innerHTML = `<div class="response-content">${content}</div>`;
-      
+      responseElement.innerHTML = '<div class="response-content"></div>';
+      const container = responseElement.firstElementChild;
+      matrixRain(container, content);
+
       // Smooth scroll to response
       responseElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function matrixRain(element, text) {
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let iteration = 0;
+      const interval = setInterval(() => {
+        element.textContent = text
+          .split('')
+          .map((char, index) => {
+            if (index < iteration) {
+              return char;
+            }
+            return letters[Math.floor(Math.random() * letters.length)];
+          })
+          .join('');
+        if (iteration >= text.length) {
+          clearInterval(interval);
+          element.textContent = text;
+        }
+        iteration += 1;
+      }, 50);
     }
 
     // Text senden
