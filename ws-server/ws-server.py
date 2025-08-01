@@ -10,19 +10,19 @@ from faster_whisper import WhisperModel
 import ssl
 
 # === KONFIGURATION ===
-PORT = 8123
-AUTHORIZED_TOKENS = ["mein-geheimer-token"]
-ALLOWED_IPS = ["127.0.0.1", "100.100.100.23"]  # Headscale-IP-Adressen
+PORT = int(os.getenv("WS_PORT", 8123))
+AUTHORIZED_TOKENS = os.getenv("WS_TOKENS", "mein-geheimer-token").split(",")
+ALLOWED_IPS = os.getenv("WS_ALLOWED_IPS", "127.0.0.1,100.100.100.23").split(",")
 
-USE_TLS = False
-CERT_PATH = "cert.pem"
-KEY_PATH = "key.pem"
+USE_TLS = os.getenv("WS_USE_TLS", "false").lower() == "true"
+CERT_PATH = os.getenv("WS_CERT", "cert.pem")
+KEY_PATH = os.getenv("WS_KEY", "key.pem")
 
-FLOWISE_HOST = "http://odroid.headscale.lan:3000"
-FLOW_ID = "dein-flowise-flow-id"
-FLOWISE_API_KEY = ""
+FLOWISE_HOST = os.getenv("FLOWISE_HOST", "http://odroid.headscale.lan:3000")
+FLOW_ID = os.getenv("FLOWISE_FLOW_ID", "dein-flowise-flow-id")
+FLOWISE_API_KEY = os.getenv("FLOWISE_API_KEY", "")
 
-N8N_URL = "http://odroid.headscale.lan:5678/webhook/intent"
+N8N_URL = os.getenv("N8N_URL", "http://odroid.headscale.lan:5678/webhook/intent")
 
 # === STT-MODELL LADEN ===
 model = WhisperModel("base", device="cpu", compute_type="int8")
@@ -50,7 +50,8 @@ async def synthesize_tts(text: str) -> str:
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as out_file:
             out_path = out_file.name
-        os.system(f'piper --model ~/.local/share/piper/de-thorsten-low.onnx --output_file {out_path} --text \"{text}\"')
+        model_path = os.getenv("PIPER_MODEL", "~/.local/share/piper/de-thorsten-low.onnx")
+        os.system(f'piper --model {model_path} --output_file {out_path} --text "{text}"')
         with open(out_path, "rb") as f:
             audio_b64 = base64.b64encode(f.read()).decode("utf-8")
         os.remove(out_path)
