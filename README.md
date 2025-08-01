@@ -42,7 +42,7 @@ flowchart TB
 
     subgraph Gateway
       Flowise[Flowise]
-      n8nLight[n8n Light]
+      n8n[n8n]
     end
   end
 
