@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sprachassistent Interface</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #121212;
+      color: #ffffff;
+    }
+    #container {
+      max-width: 700px;
+      margin: auto;
+      padding: 2rem;
+      background: #1e1e1e;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    input[type=text] {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    button {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      border: none;
+      border-radius: 6px;
+      background-color: #03a9f4;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0288d1;
+    }
+    #response {
+      margin-top: 1rem;
+      background: #2c2c2c;
+      padding: 1rem;
+      border-radius: 6px;
+      min-height: 5em;
+      white-space: pre-wrap;
+      font-size: 1.1rem;
+    }
+    .status {
+      font-size: 0.9rem;
+      color: #4caf50;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>🧠 Sprachassistent</h1>
+    <input type="text" id="textInput" placeholder="Textbefehl eingeben..." />
+    <button onclick="sendText()">Senden</button>
+    <button onclick="startRecording()">🎤 Spracheingabe starten</button>
+    <div id="response">Antwort erscheint hier...</div>
+    <p class="status" id="status">Verbindung wird aufgebaut...</p>
+  </div>
+
+  <script>
+    let ws;
+
+    try {
+      ws = new WebSocket("ws://raspi4.local:8123"); // ggf. durch Tailscale-Adresse ersetzen
+
+      ws.onopen = () => {
+        document.getElementById('status').textContent = "✅ Verbunden mit Sprach-Node (Raspi 4)";
+      };
+
+      ws.onmessage = (event) => {
+        document.getElementById("response").textContent = event.data;
+      };
+
+      ws.onerror = (err) => {
+        document.getElementById('status').textContent = "❌ WebSocket-Fehler";
+        console.error(err);
+      };
+    } catch (e) {
+      document.getElementById('status').textContent = "❌ Keine Verbindung zum Sprachserver.";
+    }
+
+    function sendText() {
+      const input = document.getElementById("textInput");
+      if (input.value.trim() !== "") {
+        ws.send(JSON.stringify({ type: "text", content: input.value }));
+        input.value = "";
+      }
+    }
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          const mediaRecorder = new MediaRecorder(stream);
+          const audioChunks = [];
+
+          mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              ws.send(JSON.stringify({ type: "audio", content: reader.result }));
+            };
+            reader.readAsDataURL(audioBlob);
+          };
+
+          mediaRecorder.start();
+          setTimeout(() => mediaRecorder.stop(), 3000); // 3 Sekunden Aufnahme
+        })
+        .catch(err => {
+          alert("Zugriff auf Mikrofon verweigert oder nicht verfügbar.");
+          console.error(err);
+        });
+    }
+  </script>
+</body>
+</html>
