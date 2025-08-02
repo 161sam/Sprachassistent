@@ -13,7 +13,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "electron:start": "electron . --dev",
+    "electron:start": "electron . --dev --disable-gpu --no-sandbox --in-process-gpu",
     "build": "electron-builder",
     "build-win": "electron-builder --win",
     "build-mac": "electron-builder --mac",
