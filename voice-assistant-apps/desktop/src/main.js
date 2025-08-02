@@ -140,6 +140,7 @@ function startBackend() {
       dotenv.config({ path: defaultsPath });
     }
     dotenv.config({ path: envPath });
+    log.info(`Loaded env from ${envPath}`);
 
     const pythonCmd = process.env.PYTHON_EXECUTABLE || 'python3';
     const serverScript = path.join(
@@ -158,12 +159,28 @@ function startBackend() {
       env: process.env
     });
 
-    backendProcess.stdout.on('data', data => log.info(`[backend] ${data}`));
-    backendProcess.stderr.on('data', data => log.error(`[backend] ${data}`));
+    backendProcess.stdout.on('data', data => {
+      const msg = data.toString();
+      log.info(`[backend] ${msg}`);
+      if (mainWindow) {
+        mainWindow.webContents.send('backend-log', msg);
+      }
+    });
+    backendProcess.stderr.on('data', data => {
+      const msg = data.toString();
+      log.error(`[backend] ${msg}`);
+      if (mainWindow) {
+        mainWindow.webContents.send('backend-error', msg);
+      }
+    });
     backendProcess.on('spawn', () => log.info('Backend process started'));
     backendProcess.on('error', err => {
       log.error('Failed to start backend:', err);
-      dialog.showErrorBox('Backend start failed', err.message);
+      if (err.code === 'ENOENT') {
+        dialog.showErrorBox('Python Error', err.message);
+      } else {
+        dialog.showErrorBox('Backend start failed', err.message);
+      }
     });
     backendProcess.on('close', code => log.info(`Backend exited with code ${code}`));
   } catch (err) {
