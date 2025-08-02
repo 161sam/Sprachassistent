@@ -205,8 +205,9 @@ Sprachassistent/
 │       │   ├── package.json
 │       │   └── build/         # Build-Output
 │       ├── mobile/            # Cordova Mobile App
+│       │   ├── .env           # Mobile Konfiguration
 │       │   ├── www/           # Web-Assets
-│       │   ├── config.xml     # Cordova Konfiguration  
+│       │   ├── config.xml     # Cordova Konfiguration
 │       │   ├── hooks/         # Build-Hooks
 │       │   └── platforms/     # Android/iOS
 │       ├── shared/            # Gemeinsame Komponenten
@@ -218,7 +219,8 @@ Sprachassistent/
     ├── README.md              # Diese Datei
     ├── CONTRIBUTING.md        # Beitragen-Guidelines
     ├── LICENSE               # MIT Lizenz
-    └── env.example          # Umgebungsvariablen-Template
+    ├── env.example          # Umgebungsvariablen-Template
+    └── .env.mobile.example  # Mobile Client Environment Template
 ```
 
 ## 🚀 Quick Start
@@ -407,6 +409,8 @@ npm run dev
 ```bash
 # Mobile App installieren
 cd voice-assistant-apps/mobile
+cp ../../.env.mobile.example .env
+# .env anpassen mit Backend-URL und Token
 cordova run android --device
 
 # Features:
