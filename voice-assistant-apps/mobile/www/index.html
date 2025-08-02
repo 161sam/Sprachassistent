@@ -1468,10 +1468,13 @@
 
   <script>
     let ws;
+    let pingInterval;
     let isRecording = false;
     let mediaRecorder;
     let recordingTimer;
     let recordingStartTime;
+
+    const ttsCache = new Map();
 
     class DebugOverlay {
       constructor() {
@@ -1509,6 +1512,25 @@
 
     let debugOverlay = null;
 
+    function loadTtsCache() {
+      try {
+        const stored = JSON.parse(localStorage.getItem('ttsCache') || '{}');
+        for (const [k, v] of Object.entries(stored)) {
+          ttsCache.set(k, v);
+        }
+      } catch (e) {
+        console.warn('Failed to load TTS cache', e);
+      }
+    }
+
+    function saveTtsCache() {
+      try {
+        localStorage.setItem('ttsCache', JSON.stringify(Object.fromEntries(ttsCache)));
+      } catch (e) {
+        console.warn('Failed to save TTS cache', e);
+      }
+    }
+
     // Settings Configuration
     let settings = {
       responseNebel: true,
@@ -1531,6 +1553,7 @@
       darkMode: true
     };
 
+    loadTtsCache();
     loadSavedSettings();
     applySettings();
 
@@ -1871,6 +1894,12 @@
         ws.onopen = () => {
           updateStatus('connected', '✅ Verbunden mit Sprachassistent');
           showNotification('success', 'Verbunden', 'Erfolgreich mit dem Sprachassistenten verbunden');
+          if (pingInterval) clearInterval(pingInterval);
+          pingInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping' }));
+            }
+          }, 30000);
         };
         
         ws.onmessage = (event) => {
@@ -1882,12 +1911,17 @@
             recordingStartTime = null;
           }
           if (debugOverlay) debugOverlay.json(data);
-          displayResponse(data.content || event.data);
+          if (data.audio || ttsCache.has(data.content)) {
+            playTTS(data.content, data.audio);
+          } else {
+            displayResponse(data.content || event.data);
+          }
         };
         
         ws.onclose = () => {
           updateStatus('error', '❌ Verbindung getrennt');
           showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
+          if (pingInterval) clearInterval(pingInterval);
 
           if (settings.autoReconnect) {
             setTimeout(initWebSocket, settings.connectionTimeout);
@@ -2042,6 +2076,22 @@ Modulares Design mit WebSocket-Verbindung
       deactivateAvatar();
       document.getElementById('nebelAnimation').classList.remove('active');
       document.getElementById('response').style.opacity = '1';
+    }
+
+    function playTTS(text, audioBase64) {
+      let src = ttsCache.get(text);
+      if (!src && audioBase64) {
+        src = `data:audio/wav;base64,${audioBase64}`;
+        ttsCache.set(text, src);
+        saveTtsCache();
+      }
+      if (src) {
+        const audio = new Audio(src);
+        audio.play().catch(err => {
+          if (debugOverlay) debugOverlay.log(`Audio play error: ${err.message || err}`);
+        });
+      }
+      displayResponse(text);
     }
 
     // Antwort anzeigen
