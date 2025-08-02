@@ -1,25 +1,18 @@
-# Headscale Integration
+# Headscale
 
-The backend can optionally query a Headscale instance to discover connected nodes.
+## Setup
+Use `scripts/setup-headscale.sh` to install Headscale. Configuration is read from `.env.headscale`.
 
-## Configuration
-
-Set the following variables in your `.env`:
-
-```env
-HEADSCALE_API=http://localhost:8080/api
-HEADSCALE_TOKEN=changeme
-```
-
-`HEADSCALE_API` should point to the Headscale API base URL. If authentication is required, provide
-`HEADSCALE_TOKEN` which will be sent as Bearer token.
-
-## Behaviour
-
-On startup the WebSocket server tries to contact `HEADSCALE_API` and logs the available node IDs. This
-allows the assistant to adapt to the current network topology.
+## Start
+The script installs and enables `headscale.service` automatically.
 
 ## Troubleshooting
+- Verify the architecture is supported (`amd64` or `arm64`).
+- Check logs with `journalctl -u headscale`.
 
-- Ensure the Headscale service is reachable from the machine running the backend.
-- Tokens can be created via `headscale apikeys create` if the API is protected.
+## .env Example
+```
+HEADSCALE_VERSION=0.26.1
+HEADSCALE_DOMAIN=example.com
+HEADSCALE_KEY_DIR=/var/lib/headscale
+```

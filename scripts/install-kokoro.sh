@@ -5,17 +5,20 @@ Lädt Modell-Dateien herunter und konfiguriert das System
 """
 
 set -e
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+[ -f "$SCRIPT_DIR/../.env.kokoro" ] && source "$SCRIPT_DIR/../.env.kokoro"
 
 echo "🎤 Kokoro TTS Installation"
 echo "=========================="
 echo
 
 # Konfiguration
-KOKORO_DIR="$HOME/.local/share/kokoro"
-MODEL_URL="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx"
-VOICES_URL="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
-MODEL_FILE="kokoro-v1.0.int8.onnx"
-VOICES_FILE="voices-v1.0.bin"
+KOKORO_DIR="${KOKORO_MODEL_DIR:-$HOME/.local/share/kokoro}"
+MODEL_FILE="${KOKORO_MODEL:-kokoro-v1.0.int8.onnx}"
+VOICES_FILE="${KOKORO_VOICES_FILE:-voices-v1.0.bin}"
+MODEL_URL="${KOKORO_MODEL_URL:-https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx}"
+VOICES_URL="${KOKORO_VOICES_URL:-https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin}"
+KOKORO_LANG="${KOKORO_LANG:-en-us}"
 
 # Funktionen
 log_info() {
@@ -217,7 +220,7 @@ try:
         text=test_text,
         voice="af_sarah",
         speed=1.0,
-        lang="en-us"
+        lang="$KOKORO_LANG"
     )
     
     # Test-Audio speichern
@@ -266,7 +269,7 @@ create_config() {
     "voices_path": "$KOKORO_DIR/$VOICES_FILE",
     "default_voice": "af_sarah",
     "default_speed": 1.0,
-    "default_language": "en-us",
+    "default_language": "$KOKORO_LANG",
     "cache_enabled": true,
     "cache_size_mb": 100,
     "installation_date": "$(date -Iseconds)",
