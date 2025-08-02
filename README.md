@@ -1,6 +1,6 @@
 # 🤖 Modulares Sprachassistent-Ökosystem
 
-Ein vollständiges, modulares Sprachassistenten-System bestehend aus lokalem Hardware-Backend (Raspberry Pi/Odroid) und Cross-Platform Client-Apps (Desktop/Mobile) mit moderner Web-GUI, KI-Integration und Automatisierung.
+Ein vollständiges, modulares Sprachassistenten-System bestehend aus lokalem Hardware-Backend (arm kompatible) und Cross-Platform Client-Apps (Desktop/Mobile) mit moderner Web-GUI, KI-Integration und Automatisierung.
 
 ![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-RaspberryPi%20%7C%20Desktop%20%7C%20Mobile-green.svg)
