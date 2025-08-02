@@ -1,7 +1,9 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell, Tray, nativeImage } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
+const dotenv = require('dotenv');
 
 // Konfiguration
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
@@ -10,6 +12,7 @@ const isMac = process.platform === 'darwin';
 
 let mainWindow;
 let tray;
+let backendProcess;
 
 // Logging konfigurieren
 log.transports.file.level = 'info';
@@ -31,10 +34,11 @@ if (!gotTheLock) {
 
 // App Event Handlers
 app.whenReady().then(() => {
+  startBackend();
   createMainWindow();
   createTray();
   createMenu();
-  
+
   if (!isDev) {
     autoUpdater.checkForUpdatesAndNotify();
   }
@@ -42,6 +46,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (!isMac) {
+    stopBackend();
     app.quit();
   }
 });
@@ -50,6 +55,10 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createMainWindow();
   }
+});
+
+app.on('before-quit', () => {
+  stopBackend();
 });
 
 // Hauptfenster erstellen
@@ -72,7 +81,7 @@ function createMainWindow() {
   });
 
   // HTML laden
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '../../shared/index.html'));
 
   // DevTools in Development
   if (isDev) {
@@ -112,6 +121,32 @@ function createMainWindow() {
     shell.openExternal(url);
     return { action: 'deny' };
   });
+}
+
+function startBackend() {
+  try {
+    const envPath = path.join(__dirname, '../../.env');
+    dotenv.config({ path: envPath });
+    const backendScript = path.join(__dirname, '../../backend/ws-server/ws-server.py');
+    backendProcess = spawn('python3', [backendScript], {
+      cwd: path.dirname(backendScript),
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    backendProcess.stdout.on('data', data => log.info(`[backend] ${data}`));
+    backendProcess.stderr.on('data', data => log.error(`[backend] ${data}`));
+    backendProcess.on('close', code => log.info(`Backend exited with code ${code}`));
+  } catch (err) {
+    log.error('Failed to start backend:', err);
+    dialog.showErrorBox('Backend start failed', err.message);
+  }
+}
+
+function stopBackend() {
+  if (backendProcess) {
+    backendProcess.kill();
+    backendProcess = null;
+  }
 }
 
 // System Tray erstellen
