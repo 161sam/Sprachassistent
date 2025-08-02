@@ -655,6 +655,23 @@
       display: flex;
     }
 
+    .recording-indicator.processing {
+      color: var(--warning-color);
+    }
+
+    .recording-indicator.processing .recording-dot {
+      background: var(--warning-color);
+    }
+
+    .recording-indicator.error {
+      color: var(--danger-color);
+    }
+
+    .recording-indicator.error .recording-dot {
+      background: var(--danger-color);
+      animation: none;
+    }
+
     .recording-dot {
       width: 8px;
       height: 8px;
@@ -1460,7 +1477,7 @@
       <div class="voice-controls">
         <div class="recording-indicator" id="recordingIndicator">
           <div class="recording-dot"></div>
-          <span>Aufnahme läuft... <span id="recordingTime">0s</span></span>
+          <span id="recordingMessage">Aufnahme läuft... <span id="recordingTime">0s</span></span>
         </div>
       </div>
     </div>
@@ -1865,6 +1882,7 @@
         mediaRecorder.start();
         isRecording = true;
         updateRecordingUI(true);
+        updateSttStatus('recording');
         
         recordingStartTime = Date.now();
         recordingTimer = setInterval(updateRecordingTime, 100);
@@ -1883,6 +1901,7 @@
           console.error('Microphone Error:', err);
         }
         if (debugOverlay) debugOverlay.log(`Microphone error: ${err.message || err}`);
+        updateSttStatus('error');
       });
     }
 
@@ -1916,6 +1935,7 @@
           } else {
             displayResponse(data.content || event.data);
           }
+          updateSttStatus('idle');
         };
         
         ws.onclose = () => {
@@ -1927,6 +1947,7 @@
             setTimeout(initWebSocket, settings.connectionTimeout);
           }
           if (debugOverlay) debugOverlay.log('WebSocket closed');
+          updateSttStatus('error');
         };
         
         ws.onerror = (err) => {
@@ -1937,6 +1958,7 @@
             console.error('WebSocket Error:', err);
           }
           if (debugOverlay) debugOverlay.log(`WebSocket error: ${err.message || err}`);
+          updateSttStatus('error');
         };
       } catch (e) {
         updateStatus('error', '❌ Server nicht erreichbar');
@@ -1953,9 +1975,34 @@
     function updateStatus(type, message) {
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
-      
+
       statusDot.className = `status-dot ${type}`;
       statusText.textContent = message;
+    }
+
+    function updateSttStatus(state) {
+      const indicator = document.getElementById('recordingIndicator');
+      const messageEl = document.getElementById('recordingMessage');
+      indicator.classList.remove('processing', 'error', 'active');
+
+      switch (state) {
+        case 'recording':
+          indicator.classList.add('active');
+          messageEl.innerHTML = 'Aufnahme läuft... <span id="recordingTime">0s</span>';
+          break;
+        case 'processing':
+          indicator.classList.add('active', 'processing');
+          messageEl.textContent = 'Verarbeitung...';
+          break;
+        case 'error':
+          indicator.classList.add('active', 'error');
+          messageEl.textContent = 'Fehler bei STT';
+          setTimeout(() => indicator.classList.remove('active', 'error'), 3000);
+          break;
+        default:
+          // idle - indicator hidden
+          break;
+      }
     }
 
     function closeNotification(button) {
@@ -2219,7 +2266,8 @@ Modulares Design mit WebSocket-Verbindung
         mediaRecorder.start();
         isRecording = true;
         updateRecordingUI(true);
-        
+        updateSttStatus('recording');
+
         recordingStartTime = Date.now();
         recordingTimer = setInterval(updateRecordingTime, 100);
         
@@ -2236,6 +2284,7 @@ Modulares Design mit WebSocket-Verbindung
         if (settings.debugMode) {
           console.error('Microphone Error:', err);
         }
+        updateSttStatus('error');
       });
     }
 
@@ -2245,6 +2294,7 @@ Modulares Design mit WebSocket-Verbindung
         mediaRecorder.stop();
         isRecording = false;
         updateRecordingUI(false);
+        updateSttStatus('processing');
         clearInterval(recordingTimer);
         showNotification('success', 'Aufnahme beendet', 'Wird verarbeitet...');
       }
@@ -2254,16 +2304,13 @@ Modulares Design mit WebSocket-Verbindung
     function updateRecordingUI(recording) {
       const voiceBtn = document.getElementById('voiceBtn');
       const voiceIcon = document.getElementById('voiceIcon');
-      const indicator = document.getElementById('recordingIndicator');
-      
+
       if (recording) {
         voiceBtn.classList.add('recording');
         voiceIcon.textContent = '⏹️';
-        indicator.classList.add('active');
       } else {
         voiceBtn.classList.remove('recording');
         voiceIcon.textContent = '🎙️';
-        indicator.classList.remove('active');
       }
     }
 
