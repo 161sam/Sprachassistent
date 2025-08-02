@@ -13,18 +13,11 @@ Features integrated from previous versions:
 * STT audio pre-processing (``numpy``/``soundfile``)
 * Intent routing with optional Flowise/n8n calls (``aiohttp``)
 * Optional debug file saving (``aiofiles``)
-* Metrics API and TTS engine switching
+* Metrics API und TTS-Engine-Switching
 
-# TODO (docs/TTS-Engine-Switching.md):
-#   Modularize the TTS engine switching logic into a dedicated module
-#   instead of keeping it embedded in the server implementation.
-# TODO (docs/security.md §Token-Authentifizierung,
-#   docs/Projekt-Verbesserungen.md §Backend-Optimierungen):
-#   Implement full authentication and token handling (JWT validation,
-#   refresh tokens, rate limiting).
-# TODO (docs/Code-und-Dokumentationsreview.md §Code-Struktur modularisieren):
-#   Refactor this monolithic server into separate audio, routing and auth
-#   modules for better maintainability.
+# Hinweis: Der TTS-Wechsel wird vom ``TTSManager`` verwaltet und
+# die Authentifizierung erfolgt über ``auth.token_utils``. Weitere
+# Aufteilung in Module ist geplant.
 
 """
 
@@ -53,6 +46,7 @@ from .tts import TTSManager, TTSEngineType, TTSConfig
 from metrics_api import start_metrics_api
 from skills import load_all_skills
 from intent_classifier import IntentClassifier
+from auth.token_utils import verify_token
 
 # Enhanced configuration
 @dataclass
@@ -108,6 +102,8 @@ class StreamingConfig:
     save_debug_audio: bool = os.getenv("SAVE_DEBUG_AUDIO", "false").lower() == "true"
 
 config = StreamingConfig()
+
+ALLOWED_IPS: List[str] = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "").split(",") if ip.strip()]
 
 # Set up logging
 logging.basicConfig(
@@ -384,32 +380,38 @@ class AudioStreamManager:
         try:
             start_time = time.time()
 
-            # Transcribe audio
+            stt_start = time.time()
             transcription = await self.stt_engine.transcribe_audio(audio_data)
-            
-            # Generate response (simplified - would include intent routing)
+            stt_latency = (time.time() - stt_start) * 1000
+            self.stats['stt_latency_ms'].append(stt_latency)
+            if len(self.stats['stt_latency_ms']) > 100:
+                self.stats['stt_latency_ms'].pop(0)
+
             response_text = await self._generate_response(transcription, client_id)
-            
-            # TTS-Engine bestimmen
+
             target_engine = None
             if tts_engine:
                 if tts_engine.lower() == "piper":
                     target_engine = TTSEngineType.PIPER
                 elif tts_engine.lower() == "kokoro":
                     target_engine = TTSEngineType.KOKORO
-                    
-            # Generate TTS audio mit spezifizierter Engine
+
             tts_kwargs = {}
             if tts_speed is not None:
                 tts_kwargs['speed'] = tts_speed
             if tts_volume is not None:
                 tts_kwargs['volume'] = tts_volume
+            tts_start = time.time()
             tts_result = await self.tts_manager.synthesize(
                 response_text,
                 engine=target_engine,
                 voice=tts_voice,
                 **tts_kwargs
             )
+            tts_latency = (time.time() - tts_start) * 1000
+            self.stats['tts_latency_ms'].append(tts_latency)
+            if len(self.stats['tts_latency_ms']) > 100:
+                self.stats['tts_latency_ms'].pop(0)
 
             # Optional debug: save audio files asynchronously
             if config.save_debug_audio:
@@ -459,10 +461,8 @@ class AudioStreamManager:
 
         text = transcription.lower().strip()
 
-        intent = self.intent_classifier.classify(text)
-        # TODO (docs/Code-und-Dokumentationsreview.md §Fortschrittlichere Intent-Erkennung,
-        #   docs/skill-system.md §Intent-Klassifikation): Utilize confidence
-        #   scores from the ML classifier as the primary routing mechanism.
+        intent_result = self.intent_classifier.classify(text)
+        intent = intent_result.intent if intent_result.confidence >= 0.5 else "unknown"
 
         if intent == "external_request":
             external = await self._route_external(text, client_id)
@@ -589,9 +589,16 @@ class ConnectionManager:
             return False
         except Exception as e:
             logger.error(f"Error sending to client {client_id}: {e}")
-            # TODO (docs/Code-und-Dokumentationsreview.md
-            #   §Fehlerbehandlung & Stabilität im WebSocket-Server verbessern):
-            #   Implement retry logic and notify clients to reconnect.
+            for attempt in range(1, 4):
+                try:
+                    await asyncio.sleep(0.5 * attempt)
+                    await websocket.send(json.dumps(message))
+                    logger.info("Retry to client %s succeeded on attempt %s", client_id, attempt)
+                    return True
+                except Exception:
+                    continue
+            logger.warning("Failed to deliver message to %s, closing connection", client_id)
+            await self.unregister(client_id)
             return False
 
 class OptimizedVoiceServer:
@@ -616,12 +623,10 @@ class OptimizedVoiceServer:
             'messages_processed': 0,
             'audio_streams': 0,
             'tts_switches': 0,
+            'stt_latency_ms': [],
+            'tts_latency_ms': [],
             'start_time': time.time()
         }
-        # TODO (docs/Projekt-Verbesserungen.md §Backend-Optimierungen,
-        #   docs/Sofortiger-Aktionsplan.md §Monitoring): Extend metrics with
-        #   latency and processing times for STT/TTS and expose them via the
-        #   metrics API.
         
     async def initialize(self):
         """Initialize all components"""
@@ -663,8 +668,20 @@ class OptimizedVoiceServer:
         
     async def handle_websocket(self, websocket, path):
         """Handle WebSocket connection with optimized message processing"""
-        # TODO (docs/security.md): Validate authentication tokens and enforce
-        #   the IP whitelist before registering the connection.
+        from urllib.parse import urlparse, parse_qs
+
+        client_ip = websocket.remote_address[0] if websocket.remote_address else ""
+        if ALLOWED_IPS and client_ip not in ALLOWED_IPS:
+            logger.warning("Unauthorized IP %s", client_ip)
+            await websocket.close(code=4401, reason="unauthorized")
+            return
+
+        query = parse_qs(urlparse(path).query)
+        token = query.get('token', [None])[0]
+        if not verify_token(token):
+            await websocket.close(code=4401, reason="unauthorized")
+            return
+
         client_id = await self.connection_manager.register(websocket)
         
         try:
@@ -1067,6 +1084,8 @@ class OptimizedVoiceServer:
             'messages_processed': self.stats['messages_processed'],
             'audio_streams_processed': self.stats['audio_streams'],
             'tts_engine_switches': self.stats['tts_switches'],
+            'avg_stt_latency_ms': sum(self.stats['stt_latency_ms']) / len(self.stats['stt_latency_ms']) if self.stats['stt_latency_ms'] else 0,
+            'avg_tts_latency_ms': sum(self.stats['tts_latency_ms']) / len(self.stats['tts_latency_ms']) if self.stats['tts_latency_ms'] else 0,
             'uptime_seconds': time.time() - self.stats['start_time'],
             'active_audio_streams': len(self.stream_manager.active_streams),
             'processing_queue_size': self.stream_manager.processing_queue.qsize(),

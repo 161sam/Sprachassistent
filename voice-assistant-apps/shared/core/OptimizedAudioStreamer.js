@@ -37,7 +37,9 @@ class OptimizedAudioStreamer {
             enableNoiseSupression: true,
             enableEchoCancellation: true,
             autoGainControl: true,
-            
+
+            metricsUrl: null,
+            metricsInterval: 10000,
             ...config
         };
         
@@ -65,10 +67,9 @@ class OptimizedAudioStreamer {
                 lastPing: 0
             }
         };
-        // TODO (docs/Sofortiger-Aktionsplan.md §Frontend Performance Monitoring,
-        //   docs/Projekt-Verbesserungen.md §Backend-Optimierungen): Report
-        //   these metrics to the backend metrics API for centralized
-        //   monitoring.
+        if (this.config.metricsUrl) {
+            setInterval(() => this.reportMetrics(), this.config.metricsInterval);
+        }
 
         // Event handlers
         this.onConnected = null;
@@ -119,7 +120,7 @@ class OptimizedAudioStreamer {
                 this.websocket.onopen = () => {
                     this.metrics.connection.connected = true;
                     this.metrics.connection.reconnectAttempts = 0;
-                    
+
                     this.startPingMonitoring();
                     
                     if (this.onConnected) this.onConnected();
@@ -135,12 +136,7 @@ class OptimizedAudioStreamer {
                     this.metrics.connection.connected = false;
                     if (this.onDisconnected) this.onDisconnected();
                     console.log('❌ WebSocket disconnected');
-                    
-                    // Auto-reconnect if configured
-                    // TODO (docs/protocol.md): Attempt reconnection with
-                    // exponential backoff regardless of adaptiveQuality and
-                    // follow the documented backoff algorithm.
-                    if (this.config.adaptiveQuality && this.metrics.connection.reconnectAttempts < this.config.maxRetries) {
+                    if (this.metrics.connection.reconnectAttempts < this.config.maxRetries) {
                         this.reconnect(wsUrl);
                     }
                 };
@@ -159,10 +155,8 @@ class OptimizedAudioStreamer {
     
     async reconnect(wsUrl) {
         this.metrics.connection.reconnectAttempts++;
-        const delay = this.config.retryDelay * Math.pow(2, this.metrics.connection.reconnectAttempts - 1);
-        // TODO (docs/protocol.md): Cap the backoff delay at 30s as
-        // recommended and reset attempts after successful reconnect.
-
+        let delay = this.config.retryDelay * Math.pow(2, this.metrics.connection.reconnectAttempts - 1);
+        delay = Math.min(delay, 30000);
         console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.metrics.connection.reconnectAttempts})`);
 
         setTimeout(() => {
@@ -220,6 +214,24 @@ class OptimizedAudioStreamer {
         
         if (this.onMetricsUpdate) {
             this.onMetricsUpdate(this.metrics);
+        }
+    }
+
+    reportMetrics() {
+        try {
+            if (!this.config.metricsUrl) return;
+            const payload = JSON.stringify(this.metrics);
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(this.config.metricsUrl, payload);
+            } else {
+                fetch(this.config.metricsUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload
+                });
+            }
+        } catch (err) {
+            console.warn('Failed to report metrics', err);
         }
     }
     
