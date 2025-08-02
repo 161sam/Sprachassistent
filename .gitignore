@@ -65,6 +65,9 @@ jspm_packages/
 .env.test
 .env.production
 .env.local
+# Allow environment files for desktop and mobile apps
+!voice-assistant-apps/desktop/.env
+!voice-assistant-apps/mobile/.env
 
 # parcel-bundler cache
 .cache

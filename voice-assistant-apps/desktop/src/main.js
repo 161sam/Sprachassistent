@@ -131,16 +131,33 @@ function createMainWindow() {
 
 function startBackend() {
   try {
-    const envPath = path.join(__dirname, '../../.env');
+    const envPath = path.join(__dirname, '../.env');
     dotenv.config({ path: envPath });
-    const backendScript = path.join(__dirname, '../../backend/ws-server/ws-server.py');
-    backendProcess = spawn('python3', [backendScript], {
-      cwd: path.dirname(backendScript),
-      env: { ...process.env },
-      stdio: ['ignore', 'pipe', 'pipe']
+
+    const pythonCmd = process.env.PYTHON_EXECUTABLE || 'python3';
+    const serverScript = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'backend',
+      'ws-server',
+      'ws-server.py'
+    );
+
+    log.info(`Starting backend with: ${pythonCmd} ${serverScript}`);
+    backendProcess = spawn(pythonCmd, [serverScript], {
+      cwd: path.dirname(serverScript),
+      env: process.env
     });
+
     backendProcess.stdout.on('data', data => log.info(`[backend] ${data}`));
     backendProcess.stderr.on('data', data => log.error(`[backend] ${data}`));
+    backendProcess.on('spawn', () => log.info('Backend process started'));
+    backendProcess.on('error', err => {
+      log.error('Failed to start backend:', err);
+      dialog.showErrorBox('Backend start failed', err.message);
+    });
     backendProcess.on('close', code => log.info(`Backend exited with code ${code}`));
   } catch (err) {
     log.error('Failed to start backend:', err);
