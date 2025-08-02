@@ -30,7 +30,6 @@ import uuid
 import numpy as np
 import os
 import logging
-import io
 from datetime import datetime
 from typing import Dict, Optional, List, AsyncGenerator
 from dataclasses import dataclass, field
@@ -38,7 +37,6 @@ from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import aiohttp
 import aiofiles
-import soundfile as sf
 from faster_whisper import WhisperModel
 from pathlib import Path
 
@@ -77,7 +75,10 @@ class StreamingConfig:
     stt_precision: str = os.getenv("STT_PRECISION", "int8")
 
     # TTS Configuration
-    default_tts_engine: str = os.getenv("DEFAULT_TTS_ENGINE", "piper")  # "piper" or "kokoro"
+    default_tts_engine: str = os.getenv("TTS_ENGINE", os.getenv("DEFAULT_TTS_ENGINE", "piper"))
+    default_tts_voice: str = os.getenv("TTS_VOICE", "de-thorsten-low")
+    default_tts_speed: float = float(os.getenv("TTS_SPEED", 1.0))
+    default_tts_volume: float = float(os.getenv("TTS_VOLUME", 1.0))
     enable_engine_switching: bool = os.getenv("ENABLE_TTS_SWITCHING", "true").lower() == "true"
 
     # External services
@@ -207,31 +208,20 @@ class AsyncSTTEngine:
             return f"[STT Error: {str(e)}]"
 
     def _preprocess_audio(self, audio_bytes: bytes) -> np.ndarray:
-        """Normalize and resample audio bytes for STT."""
-        audio_buf = io.BytesIO(audio_bytes)
-        data, sr = sf.read(audio_buf, dtype="float32")
-
-        # Resample if necessary
-        if sr != config.sample_rate:
-            duration = data.shape[0] / sr
-            target_length = int(duration * config.sample_rate)
-            data = np.interp(
-                np.linspace(0, data.shape[0], target_length),
-                np.arange(data.shape[0]),
-                data,
-            )
-
-        # Simple normalization
-        max_val = np.max(np.abs(data))
-        if max_val > 0:
-            data = data / max_val
-
-        return data.astype(np.float32)
+        """Convert raw PCM16 bytes to normalized float32 array."""
+        audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32)
+        audio_np /= 32768.0
+        return audio_np
 
     def _transcribe_sync(self, audio_array: np.ndarray) -> str:
         """Synchronous transcription in worker thread."""
         try:
-            segments, info = self.model.transcribe(audio_array, sample_rate=config.sample_rate)
+            segments, info = self.model.transcribe(
+                audio_array,
+                language="de",
+                beam_size=5,
+                sample_rate=config.sample_rate
+            )
             text = "".join(segment.text for segment in segments).strip()
             return text or "(no speech detected)"
         except Exception as e:
@@ -270,7 +260,9 @@ class AudioStreamManager:
             'is_active': True,
             'chunk_count': 0,
             'tts_engine': None,  # Client-spezifische TTS-Engine
-            'tts_voice': None    # Client-spezifische Stimme
+            'tts_voice': None,   # Client-spezifische Stimme
+            'tts_speed': None,
+            'tts_volume': None
         }
         
         self.response_callbacks[stream_id] = response_callback
@@ -331,7 +323,9 @@ class AudioStreamManager:
                     'client_id': stream['client_id'],
                     'chunk_count': stream['chunk_count'],
                     'tts_engine': stream.get('tts_engine'),
-                    'tts_voice': stream.get('tts_voice')
+                    'tts_voice': stream.get('tts_voice'),
+                    'tts_speed': stream.get('tts_speed'),
+                    'tts_volume': stream.get('tts_volume')
                 })
                 logger.debug(f"Queued stream {stream_id} for processing ({len(audio_data)} bytes)")
                 return True
@@ -342,13 +336,19 @@ class AudioStreamManager:
             logger.warning(f"No audio data in finalized stream {stream_id}")
             return False
             
-    async def set_stream_tts_config(self, stream_id: str, engine: Optional[str] = None, voice: Optional[str] = None):
+    async def set_stream_tts_config(self, stream_id: str, engine: Optional[str] = None,
+                                    voice: Optional[str] = None, speed: Optional[float] = None,
+                                    volume: Optional[float] = None):
         """Setze TTS-Konfiguration für Stream"""
         if stream_id in self.active_streams:
             if engine:
                 self.active_streams[stream_id]['tts_engine'] = engine
             if voice:
                 self.active_streams[stream_id]['tts_voice'] = voice
+            if speed is not None:
+                self.active_streams[stream_id]['tts_speed'] = speed
+            if volume is not None:
+                self.active_streams[stream_id]['tts_volume'] = volume
                 
     async def _process_audio_queue(self):
         """Background processor for audio streams"""
@@ -371,6 +371,8 @@ class AudioStreamManager:
         client_id = item['client_id']
         tts_engine = item.get('tts_engine')
         tts_voice = item.get('tts_voice')
+        tts_speed = item.get('tts_speed')
+        tts_volume = item.get('tts_volume')
         
         try:
             start_time = time.time()
@@ -390,10 +392,16 @@ class AudioStreamManager:
                     target_engine = TTSEngineType.KOKORO
                     
             # Generate TTS audio mit spezifizierter Engine
+            tts_kwargs = {}
+            if tts_speed is not None:
+                tts_kwargs['speed'] = tts_speed
+            if tts_volume is not None:
+                tts_kwargs['volume'] = tts_volume
             tts_result = await self.tts_manager.synthesize(
                 response_text,
                 engine=target_engine,
-                voice=tts_voice
+                voice=tts_voice,
+                **tts_kwargs
             )
 
             # Optional debug: save audio files asynchronously
@@ -533,7 +541,9 @@ class ConnectionManager:
             'messages_sent': 0,
             'messages_received': 0,
             'preferred_tts_engine': config.default_tts_engine,
-            'preferred_tts_voice': None
+            'preferred_tts_voice': config.default_tts_voice,
+            'preferred_tts_speed': config.default_tts_speed,
+            'preferred_tts_volume': config.default_tts_volume
         }
         
         logger.info(f"Client {client_id} connected from {websocket.remote_address}")
@@ -608,17 +618,19 @@ class OptimizedVoiceServer:
         piper_config = TTSConfig(
             engine_type="piper",
             model_path="",  # Wird automatisch ermittelt
-            voice="de-thorsten-low",
-            speed=1.0,
+            voice=config.default_tts_voice,
+            speed=config.default_tts_speed,
+            volume=config.default_tts_volume,
             language="de",
             sample_rate=22050
         )
-        
+
         kokoro_config = TTSConfig(
             engine_type="kokoro",
             model_path="",  # Wird automatisch ermittelt
             voice="af_sarah",
-            speed=1.0,
+            speed=config.default_tts_speed,
+            volume=config.default_tts_volume,
             language="en",
             sample_rate=24000
         )
@@ -726,6 +738,13 @@ class OptimizedVoiceServer:
         # TTS-Konfiguration aus Client-Einstellungen
         tts_engine = data.get('tts_engine')
         tts_voice = data.get('tts_voice')
+        tts_speed = data.get('tts_speed')
+        tts_volume = data.get('tts_volume')
+        if any(v is not None for v in [tts_engine, tts_voice, tts_speed, tts_volume]):
+            logger.info(
+                f"Using dynamic TTS params: engine={tts_engine}, voice={tts_voice}, "
+                f"speed={tts_speed}, volume={tts_volume}"
+            )
         
         # Create response callback
         async def response_callback(response_data):
@@ -734,13 +753,21 @@ class OptimizedVoiceServer:
         stream_id = await self.stream_manager.start_stream(client_id, response_callback)
         
         # TTS-Konfiguration für Stream setzen
-        await self.stream_manager.set_stream_tts_config(stream_id, tts_engine, tts_voice)
+        await self.stream_manager.set_stream_tts_config(
+            stream_id,
+            tts_engine,
+            tts_voice,
+            tts_speed,
+            tts_volume
+        )
         
         await self.connection_manager.send_to_client(client_id, {
             'type': 'audio_stream_started',
             'stream_id': stream_id,
             'tts_engine': tts_engine,
             'tts_voice': tts_voice,
+            'tts_speed': tts_speed,
+            'tts_volume': tts_volume,
             'timestamp': time.time()
         })
         
@@ -793,6 +820,13 @@ class OptimizedVoiceServer:
         text = data.get('content', '').strip()
         tts_engine = data.get('tts_engine')
         tts_voice = data.get('tts_voice')
+        tts_speed = data.get('tts_speed')
+        tts_volume = data.get('tts_volume')
+        if any(v is not None for v in [tts_engine, tts_voice, tts_speed, tts_volume]):
+            logger.info(
+                f"Using dynamic TTS params: engine={tts_engine}, voice={tts_voice}, "
+                f"speed={tts_speed}, volume={tts_volume}"
+            )
         
         if not text:
             return
@@ -809,10 +843,16 @@ class OptimizedVoiceServer:
                 target_engine = TTSEngineType.KOKORO
                 
         # Generate TTS
+        tts_kwargs = {}
+        if tts_speed is not None:
+            tts_kwargs['speed'] = tts_speed
+        if tts_volume is not None:
+            tts_kwargs['volume'] = tts_volume
         tts_result = await self.tts_manager.synthesize(
-            response_text, 
+            response_text,
             engine=target_engine,
-            voice=tts_voice
+            voice=tts_voice,
+            **tts_kwargs
         )
         
         await self._send_text_response(client_id, {
