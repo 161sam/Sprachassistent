@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, shell, Tray, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
@@ -131,7 +132,13 @@ function createMainWindow() {
 
 function startBackend() {
   try {
-    const envPath = path.join(__dirname, '../.env');
+    const rootEnv = path.join(__dirname, '..', '..', '..', '.env');
+    const localEnv = path.join(__dirname, '../.env');
+    const envPath = fs.existsSync(rootEnv) ? rootEnv : localEnv;
+    const defaultsPath = path.join(path.dirname(envPath), '.env.defaults');
+    if (fs.existsSync(defaultsPath)) {
+      dotenv.config({ path: defaultsPath });
+    }
     dotenv.config({ path: envPath });
 
     const pythonCmd = process.env.PYTHON_EXECUTABLE || 'python3';

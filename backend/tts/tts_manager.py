@@ -79,7 +79,8 @@ class TTSManager:
                 voice="de-thorsten-low",
                 speed=1.0,
                 language="de",
-                sample_rate=22050
+                sample_rate=22050,
+                model_dir="models"
             )
             
         if kokoro_config is None:
@@ -89,7 +90,8 @@ class TTSManager:
                 voice="af_sarah",
                 speed=1.0,
                 language="en",  # Kokoro hat bessere englische Stimmen
-                sample_rate=24000
+                sample_rate=24000,
+                model_dir="models"
             )
             
         self.default_configs[TTSEngineType.PIPER] = piper_config

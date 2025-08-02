@@ -22,6 +22,7 @@ class TTSConfig:
     volume: float = 1.0
     sample_rate: int = 22050
     language: str = "de"
+    model_dir: str = "models"
     
     # Engine-spezifische Parameter
     engine_params: Dict[str, Any] = None
