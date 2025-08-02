@@ -16,7 +16,7 @@ Ein verteilter Sprachassistent, der lokal Sprache versteht (STT), antwortet (TTS
 
 * **STT**: [`faster-whisper`](https://github.com/guillaumekln/faster-whisper)
 * **TTS**: [`piper`](https://github.com/rhasspy/piper)
-* **Intent-Routing**: Leitet einfache und komplexe Anfragen weiter
+* **Intent-Routing**: ML-basierte Klassifikation mit Fallback
 * **WebSocket-Server**: `ws_server_fastapi.py` (FastAPI-basierter Nachfolger)
 
 ### 🧰 Raspi 400 (4 GB)
@@ -41,7 +41,8 @@ Ein verteilter Sprachassistent, der lokal Sprache versteht (STT), antwortet (TTS
 ```mermaid
 flowchart LR
   Raspi400 -->|Spracheingabe (Mic)| Raspi4
-  Raspi4 -->|Transkript (Text)| Odroid
+  Raspi4 -->|Transkript| Klassifikation
+  Klassifikation -->|Intent| Odroid
   Odroid -->|Antwort / Workflow| Raspi4
   Raspi4 -->|Sprachausgabe| Raspi400
 ```

@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Optional
 
 try:
@@ -8,17 +9,22 @@ except Exception:  # pragma: no cover - optional dependency
 
 logger = logging.getLogger(__name__)
 
-class IntentClassifier:
-    """Optional einfacher Intent-Klassifizierer."""
 
-    def __init__(self, model_path: Optional[str] = None):
+class IntentClassifier:
+    """Intent-Klassifizierer mit Keyword-Fallback."""
+
+    def __init__(self, model_path: Optional[str] = "models/intent_classifier.bin"):
         self.model = None
-        if model_path and joblib:
+        if joblib and model_path and Path(model_path).exists():
             try:
                 self.model = joblib.load(model_path)
                 logger.info("Intent-Model geladen: %s", model_path)
             except Exception as exc:
                 logger.error("Konnte Intent-Model nicht laden: %s", exc)
+        else:
+            logger.warning(
+                "Kein Intent-Model geladen, verwende Schlüsselwort-Fallback"
+            )
 
     def classify(self, text: str) -> str:
         if self.model:
