@@ -5,13 +5,14 @@ Optimiert für deutsche Sprache mit hoher Qualität
 """
 
 import asyncio
-import subprocess
-import tempfile
+import io
 import os
 import time
 import logging
+import wave
 from typing import Optional, Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor
+from piper import PiperVoice, SynthesisConfig
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSInitializationError, TTSSynthesisError
 
@@ -23,26 +24,24 @@ class PiperTTSEngine(BaseTTSEngine):
     def __init__(self, config: TTSConfig):
         super().__init__(config)
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="PiperTTS")
-        self.model_cache = {}
-        
-        # Piper-spezifische Konfiguration
-        self.piper_executable = "piper"  # Pfad zur Piper-Binary
+        self.voice_cache: Dict[str, PiperVoice] = {}
         
         # Verfügbare deutsche Stimmen
         self.supported_voices = [
             "de-thorsten-low",
-            "de-thorsten-medium", 
+            "de-thorsten-medium",
             "de-thorsten-high",
             "de-kerstin-low",
             "de-kerstin-medium",
             "de-eva_k-low",
             "de-eva_k-medium",
             "de-ramona-low",
-            "de-karlsson-low"
+            "de-karlsson-low",
+            "en-amy-low"
         ]
-        
-        self.supported_languages = ["de", "de-DE"]
-        
+
+        self.supported_languages = ["de", "de-DE", "en", "en-US"]
+
         # Voice-zu-Modell-Mapping
         self.voice_model_mapping = {
             "de-thorsten-low": "de_DE-thorsten-low.onnx",
@@ -53,34 +52,24 @@ class PiperTTSEngine(BaseTTSEngine):
             "de-eva_k-low": "de_DE-eva_k-low.onnx",
             "de-eva_k-medium": "de_DE-eva_k-medium.onnx",
             "de-ramona-low": "de_DE-ramona-low.onnx",
-            "de-karlsson-low": "de_DE-karlsson-low.onnx"
+            "de-karlsson-low": "de_DE-karlsson-low.onnx",
+            "en-amy-low": "en_US-amy-low.onnx"
         }
         
     async def initialize(self) -> bool:
         """Initialisiere Piper TTS Engine"""
         try:
-            # Prüfe ob Piper verfügbar ist
-            result = await self._run_command([self.piper_executable, "--version"])
-            if result.returncode != 0:
-                raise TTSInitializationError("Piper executable nicht gefunden")
-                
-            # Prüfe Modell-Verfügbarkeit
             model_path = self._get_model_path(self.config.voice)
-            if not os.path.exists(model_path):
-                logger.warning(f"Modell nicht gefunden: {model_path}")
-                # Versuche Standard-Modell
-                default_model = os.path.expanduser("~/.local/share/piper/de-thorsten-low.onnx")
-                if os.path.exists(default_model):
-                    logger.info(f"Verwende Standard-Modell: {default_model}")
-                    self.config.model_path = default_model
-                    self.config.voice = "de-thorsten-low"
-                else:
-                    raise TTSInitializationError(f"Kein Piper-Modell verfügbar")
-                    
+            loop = asyncio.get_event_loop()
+            voice = await loop.run_in_executor(
+                self.executor,
+                PiperVoice.load,
+                model_path
+            )
+            self.voice_cache[self.config.voice] = voice
             self.is_initialized = True
             logger.info(f"Piper TTS initialisiert mit Stimme: {self.config.voice}")
             return True
-            
         except Exception as e:
             logger.error(f"Piper TTS Initialisierung fehlgeschlagen: {e}")
             self.is_initialized = False
@@ -108,21 +97,21 @@ class PiperTTSEngine(BaseTTSEngine):
         if not self.supports_voice(target_voice):
             logger.warning(f"Stimme '{target_voice}' nicht unterstützt, verwende '{self.config.voice}'")
             target_voice = self.config.voice
-            
+
         try:
-            audio_data = await self._synthesize_with_piper(text, target_voice, **kwargs)
-            
+            audio_data, sr = await self._synthesize_with_piper(text, target_voice, **kwargs)
+
             processing_time = (time.time() - start_time) * 1000
-            
+
             return TTSResult(
                 audio_data=audio_data,
                 success=True,
                 processing_time_ms=processing_time,
                 voice_used=target_voice,
                 engine_used="Piper",
-                sample_rate=self.config.sample_rate,
+                sample_rate=sr,
                 audio_format="wav",
-                audio_length_ms=self._estimate_audio_length(audio_data) if audio_data else 0
+                audio_length_ms=self._estimate_audio_length(audio_data, sr) if audio_data else 0
             )
             
         except Exception as e:
@@ -135,10 +124,10 @@ class PiperTTSEngine(BaseTTSEngine):
                 engine_used="Piper"
             )
             
-    async def _synthesize_with_piper(self, text: str, voice: str, **kwargs) -> Optional[bytes]:
+    async def _synthesize_with_piper(self, text: str, voice: str, **kwargs) -> tuple[Optional[bytes], int]:
         """Interne Synthese mit Piper"""
         loop = asyncio.get_event_loop()
-        
+
         return await loop.run_in_executor(
             self.executor,
             self._piper_synthesis_sync,
@@ -146,68 +135,32 @@ class PiperTTSEngine(BaseTTSEngine):
             voice,
             kwargs
         )
-        
-    def _piper_synthesis_sync(self, text: str, voice: str, options: Dict) -> Optional[bytes]:
+
+    def _piper_synthesis_sync(self, text: str, voice: str, options: Dict) -> tuple[Optional[bytes], int]:
         """Synchrone Piper-Synthese im Thread Pool"""
         try:
-            # Temporary Dateien erstellen
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as output_file:
-                output_path = output_file.name
-                
-            # Modell-Pfad bestimmen
-            model_path = self._get_model_path(voice)
-            
-            # Piper-Kommando zusammenstellen
-            cmd = [
-                self.piper_executable,
-                "--model", model_path,
-                "--output_file", output_path,
-                "--text", text
-            ]
-            
-            # Optional: Geschwindigkeit anpassen
-            if self.config.speed != 1.0:
-                cmd.extend(["--length_scale", str(1.0 / self.config.speed)])
-                
-            # Optional: Sample Rate
-            if self.config.sample_rate != 22050:
-                cmd.extend(["--sample_rate", str(self.config.sample_rate)])
-                
-            # Engine-spezifische Parameter
-            for key, value in self.config.engine_params.items():
-                if key in ["noise_scale", "noise_w", "length_scale"]:
-                    cmd.extend([f"--{key}", str(value)])
-                    
-            # Piper ausführen
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=30,  # 30s Timeout
-                cwd=os.path.dirname(model_path) if os.path.dirname(model_path) else None
-            )
-            
-            if result.returncode == 0 and os.path.exists(output_path):
-                # Audio-Daten lesen
-                with open(output_path, 'rb') as f:
-                    audio_data = f.read()
-                    
-                # Cleanup
-                os.unlink(output_path)
-                
-                return audio_data
-            else:
-                logger.error(f"Piper-Fehler: {result.stderr}")
-                if os.path.exists(output_path):
-                    os.unlink(output_path)
-                return None
-                
-        except subprocess.TimeoutExpired:
-            logger.error("Piper TTS Timeout")
-            return None
+            voice_obj = self.voice_cache.get(voice)
+            if voice_obj is None:
+                model_path = self._get_model_path(voice)
+                voice_obj = PiperVoice.load(model_path)
+                self.voice_cache[voice] = voice_obj
+
+            speed = options.get('speed', self.config.speed)
+            volume = options.get('volume', self.config.volume)
+            syn_cfg = SynthesisConfig(length_scale=1.0 / speed, volume=volume)
+
+            buffer = io.BytesIO()
+            with wave.open(buffer, 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(voice_obj.config.sample_rate)
+                for chunk in voice_obj.synthesize(text, syn_config=syn_cfg):
+                    wav_file.writeframes(chunk.audio_int16_bytes)
+
+            return buffer.getvalue(), voice_obj.config.sample_rate
         except Exception as e:
             logger.error(f"Piper-Synthese-Fehler: {e}")
-            return None
+            return None, self.config.sample_rate
             
     def _get_model_path(self, voice: str) -> str:
         """Bestimme Modell-Pfad für Stimme"""
@@ -237,30 +190,20 @@ class PiperTTSEngine(BaseTTSEngine):
             
         raise TTSInitializationError(f"Kein Piper-Modell für Stimme '{voice}' gefunden")
         
-    async def _run_command(self, cmd: List[str]) -> subprocess.CompletedProcess:
-        """Führe Kommando asynchron aus"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            lambda: subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        )
-        
-    def _estimate_audio_length(self, audio_data: bytes) -> float:
+    def _estimate_audio_length(self, audio_data: bytes, sample_rate: int) -> float:
         """Schätze Audio-Länge in Millisekunden"""
         if not audio_data or len(audio_data) < 44:  # WAV-Header
             return 0.0
-            
-        # Einfache Schätzung basierend auf Datei-Größe
-        # 44-Byte WAV-Header + 2 Bytes pro Sample * Sample Rate
+
         audio_bytes = len(audio_data) - 44
         samples = audio_bytes // 2  # 16-bit Audio
-        return (samples / self.config.sample_rate) * 1000
+        return (samples / sample_rate) * 1000
         
     async def cleanup(self):
         """Cleanup Piper TTS Ressourcen"""
         if hasattr(self, 'executor'):
             self.executor.shutdown(wait=True)
-        self.model_cache.clear()
+        self.voice_cache.clear()
         logger.info("Piper TTS Engine cleanup abgeschlossen")
         
     def get_available_voices(self) -> List[str]:
