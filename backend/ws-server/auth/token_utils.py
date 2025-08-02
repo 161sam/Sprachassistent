@@ -8,6 +8,11 @@ logger = logging.getLogger(__name__)
 _WS_TOKEN = os.getenv("WS_TOKEN")
 _JWT_PUBLIC_KEY = os.getenv("JWT_PUBLIC_KEY")
 
+# TODO (docs/security.md,
+#   docs/Projekt-Verbesserungen.md §Backend-Optimierungen):
+#   Provide full JWT management with refresh tokens and rate limiting to
+#   align with the documented security architecture.
+
 def verify_token(token: Optional[str]) -> bool:
     """Validate the provided authentication token.
 

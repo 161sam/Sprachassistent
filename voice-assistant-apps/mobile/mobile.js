@@ -250,6 +250,8 @@ class MobileVoiceAssistant {
     };
   }
 
+  // TODO (docs/TTS-Engine-Switching.md): Allow selecting between Piper and
+  // Kokoro engines from the mobile client instead of using a single plugin.
   initializeMobileTTS() {
     if (!this.plugins.tts) return;
 
@@ -264,7 +266,7 @@ class MobileVoiceAssistant {
           }, resolve, reject);
         });
       },
-      
+
       stop: () => {
         if (window.plugins.tts.stop) {
           window.plugins.tts.stop();

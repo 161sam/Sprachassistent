@@ -133,6 +133,9 @@ class OptimizedAudioStreamer {
                     console.log('❌ WebSocket disconnected');
                     
                     // Auto-reconnect if configured
+                    // TODO (docs/protocol.md): Attempt reconnection with
+                    // exponential backoff regardless of adaptiveQuality and
+                    // follow the documented backoff algorithm.
                     if (this.config.adaptiveQuality && this.metrics.connection.reconnectAttempts < this.config.maxRetries) {
                         this.reconnect(wsUrl);
                     }
@@ -153,9 +156,11 @@ class OptimizedAudioStreamer {
     async reconnect(wsUrl) {
         this.metrics.connection.reconnectAttempts++;
         const delay = this.config.retryDelay * Math.pow(2, this.metrics.connection.reconnectAttempts - 1);
-        
+        // TODO (docs/protocol.md): Cap the backoff delay at 30s as
+        // recommended and reset attempts after successful reconnect.
+
         console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.metrics.connection.reconnectAttempts})`);
-        
+
         setTimeout(() => {
             this.connect(wsUrl);
         }, delay);

@@ -12,6 +12,10 @@ class BaseSkill:
     def handle(self, text: str) -> str:
         raise NotImplementedError
 
+# TODO (docs/skill-system.md §Skills registrieren,
+#   docs/Projekt-Verbesserungen.md §Erweiterbares Skill-System):
+#   Support plugin discovery and hot-reloading for skills instead of
+#   static imports during startup.
 def load_all_skills(path: str | Path, enabled: Optional[List[str]] = None) -> List[BaseSkill]:
     """Lade alle Skill-Klassen aus dem angegebenen Verzeichnis."""
     skills: List[BaseSkill] = []
