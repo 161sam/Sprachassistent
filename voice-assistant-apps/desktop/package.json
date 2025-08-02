@@ -13,6 +13,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "electron:start": "electron . --dev",
     "build": "electron-builder",
     "build-win": "electron-builder --win",
     "build-mac": "electron-builder --mac",
@@ -27,8 +28,9 @@
     "electron-devtools-installer": "^3.2.0"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7",
+    "dotenv": "^16.4.5",
     "electron-log": "^5.0.1",
+    "electron-updater": "^6.1.7",
     "node-notifier": "^10.0.1"
   },
   "build": {
@@ -41,14 +43,18 @@
     "files": [
       "src/**/*",
       "assets/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "../shared/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -56,7 +62,10 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ]
     },
@@ -64,11 +73,17 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "Office"
