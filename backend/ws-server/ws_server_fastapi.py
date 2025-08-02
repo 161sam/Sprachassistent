@@ -10,7 +10,10 @@ from pathlib import Path
 
 from .auth.token_utils import verify_token
 
-# Load legacy server implementation despite hyphen in filename
+# TODO (docs/Code-und-Dokumentationsreview.md
+#   §Parallelle WebSocket-Server zusammenführen):
+#   Remove this legacy adapter and port the remaining logic from
+#   ``ws-server.py`` into a native FastAPI implementation.
 _legacy_path = Path(__file__).with_name("ws-server.py")
 spec = importlib.util.spec_from_file_location("ws_server_legacy", _legacy_path)
 ws_server_legacy = importlib.util.module_from_spec(spec)
@@ -88,4 +91,6 @@ async def metrics():
 @app.post("/debug/restart")
 async def restart_endpoint():
     """Placeholder endpoint for development hot restarts."""
+    # TODO (docs/server-api.md): Implement hot restart functionality for the
+    # development server.
     raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="restart not implemented")

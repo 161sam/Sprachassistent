@@ -15,9 +15,16 @@ Features integrated from previous versions:
 * Optional debug file saving (``aiofiles``)
 * Metrics API and TTS engine switching
 
-TODO:
-    - Modularize TTS engine switching
-    - Implement authentication/token handling
+# TODO (docs/TTS-Engine-Switching.md):
+#   Modularize the TTS engine switching logic into a dedicated module
+#   instead of keeping it embedded in the server implementation.
+# TODO (docs/security.md §Token-Authentifizierung,
+#   docs/Projekt-Verbesserungen.md §Backend-Optimierungen):
+#   Implement full authentication and token handling (JWT validation,
+#   refresh tokens, rate limiting).
+# TODO (docs/Code-und-Dokumentationsreview.md §Code-Struktur modularisieren):
+#   Refactor this monolithic server into separate audio, routing and auth
+#   modules for better maintainability.
 
 """
 
@@ -567,18 +574,21 @@ class ConnectionManager:
         try:
             websocket = self.active_connections[client_id]
             await websocket.send(json.dumps(message))
-            
+
             # Update stats
             self.connection_info[client_id]['messages_sent'] += 1
             self.connection_info[client_id]['last_activity'] = time.time()
-            
+
             return True
-            
+
         except websockets.exceptions.ConnectionClosed:
             await self.unregister(client_id)
             return False
         except Exception as e:
             logger.error(f"Error sending to client {client_id}: {e}")
+            # TODO (docs/Code-und-Dokumentationsreview.md
+            #   §Fehlerbehandlung & Stabilität im WebSocket-Server verbessern):
+            #   Implement retry logic and notify clients to reconnect.
             return False
 
 class OptimizedVoiceServer:
