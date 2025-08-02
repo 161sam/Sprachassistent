@@ -40,11 +40,14 @@ import aiohttp
 import aiofiles
 import soundfile as sf
 from faster_whisper import WhisperModel
+from pathlib import Path
 
 # Importiere neues TTS-System
 from .tts import TTSManager, TTSEngineType, TTSConfig
 
 from metrics_api import start_metrics_api
+from skills import load_all_skills
+from intent_classifier import IntentClassifier
 
 # Enhanced configuration
 @dataclass
@@ -78,10 +81,16 @@ class StreamingConfig:
     enable_engine_switching: bool = os.getenv("ENABLE_TTS_SWITCHING", "true").lower() == "true"
 
     # External services
-    flowise_host: str = os.getenv("FLOWISE_HOST", "")
-    flowise_flow_id: str = os.getenv("FLOWISE_FLOW_ID", "")
-    flowise_api_key: str = os.getenv("FLOWISE_API_KEY", "")
+    flowise_url: str = os.getenv("FLOWISE_URL", "")
+    flowise_id: str = os.getenv("FLOWISE_ID", "")
     n8n_url: str = os.getenv("N8N_URL", "")
+    flowise_api_key: str = os.getenv("FLOWISE_API_KEY", "")
+
+    # Skills and ML
+    enabled_skills: List[str] = field(
+        default_factory=lambda: [s.strip() for s in os.getenv("ENABLED_SKILLS", "").split(",") if s.strip()]
+    )
+    intent_model: str = os.getenv("INTENT_MODEL", "none")
 
     # Debugging
     save_debug_audio: bool = os.getenv("SAVE_DEBUG_AUDIO", "false").lower() == "true"
@@ -234,7 +243,16 @@ class AudioStreamManager:
         self.active_streams: Dict[str, Dict] = {}
         self.processing_queue = asyncio.Queue(maxsize=1000)
         self.response_callbacks: Dict[str, callable] = {}
-        
+
+        # Skills und Intent-Klassifizierer laden
+        skills_path = Path(__file__).parent / "skills"
+        self.skills = load_all_skills(skills_path, config.enabled_skills)
+        if config.enabled_skills:
+            logger.info("Aktive Skills: %s", ", ".join(type(s).__name__ for s in self.skills))
+        self.intent_classifier = None
+        if config.intent_model and config.intent_model.lower() != "none":
+            self.intent_classifier = IntentClassifier(config.intent_model)
+
         # Start background processor
         asyncio.create_task(self._process_audio_queue())
         
@@ -418,60 +436,80 @@ class AudioStreamManager:
                 del self.response_callbacks[stream_id]
                 
     async def _generate_response(self, transcription: str, client_id: str) -> str:
-        """Generate response to transcription via simple intent routing."""
+        """Generate response using Skills, optional ML and external routing."""
         if not transcription or transcription.startswith('['):
             return "Entschuldigung, ich konnte Sie nicht verstehen."
 
         text = transcription.lower().strip()
 
-        # Local shortcuts
-        if any(word in text for word in ['zeit', 'uhrzeit', 'wie spät']):
-            return f"Es ist {datetime.now().strftime('%H:%M')} Uhr."
-        if any(word in text for word in ['hallo', 'hi', 'guten tag']):
-            return "Hallo! Wie kann ich Ihnen helfen?"
-        if any(word in text for word in ['danke', 'vielen dank']):
-            return "Gern geschehen!"
-        if any(word in text for word in ['stimme', 'voice', 'engine']):
-            current_engine = self.tts_manager.get_current_engine()
-            return f"Ich verwende aktuell {current_engine.value if current_engine else 'keine'} TTS-Engine."
+        intent = None
+        if self.intent_classifier:
+            intent = self.intent_classifier.classify(text)
 
-        # External routing examples
-        if config.n8n_url and any(word in text for word in ['garage', 'status', 'wetter']):
-            return await self._trigger_n8n(text)
-        if config.flowise_host and any(word in text for word in ['frage', 'wissen', 'hilfe']):
-            return await self._ask_flowise(text)
+        # Try mapping by classified intent name
+        if intent and intent not in ("external_request", "unknown"):
+            for skill in self.skills:
+                if getattr(skill, "intent_name", None) == intent:
+                    return skill.handle(text)
 
-        return f"Sie sagten: {transcription}"
+        # Fallback: ask each skill
+        for skill in self.skills:
+            if skill.can_handle(text):
+                return skill.handle(text)
 
-    async def _ask_flowise(self, query: str) -> str:
+        # External routing if classifier says so or nothing matched
+        if intent == "external_request" or intent is None:
+            external = await self._route_external(text, client_id)
+            if external:
+                return external
+
+        # Fallback message
+        return "Entschuldigung, dafür habe ich keine Antwort."
+
+    async def _route_external(self, text: str, client_id: str) -> Optional[str]:
+        if config.flowise_url and config.flowise_id:
+            return await self._ask_flowise(text, client_id)
+        if config.n8n_url:
+            return await self._trigger_n8n(text, client_id)
+        return None
+
+    async def _ask_flowise(self, query: str, client_id: str) -> str:
         """Send query to Flowise REST API."""
-        url = f"{config.flowise_host}/api/v1/prediction/{config.flowise_flow_id}"
+        url = f"{config.flowise_url}/api/v1/prediction/{config.flowise_id}"
         headers = {"Content-Type": "application/json"}
         if config.flowise_api_key:
             headers["Authorization"] = f"Bearer {config.flowise_api_key}"
+        payload = {"question": query, "sessionId": client_id}
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=headers, json={"question": query}) as resp:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, headers=headers, json=payload) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        return data.get("text", "(keine Antwort von Flowise)")
+                        return data.get("text") or data.get("answer") or "(keine Antwort von Flowise)"
                     return f"[Flowise Fehler {resp.status}]"
+        except asyncio.TimeoutError:
+            logger.error("Flowise request timed out")
         except Exception as e:
             logger.error(f"Flowise request failed: {e}")
-            return f"[Flowise Fehler: {e}]"
+        return "(keine Antwort von Flowise)"
 
-    async def _trigger_n8n(self, query: str) -> str:
+    async def _trigger_n8n(self, query: str, client_id: str) -> str:
         """Trigger n8n webhook with the given query."""
+        payload = {"query": query, "sessionId": client_id}
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(config.n8n_url, json={"query": query}) as resp:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(config.n8n_url, json=payload) as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         return data.get("reply", "OK, erledigt")
                     return f"[n8n Fehler {resp.status}]"
+        except asyncio.TimeoutError:
+            logger.error("n8n request timed out")
         except Exception as e:
             logger.error(f"n8n request failed: {e}")
-            return f"[n8n Fehler: {e}]"
+        return "(n8n nicht erreichbar)"
 
 class ConnectionManager:
     """Manages WebSocket connections with optimized handling"""
