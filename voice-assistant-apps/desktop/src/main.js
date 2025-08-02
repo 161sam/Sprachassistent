@@ -32,6 +32,12 @@ if (!gotTheLock) {
   });
 }
 
+// GPU deaktivieren
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('no-sandbox');
+app.commandLine.appendSwitch('in-process-gpu');
+
 // App Event Handlers
 app.whenReady().then(() => {
   startBackend();
