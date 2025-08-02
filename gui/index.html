@@ -73,6 +73,18 @@
       --bounce-easing: cubic-bezier(0.68, -0.55, 0.265, 1.55);
     }
 
+    html.light-mode {
+      --bg-primary: #f4f4f5;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e4e4e7;
+      --bg-card: rgba(0, 0, 0, 0.03);
+      --text-primary: #18181b;
+      --text-secondary: #3f3f46;
+      --text-muted: #71717a;
+      --glass-bg: rgba(0, 0, 0, 0.05);
+      --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
     /* Reset & Base */
     * {
       margin: 0;
@@ -849,6 +861,9 @@
         <span>KI-Assistent</span>
       </div>
       <div class="nav-actions">
+        <button class="nav-button" id="themeToggle" title="Theme wechseln">
+          ☀️
+        </button>
         <button class="nav-button" id="settingsBtn" title="Einstellungen">
           ⚙️
         </button>

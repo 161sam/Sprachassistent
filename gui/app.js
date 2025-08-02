@@ -122,6 +122,24 @@ class VoiceAssistantGUI {
             });
         }
 
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const isLight = document.documentElement.classList.toggle('light-mode');
+                themeToggle.textContent = isLight ? '🌙' : '☀️';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.add('light-mode');
+                themeToggle.textContent = '🌙';
+            } else {
+                themeToggle.textContent = '☀️';
+            }
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (event) => {
             // Ctrl/Cmd + Enter for voice input
