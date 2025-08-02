@@ -92,7 +92,7 @@ flowchart TB
 - **Lokale STT/TTS** ohne Cloud-Abhängigkeit
 - **Modulare Architektur** auf mehreren Raspberry Pi/Odroid
 - **FlowiseAI Integration** für LLM-Agent-Routing
-- **n8n Workflows** für Home-Automation
+- **n8n Workflows** für Workflow-Automation
 - **Intent-basiertes Routing** (lokal vs. remote)
 - **Wakeword-Erkennung** mit RaspOVOS
 
