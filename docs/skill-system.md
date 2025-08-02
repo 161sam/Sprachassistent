@@ -1,23 +1,43 @@
 # Skill-System
 
-Dieses Projekt nutzt ein einfaches Intent-Routing. Für erkannte Schlüsselwörter werden lokale
-oder entfernte Aktionen ausgeführt. Die Implementierung erfolgt im WebSocket-Server
-(`ws-server/ws-server.py`). Eigene Skills lassen sich dort leicht erweitern.
-
-## Eigene Skills anlegen
-
-1. Im Ordner `ws-server` eine neue Python-Datei erstellen oder bestehende Funktionen erweitern.
-2. Den Intent-Namen in der Mapping-Tabelle des WebSocket-Servers registrieren.
-3. Die Funktion sollte einen Text zurückgeben, der an die GUI gesendet wird.
-
-Beispiel:
+Der WebSocket-Server lädt zur Laufzeit Skills aus dem Ordner
+`backend/ws-server/skills`. Jeder Skill implementiert die Klasse
+`BaseSkill` und kann so modular erweitert werden.
 
 ```python
-INTENTS = {
-    "wetter": my_weather_skill,
-}
-
-def my_weather_skill(text: str) -> str:
-    return "Heute bleibt es trocken mit 20°C"
+class BaseSkill:
+    intent_name: str = "base"
+    def can_handle(self, text: str) -> bool: ...
+    def handle(self, text: str) -> str: ...
 ```
 
+## Skills registrieren
+
+Alle `.py`-Dateien in `skills/` werden automatisch geladen. Über die
+Umgebungsvariable `ENABLED_SKILLS` kann die Auswahl eingeschränkt
+werden:
+
+```
+ENABLED_SKILLS=TimeSkill,GreetingSkill
+```
+
+## Beispiel
+
+`skills/time_skill.py`:
+
+```python
+from datetime import datetime
+from . import BaseSkill
+
+class TimeSkill(BaseSkill):
+    intent_name = "time_query"
+
+    def can_handle(self, text: str) -> bool:
+        return "zeit" in text
+
+    def handle(self, text: str) -> str:
+        return f"Es ist {datetime.now().strftime('%H:%M')} Uhr."
+```
+
+Neue Dateien nach diesem Muster ablegen, schon stehen sie dem
+Sprachassistenten ohne weitere Änderungen zur Verfügung.
