@@ -250,15 +250,27 @@ class MobileVoiceAssistant {
     };
   }
 
-  // TODO (docs/TTS-Engine-Switching.md): Allow selecting between Piper and
-  // Kokoro engines from the mobile client instead of using a single plugin.
   initializeMobileTTS() {
     if (!this.plugins.tts) return;
 
+    const engines = {
+      piper: window.plugins?.piperTTS || window.plugins.tts,
+      kokoro: window.plugins?.kokoroTTS || window.plugins.tts
+    };
+    let currentEngine = 'piper';
+
     window.mobileTTS = {
+      setEngine: (engine) => {
+        if (engines[engine]) {
+          currentEngine = engine;
+          console.log(`🔄 TTS engine switched to ${engine}`);
+        }
+      },
+      getEngine: () => currentEngine,
       speak: (text, options = {}) => {
         return new Promise((resolve, reject) => {
-          window.plugins.tts.speak({
+          const plugin = engines[currentEngine];
+          plugin?.speak({
             text: text,
             locale: options.lang || 'de-DE',
             rate: options.rate || 1.0,
@@ -268,8 +280,9 @@ class MobileVoiceAssistant {
       },
 
       stop: () => {
-        if (window.plugins.tts.stop) {
-          window.plugins.tts.stop();
+        const plugin = engines[currentEngine];
+        if (plugin?.stop) {
+          plugin.stop();
         }
       }
     };
