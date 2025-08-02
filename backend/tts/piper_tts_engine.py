@@ -166,13 +166,13 @@ class PiperTTSEngine(BaseTTSEngine):
         """Bestimme Modell-Pfad für Stimme"""
         if self.config.model_path and os.path.exists(self.config.model_path):
             return self.config.model_path
-            
+
         # Standard-Pfade prüfen
         model_filename = self.voice_model_mapping.get(voice, f"{voice}.onnx")
-        
+
         standard_paths = [
+            os.path.join(self.config.model_dir, model_filename),
             f"~/.local/share/piper/{model_filename}",
-            f"./models/{model_filename}",
             f"/usr/share/piper/{model_filename}",
             model_filename  # Falls absoluter Pfad
         ]

@@ -39,6 +39,7 @@ import aiohttp
 import aiofiles
 from faster_whisper import WhisperModel
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Importiere neues TTS-System
 from .tts import TTSManager, TTSEngineType, TTSConfig
@@ -48,6 +49,9 @@ from skills import load_all_skills
 from intent_classifier import IntentClassifier
 from auth.token_utils import verify_token
 
+# Load environment variables from optional defaults then override with .env
+load_dotenv('.env.defaults', override=False)
+load_dotenv()
 # Enhanced configuration
 @dataclass
 class StreamingConfig:
@@ -72,6 +76,7 @@ class StreamingConfig:
 
     # Models
     stt_model: str = os.getenv("STT_MODEL", "base")
+    stt_model_path: str = os.getenv("STT_MODEL_PATH", "")
     stt_device: str = os.getenv("STT_DEVICE", "cpu")
     stt_precision: str = os.getenv("STT_PRECISION", "int8")
 
@@ -80,13 +85,17 @@ class StreamingConfig:
     default_tts_voice: str = os.getenv("TTS_VOICE", "de-thorsten-low")
     default_tts_speed: float = float(os.getenv("TTS_SPEED", 1.0))
     default_tts_volume: float = float(os.getenv("TTS_VOLUME", 1.0))
+    tts_model_dir: str = os.getenv("TTS_MODEL_DIR", "models")
     enable_engine_switching: bool = os.getenv("ENABLE_TTS_SWITCHING", "true").lower() == "true"
 
     # External services
     flowise_url: str = os.getenv("FLOWISE_URL", "")
     flowise_id: str = os.getenv("FLOWISE_ID", "")
+    flowise_token: str = os.getenv("FLOWISE_TOKEN", os.getenv("FLOWISE_API_KEY", ""))
     n8n_url: str = os.getenv("N8N_URL", "")
-    flowise_api_key: str = os.getenv("FLOWISE_API_KEY", "")
+    n8n_token: str = os.getenv("N8N_TOKEN", "")
+    headscale_api: str = os.getenv("HEADSCALE_API", "")
+    headscale_token: str = os.getenv("HEADSCALE_TOKEN", "")
 
     # Retry configuration for external services
     retry_limit: int = int(os.getenv("RETRY_LIMIT", 3))
@@ -159,8 +168,9 @@ class AudioBuffer:
 class AsyncSTTEngine:
     """Non-blocking STT engine with worker pool and preprocessing."""
 
-    def __init__(self, model_size: str = "base", device: str = "cpu", workers: int = 2):
+    def __init__(self, model_size: str = "base", model_path: str = "", device: str = "cpu", workers: int = 2):
         self.model_size = model_size
+        self.model_path = model_path
         self.device = device
         self.executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="STT")
         self.model = None
@@ -177,9 +187,10 @@ class AsyncSTTEngine:
         
     def _load_model(self) -> WhisperModel:
         """Load model synchronously in worker thread"""
+        target = self.model_path if self.model_path else self.model_size
         return WhisperModel(
-            self.model_size, 
-            device=self.device, 
+            target,
+            device=self.device,
             compute_type=config.stt_precision
         )
         
@@ -490,8 +501,8 @@ class AudioStreamManager:
         """Send query to Flowise REST API."""
         url = f"{config.flowise_url}/api/v1/prediction/{config.flowise_id}"
         headers = {"Content-Type": "application/json"}
-        if config.flowise_api_key:
-            headers["Authorization"] = f"Bearer {config.flowise_api_key}"
+        if config.flowise_token:
+            headers["Authorization"] = f"Bearer {config.flowise_token}"
         payload = {"question": query, "sessionId": client_id}
         for attempt in range(1, config.retry_limit + 1):
             try:
@@ -513,11 +524,14 @@ class AudioStreamManager:
     async def _trigger_n8n(self, query: str, client_id: str) -> str:
         """Trigger n8n webhook with the given query."""
         payload = {"query": query, "sessionId": client_id}
+        headers = {"Content-Type": "application/json"}
+        if config.n8n_token:
+            headers["Authorization"] = f"Bearer {config.n8n_token}"
         for attempt in range(1, config.retry_limit + 1):
             try:
                 timeout = aiohttp.ClientTimeout(total=10)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.post(config.n8n_url, json=payload) as resp:
+                    async with session.post(config.n8n_url, headers=headers, json=payload) as resp:
                         if resp.status == 200:
                             data = await resp.json()
                             return data.get("reply", "OK, erledigt")
@@ -607,6 +621,7 @@ class OptimizedVoiceServer:
     def __init__(self):
         self.stt_engine = AsyncSTTEngine(
             model_size=config.stt_model,
+            model_path=config.stt_model_path,
             device=config.stt_device,
             workers=config.stt_workers
         )
@@ -644,7 +659,8 @@ class OptimizedVoiceServer:
             speed=config.default_tts_speed,
             volume=config.default_tts_volume,
             language="de",
-            sample_rate=22050
+            sample_rate=22050,
+            model_dir=config.tts_model_dir
         )
 
         kokoro_config = TTSConfig(
@@ -654,7 +670,8 @@ class OptimizedVoiceServer:
             speed=config.default_tts_speed,
             volume=config.default_tts_volume,
             language="en",
-            sample_rate=24000
+            sample_rate=24000,
+            model_dir=config.tts_model_dir
         )
         
         # Bestimme Standard-Engine
@@ -663,7 +680,25 @@ class OptimizedVoiceServer:
         success = await self.tts_manager.initialize(piper_config, kokoro_config, default_engine)
         if not success:
             logger.error("TTS-Manager Initialisierung fehlgeschlagen!")
-            
+
+        # Optional Headscale connection check
+        if config.headscale_api:
+            headers = {}
+            if config.headscale_token:
+                headers["Authorization"] = f"Bearer {config.headscale_token}"
+            try:
+                timeout = aiohttp.ClientTimeout(total=5)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.get(f"{config.headscale_api}/machines", headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            nodes = [m.get("id") for m in data.get("machines", [])]
+                            logger.info(f"Headscale nodes available: {nodes}")
+                        else:
+                            logger.warning(f"Headscale check failed: {resp.status}")
+            except Exception as e:
+                logger.warning(f"Headscale connection failed: {e}")
+
         logger.info("Voice server initialized successfully")
         
     async def handle_websocket(self, websocket, path):
