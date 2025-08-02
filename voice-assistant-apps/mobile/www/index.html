@@ -1455,6 +1455,42 @@
     let recordingTimer;
     let recordingStartTime;
 
+    class DebugOverlay {
+      constructor() {
+        this.container = document.createElement('div');
+        this.container.id = 'debug-overlay';
+        Object.assign(this.container.style, {
+          position: 'fixed',
+          bottom: '0',
+          left: '0',
+          right: '0',
+          maxHeight: '40vh',
+          overflowY: 'auto',
+          background: 'rgba(0,0,0,0.8)',
+          color: '#0f0',
+          fontFamily: 'monospace',
+          fontSize: '12px',
+          zIndex: '9999',
+          padding: '4px'
+        });
+        document.body.appendChild(this.container);
+      }
+      log(msg) {
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        this.container.appendChild(line);
+        this.container.scrollTop = this.container.scrollHeight;
+      }
+      json(obj) {
+        this.log(JSON.stringify(obj));
+      }
+      destroy() {
+        this.container.remove();
+      }
+    }
+
+    let debugOverlay = null;
+
     // Settings Configuration
     let settings = {
       responseNebel: true,
@@ -1637,6 +1673,7 @@
       applyNebelColors();
       applyGlassOpacity();
       applyReducedMotion();
+      applyDebugMode();
     }
 
     function applyAnimationSpeed() {
@@ -1662,6 +1699,17 @@
         document.body.classList.add('reduced-motion');
       } else {
         document.body.classList.remove('reduced-motion');
+      }
+    }
+
+    function applyDebugMode() {
+      if (settings.debugMode) {
+        if (!debugOverlay) debugOverlay = new DebugOverlay();
+      } else {
+        if (debugOverlay) {
+          debugOverlay.destroy();
+          debugOverlay = null;
+        }
       }
     }
 
@@ -1758,6 +1806,7 @@
         if (settings.debugMode) {
           console.error('Microphone Error:', err);
         }
+        if (debugOverlay) debugOverlay.log(`Microphone error: ${err.message || err}`);
       });
     }
 
@@ -1774,33 +1823,42 @@
         ws.onmessage = (event) => {
           hideNebelAnimation();
           const data = JSON.parse(event.data);
+          if (recordingStartTime) {
+            const latency = Date.now() - recordingStartTime;
+            if (debugOverlay) debugOverlay.log(`STT→TTS latency: ${latency}ms`);
+            recordingStartTime = null;
+          }
+          if (debugOverlay) debugOverlay.json(data);
           displayResponse(data.content || event.data);
         };
         
         ws.onclose = () => {
           updateStatus('error', '❌ Verbindung getrennt');
           showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
-          
+
           if (settings.autoReconnect) {
             setTimeout(initWebSocket, settings.connectionTimeout);
           }
+          if (debugOverlay) debugOverlay.log('WebSocket closed');
         };
         
         ws.onerror = (err) => {
           updateStatus('error', '❌ Verbindungsfehler');
           showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
-          
+
           if (settings.debugMode) {
             console.error('WebSocket Error:', err);
           }
+          if (debugOverlay) debugOverlay.log(`WebSocket error: ${err.message || err}`);
         };
       } catch (e) {
         updateStatus('error', '❌ Server nicht erreichbar');
         showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Konfiguration');
-        
+
         if (settings.debugMode) {
           console.error('Connection Error:', e);
         }
+        if (debugOverlay) debugOverlay.log(`Connection error: ${e.message || e}`);
       }
     }
 
