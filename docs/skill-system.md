@@ -2,7 +2,9 @@
 
 Der WebSocket-Server lädt zur Laufzeit Skills aus dem Ordner
 `backend/ws-server/skills`. Jeder Skill implementiert die Klasse
-`BaseSkill` und kann so modular erweitert werden.
+`BaseSkill` und kann so modular erweitert werden. Eine ML-gestützte
+Intent-Klassifikation entscheidet standardmäßig, welcher Skill aktiv ist.
+Fällt das Modell aus, greift eine Schlüsselwort-Heuristik als Fallback.
 
 ```python
 class BaseSkill:
@@ -41,3 +43,10 @@ class TimeSkill(BaseSkill):
 
 Neue Dateien nach diesem Muster ablegen, schon stehen sie dem
 Sprachassistenten ohne weitere Änderungen zur Verfügung.
+
+### Intent-Klassifikation
+
+Bei jeder Texteingabe bestimmt ein ML-Modell das passende
+Intent-Label (z. B. `time_query` oder `greeting`). Das Ergebnis wird
+für die Skill-Auswahl genutzt. Ist kein Modell vorhanden, wird eine
+Schlüsselwort-basierte Fallback-Erkennung verwendet.

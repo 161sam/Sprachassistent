@@ -94,7 +94,7 @@ class StreamingConfig:
     enabled_skills: List[str] = field(
         default_factory=lambda: [s.strip() for s in os.getenv("ENABLED_SKILLS", "").split(",") if s.strip()]
     )
-    intent_model: str = os.getenv("INTENT_MODEL", "none")
+    intent_model: str = os.getenv("INTENT_MODEL", "models/intent_classifier.bin")
 
     # Debugging
     save_debug_audio: bool = os.getenv("SAVE_DEBUG_AUDIO", "false").lower() == "true"
@@ -253,9 +253,7 @@ class AudioStreamManager:
         self.skills = load_all_skills(skills_path, config.enabled_skills)
         if config.enabled_skills:
             logger.info("Aktive Skills: %s", ", ".join(type(s).__name__ for s in self.skills))
-        self.intent_classifier = None
-        if config.intent_model and config.intent_model.lower() != "none":
-            self.intent_classifier = IntentClassifier(config.intent_model)
+        self.intent_classifier = IntentClassifier(config.intent_model)
 
         # Start background processor
         asyncio.create_task(self._process_audio_queue())
@@ -440,34 +438,27 @@ class AudioStreamManager:
                 del self.response_callbacks[stream_id]
                 
     async def _generate_response(self, transcription: str, client_id: str) -> str:
-        """Generate response using Skills, optional ML and external routing."""
+        """Generate response using Skills, ML classification and external routing."""
         if not transcription or transcription.startswith('['):
             return "Entschuldigung, ich konnte Sie nicht verstehen."
 
         text = transcription.lower().strip()
 
-        intent = None
-        if self.intent_classifier:
-            intent = self.intent_classifier.classify(text)
+        intent = self.intent_classifier.classify(text)
 
-        # Try mapping by classified intent name
-        if intent and intent not in ("external_request", "unknown"):
-            for skill in self.skills:
-                if getattr(skill, "intent_name", None) == intent:
-                    return skill.handle(text)
-
-        # Fallback: ask each skill
-        for skill in self.skills:
-            if skill.can_handle(text):
-                return skill.handle(text)
-
-        # External routing if classifier says so or nothing matched
-        if intent == "external_request" or intent is None:
+        if intent == "external_request":
             external = await self._route_external(text, client_id)
             if external:
                 return external
 
-        # Fallback message
+        for skill in self.skills:
+            if getattr(skill, "intent_name", None) == intent:
+                return skill.handle(text)
+
+        for skill in self.skills:
+            if skill.can_handle(text):
+                return skill.handle(text)
+
         return "Entschuldigung, dafür habe ich keine Antwort."
 
     async def _route_external(self, text: str, client_id: str) -> Optional[str]:
