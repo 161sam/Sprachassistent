@@ -647,12 +647,21 @@
       justify-content: center;
       gap: 0.5rem;
       margin: 1rem 0;
-      color: var(--danger-color);
       font-weight: 600;
+      color: var(--text-secondary);
     }
 
     .recording-indicator.active {
       display: flex;
+    }
+
+    .recording-indicator.recording {
+      color: var(--danger-color);
+    }
+
+    .recording-indicator.recording .recording-dot {
+      background: var(--danger-color);
+      animation: blink 1s infinite;
     }
 
     .recording-indicator.processing {
@@ -661,6 +670,7 @@
 
     .recording-indicator.processing .recording-dot {
       background: var(--warning-color);
+      animation: blink 1s infinite;
     }
 
     .recording-indicator.error {
@@ -675,9 +685,7 @@
     .recording-dot {
       width: 8px;
       height: 8px;
-      background: var(--danger-color);
       border-radius: 50%;
-      animation: blink 1s infinite;
     }
 
     @keyframes blink {
@@ -2028,11 +2036,11 @@
     function updateSttStatus(state) {
       const indicator = document.getElementById('recordingIndicator');
       const messageEl = document.getElementById('recordingMessage');
-      indicator.classList.remove('processing', 'error', 'active');
+      indicator.classList.remove('recording', 'processing', 'error', 'active');
 
       switch (state) {
         case 'recording':
-          indicator.classList.add('active');
+          indicator.classList.add('active', 'recording');
           messageEl.innerHTML = 'Aufnahme läuft... <span id="recordingTime">0s</span>';
           break;
         case 'processing':
@@ -2042,10 +2050,14 @@
         case 'error':
           indicator.classList.add('active', 'error');
           messageEl.textContent = 'Fehler bei STT';
-          setTimeout(() => indicator.classList.remove('active', 'error'), 3000);
+          setTimeout(() => {
+            indicator.classList.remove('active', 'error');
+            messageEl.textContent = '';
+          }, 3000);
           break;
+        case 'idle':
         default:
-          // idle - indicator hidden
+          messageEl.textContent = '';
           break;
       }
     }
