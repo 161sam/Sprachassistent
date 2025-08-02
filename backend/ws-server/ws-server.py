@@ -86,6 +86,10 @@ class StreamingConfig:
     n8n_url: str = os.getenv("N8N_URL", "")
     flowise_api_key: str = os.getenv("FLOWISE_API_KEY", "")
 
+    # Retry configuration for external services
+    retry_limit: int = int(os.getenv("RETRY_LIMIT", 3))
+    retry_backoff: float = float(os.getenv("RETRY_BACKOFF", 1.0))
+
     # Skills and ML
     enabled_skills: List[str] = field(
         default_factory=lambda: [s.strip() for s in os.getenv("ENABLED_SKILLS", "").split(",") if s.strip()]
@@ -480,35 +484,41 @@ class AudioStreamManager:
         if config.flowise_api_key:
             headers["Authorization"] = f"Bearer {config.flowise_api_key}"
         payload = {"question": query, "sessionId": client_id}
-        try:
-            timeout = aiohttp.ClientTimeout(total=10)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(url, headers=headers, json=payload) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return data.get("text") or data.get("answer") or "(keine Antwort von Flowise)"
-                    return f"[Flowise Fehler {resp.status}]"
-        except asyncio.TimeoutError:
-            logger.error("Flowise request timed out")
-        except Exception as e:
-            logger.error(f"Flowise request failed: {e}")
+        for attempt in range(1, config.retry_limit + 1):
+            try:
+                timeout = aiohttp.ClientTimeout(total=10)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(url, headers=headers, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return data.get("text") or data.get("answer") or "(keine Antwort von Flowise)"
+                        return f"[Flowise Fehler {resp.status}]"
+            except asyncio.TimeoutError:
+                logger.error("Flowise request timed out")
+            except Exception:
+                logging.exception("Flowise request failed")
+            if attempt < config.retry_limit:
+                await asyncio.sleep(config.retry_backoff * (2 ** (attempt - 1)))
         return "(keine Antwort von Flowise)"
 
     async def _trigger_n8n(self, query: str, client_id: str) -> str:
         """Trigger n8n webhook with the given query."""
         payload = {"query": query, "sessionId": client_id}
-        try:
-            timeout = aiohttp.ClientTimeout(total=10)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(config.n8n_url, json=payload) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return data.get("reply", "OK, erledigt")
-                    return f"[n8n Fehler {resp.status}]"
-        except asyncio.TimeoutError:
-            logger.error("n8n request timed out")
-        except Exception as e:
-            logger.error(f"n8n request failed: {e}")
+        for attempt in range(1, config.retry_limit + 1):
+            try:
+                timeout = aiohttp.ClientTimeout(total=10)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    async with session.post(config.n8n_url, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            return data.get("reply", "OK, erledigt")
+                        return f"[n8n Fehler {resp.status}]"
+            except asyncio.TimeoutError:
+                logger.error("n8n request timed out")
+            except Exception:
+                logging.exception("n8n request failed")
+            if attempt < config.retry_limit:
+                await asyncio.sleep(config.retry_backoff * (2 ** (attempt - 1)))
         return "(n8n nicht erreichbar)"
 
 class ConnectionManager:
@@ -662,22 +672,33 @@ class OptimizedVoiceServer:
                 try:
                     data = json.loads(message)
                     await self._handle_message(client_id, data)
-                    
+
                     # Update stats
                     self.connection_manager.connection_info[client_id]['messages_received'] += 1
                     self.connection_manager.connection_info[client_id]['last_activity'] = time.time()
                     self.stats['messages_processed'] += 1
-                    
+
                 except json.JSONDecodeError:
                     await self.connection_manager.send_to_client(client_id, {
                         'type': 'error',
                         'message': 'Invalid JSON format'
                     })
-                    
-        except websockets.exceptions.ConnectionClosed:
-            logger.debug(f"Client {client_id} connection closed")
-        except Exception as e:
-            logger.error(f"WebSocket error for {client_id}: {e}")
+                except Exception:
+                    logging.exception("Unhandled error during message processing")
+                    await self.connection_manager.send_to_client(client_id, {
+                        'type': 'error',
+                        'message': 'internal server error'
+                    })
+                    break
+
+        except websockets.exceptions.ConnectionClosed as e:
+            logger.info(f"Client {client_id} connection closed: {e.code} {e.reason}")
+        except Exception:
+            logging.exception(f"WebSocket error for {client_id}")
+            try:
+                await websocket.close(code=1011, reason="server error")
+            except Exception:
+                pass
         finally:
             await self.connection_manager.unregister(client_id)
             
