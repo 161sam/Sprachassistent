@@ -929,6 +929,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 1rem;
       background: var(--glass-bg);
       backdrop-filter: blur(10px);
       border: 1px solid var(--glass-border);
@@ -958,6 +959,23 @@
 
     .status-dot.error {
       background: var(--danger-color);
+    }
+
+    .connection-icons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .connection-icon {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      opacity: 0.4;
+      transition: opacity 0.3s, color 0.3s;
+    }
+
+    .connection-icon.online {
+      color: var(--secondary-color);
+      opacity: 1;
     }
 
     @keyframes glow {
@@ -1425,6 +1443,10 @@
           <div class="status-dot" id="statusDot"></div>
           <span id="statusText">Verbindung wird hergestellt...</span>
         </div>
+        <div class="connection-icons">
+          <span class="connection-icon" id="flowiseStatus" title="Flowise">🧠</span>
+          <span class="connection-icon" id="n8nStatus" title="n8n">🔗</span>
+        </div>
         <div class="controls-grid">
           <button class="control-btn" onclick="clearResponse()">🗑️ Löschen</button>
         </div>
@@ -1567,7 +1589,8 @@
       autoReconnect: true,
       connectionTimeout: 3000,
       debugMode: false,
-      darkMode: true
+      darkMode: true,
+      n8nStatusUrl: 'http://raspi4.local:5678'
     };
 
     loadTtsCache();
@@ -1913,6 +1936,7 @@
         ws.onopen = () => {
           updateStatus('connected', '✅ Verbunden mit Sprachassistent');
           showNotification('success', 'Verbunden', 'Erfolgreich mit dem Sprachassistenten verbunden');
+          updateServiceStatus('flowise', 'online');
           if (pingInterval) clearInterval(pingInterval);
           pingInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -1947,9 +1971,10 @@
             setTimeout(initWebSocket, settings.connectionTimeout);
           }
           if (debugOverlay) debugOverlay.log('WebSocket closed');
+          updateServiceStatus('flowise', 'offline');
           updateSttStatus('error');
         };
-        
+
         ws.onerror = (err) => {
           updateStatus('error', '❌ Verbindungsfehler');
           showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
@@ -1958,6 +1983,7 @@
             console.error('WebSocket Error:', err);
           }
           if (debugOverlay) debugOverlay.log(`WebSocket error: ${err.message || err}`);
+          updateServiceStatus('flowise', 'offline');
           updateSttStatus('error');
         };
       } catch (e) {
@@ -1968,6 +1994,7 @@
           console.error('Connection Error:', e);
         }
         if (debugOverlay) debugOverlay.log(`Connection error: ${e.message || e}`);
+        updateServiceStatus('flowise', 'offline');
       }
     }
 
@@ -1978,6 +2005,24 @@
 
       statusDot.className = `status-dot ${type}`;
       statusText.textContent = message;
+    }
+
+    function updateServiceStatus(service, status) {
+      const el = document.getElementById(`${service}Status`);
+      if (!el) return;
+      if (status === 'online') {
+        el.classList.add('online');
+      } else {
+        el.classList.remove('online');
+      }
+    }
+
+    function checkN8nStatus() {
+      fetch(settings.n8nStatusUrl)
+        .then(res => {
+          updateServiceStatus('n8n', res.ok ? 'online' : 'offline');
+        })
+        .catch(() => updateServiceStatus('n8n', 'offline'));
     }
 
     function updateSttStatus(state) {
@@ -2334,10 +2379,14 @@ Modulares Design mit WebSocket-Verbindung
     document.addEventListener('DOMContentLoaded', function() {
       // Settings anwenden
       applySettings();
-      
+
       // WebSocket initialisieren
       initWebSocket();
-      
+
+      // Dienste prüfen
+      checkN8nStatus();
+      setInterval(checkN8nStatus, 60000);
+
       // Focus auf Eingabefeld
       document.getElementById('textInput').focus();
     });
