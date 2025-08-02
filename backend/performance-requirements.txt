@@ -18,6 +18,11 @@ websockets>=11.0.0
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 
+# FastAPI server
+fastapi>=0.110.0
+uvicorn>=0.27.0
+pyjwt>=2.0.0
+
 # Optional: Prometheus Metrics (für erweiterte Überwachung)
 # prometheus-client>=0.16.0
 

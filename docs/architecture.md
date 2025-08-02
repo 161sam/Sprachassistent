@@ -17,7 +17,7 @@ Ein verteilter Sprachassistent, der lokal Sprache versteht (STT), antwortet (TTS
 * **STT**: [`faster-whisper`](https://github.com/guillaumekln/faster-whisper)
 * **TTS**: [`piper`](https://github.com/rhasspy/piper)
 * **Intent-Routing**: Leitet einfache und komplexe Anfragen weiter
-* **WebSocket-Server**: `ws-server.py` nimmt Spracheingaben entgegen
+* **WebSocket-Server**: `ws_server_fastapi.py` (FastAPI-basierter Nachfolger)
 
 ### 🧰 Raspi 400 (4 GB)
 
