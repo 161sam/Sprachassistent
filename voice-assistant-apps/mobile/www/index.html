@@ -30,6 +30,16 @@
       --nebel-speed: 3s;
     }
 
+    :root.light-theme {
+      --bg-primary: #f8fafc;
+      --bg-secondary: #e2e8f0;
+      --bg-tertiary: #cbd5e1;
+      --text-primary: #1f2937;
+      --text-secondary: #475569;
+      --glass-bg: rgba(0, 0, 0, 0.05);
+      --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
     .reduced-motion * {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
@@ -1291,7 +1301,15 @@
         <div class="settings-panel" id="panel-appearance">
           <div class="settings-section">
             <div class="settings-section-title">🎨 Erscheinungsbild</div>
-            
+
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">Dunkles Design</div>
+                <div class="settings-item-desc">Hell/Dunkel umschalten</div>
+              </div>
+              <div class="settings-toggle active" id="darkModeToggle" onclick="toggleSetting('darkMode')"></div>
+            </div>
+
             <div class="settings-item">
               <div class="settings-item-info">
                 <div class="settings-item-label">Benachrichtigungen</div>
@@ -1509,8 +1527,12 @@
       glassOpacity: 0.05,
       autoReconnect: true,
       connectionTimeout: 3000,
-      debugMode: false
+      debugMode: false,
+      darkMode: true
     };
+
+    loadSavedSettings();
+    applySettings();
 
     // Settings Modal Functions
     function openSettingsModal() {
@@ -1556,7 +1578,8 @@
       document.getElementById('autoReconnect').classList.toggle('active', settings.autoReconnect);
       document.getElementById('connectionTimeout').value = settings.connectionTimeout;
       document.getElementById('debugMode').classList.toggle('active', settings.debugMode);
-      
+      document.getElementById('darkModeToggle').classList.toggle('active', settings.darkMode);
+
       // Update color selections
       updateColorSelections();
     }
@@ -1659,7 +1682,8 @@
           glassOpacity: 0.05,
           autoReconnect: true,
           connectionTimeout: 3000,
-          debugMode: false
+          debugMode: false,
+          darkMode: true
         };
         
         loadSettingsUI();
@@ -1674,6 +1698,8 @@
       applyGlassOpacity();
       applyReducedMotion();
       applyDebugMode();
+      applyTheme();
+      saveSettings();
     }
 
     function applyAnimationSpeed() {
@@ -1710,6 +1736,33 @@
           debugOverlay.destroy();
           debugOverlay = null;
         }
+      }
+    }
+
+    function applyTheme() {
+      if (settings.darkMode) {
+        document.documentElement.classList.remove('light-theme');
+      } else {
+        document.documentElement.classList.add('light-theme');
+      }
+    }
+
+    function saveSettings() {
+      try {
+        localStorage.setItem('assistantSettings', JSON.stringify(settings));
+      } catch (e) {
+        console.warn('Could not save settings', e);
+      }
+    }
+
+    function loadSavedSettings() {
+      try {
+        const stored = localStorage.getItem('assistantSettings');
+        if (stored) {
+          Object.assign(settings, JSON.parse(stored));
+        }
+      } catch (e) {
+        console.warn('Could not load settings', e);
       }
     }
 
