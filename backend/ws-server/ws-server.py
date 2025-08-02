@@ -530,7 +530,8 @@ class AudioStreamManager:
                 logging.exception("Flowise request failed")
             if attempt < config.retry_limit:
                 await asyncio.sleep(config.retry_backoff * (2 ** (attempt - 1)))
-        return "(keine Antwort von Flowise)"
+        logger.error("Flowise not reachable after retries")
+        return "Fehler: Flowise nicht erreichbar"
 
     async def _trigger_n8n(self, query: str, client_id: str) -> str:
         """Trigger n8n webhook with the given query."""
