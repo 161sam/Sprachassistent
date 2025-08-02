@@ -82,7 +82,7 @@ flowchart TB
 
 ### 🎯 Kernfunktionen
 - **🎤 Lokale Spracheingabe** mit faster-whisper STT
-- **🔊 Lokale Sprachausgabe** mit piper TTS  
+- **🔊 Flexible TTS-Engines** mit Piper & Kokoro TTS + Realtime-Switching  
 - **🧠 Intelligentes Routing** zwischen lokalen Skills und Cloud-LLMs
 - **🌊 Moderne animierte UI** mit konfigurierbaren Effekten
 - **🔄 Automatisierung** mit n8n Workflows
@@ -112,11 +112,58 @@ flowchart TB
 - **Push-Benachrichtigungen**
 - **PWA-Features** mit Service Worker
 
+### 🎤 TTS Engine-Switching (NEU!)
+Das System unterstützt jetzt flexibles Text-to-Speech mit Echtzeitwechsel zwischen verschiedenen TTS-Engines:
+
+#### 🔊 Piper TTS (Deutsche Stimmen)
+- **Hochqualitative deutsche Stimmen** mit natürlicher Aussprache
+- **Optimiert für deutsche Sprache** und Sonderzeichen (ä, ö, ü, ß)
+- **Verschiedene Stimm-Modelle**: thorsten, kerstin, eva_k, ramona, karlsson
+- **Offline-Verarbeitung** ohne Cloud-Abhängigkeit
+- **ARM-optimiert** für Raspberry Pi
+
+#### 🌍 Kokoro TTS (Mehrsprachig)
+- **Kompakte Engine** (~80MB quantisiert) mit schneller Inferenz
+- **Internationale Stimmen** für Englisch und andere Sprachen
+- **Natürliche Sprachsynthese** mit emotionaler Nuancierung
+- **Stimmen-Auswahl**: af_sarah, af_heart, af_sky, af_nova, af_alloy, etc.
+- **Schnelle Verarbeitung** ideal für responsives UX
+
+#### 🔄 Realtime-Switching Features
+- **Nahtloser Engine-Wechsel** während der Laufzeit
+- **GUI-Integration** mit TTS Control Panel
+- **Per-Request Engine-Auswahl** in WebSocket API
+- **Performance-Monitoring** mit Latenz-Tracking
+- **Automatische Fallback-Mechanismen** bei Engine-Fehlern
+
+```javascript
+// Beispiel: Engine wechseln per WebSocket
+{
+  "type": "switch_tts_engine",
+  "engine": "kokoro"  // oder "piper"
+}
+
+// Beispiel: Spezifische Engine für Text
+{
+  "type": "text",
+  "content": "Hello world",
+  "tts_engine": "kokoro",
+  "tts_voice": "af_sarah"
+}
+```
+
+📈 **Performance-Vergleich**:
+- **Piper**: Höhere Qualität deutsche Texte (~100-200ms)
+- **Kokoro**: Schnellere Verarbeitung mehrsprachig (~50-150ms)
+- **Auto-Switching**: Optimale Engine basierend auf Textsprache
+
+🛠 **Installation**: `./scripts/install-kokoro.sh` für automatisches Setup
+
 ## 🛠 Technologie-Stack
 
 ### Hardware-Backend
 - 🎤 **STT**: [Faster-Whisper](https://github.com/guillaumekln/faster-whisper) – lokale Speech-to-Text
-- 🔊 **TTS**: [Piper TTS](https://github.com/rhasspy/piper) – Text-to-Speech auf ARM
+- 🔊 **TTS**: [Piper TTS](https://github.com/rhasspy/piper) & [Kokoro TTS](https://huggingface.co/hexgrad/Kokoro-82M) – Flexible Text-to-Speech Engines
 - 🗣 **Voice OS**: [RaspOVOS](https://openvoiceos.github.io/raspOVOS/) – Wakeword-Erkennung
 - 🧠 **LLM-Routing**: [FlowiseAI](https://github.com/FlowiseAI/Flowise) – No-Code Agent-Flows
 - 🔁 **Automation**: [n8n](https://n8n.io/) – Workflow-Automatisierung

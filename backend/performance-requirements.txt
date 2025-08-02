@@ -1,0 +1,25 @@
+# Performance Monitoring und Testing für Voice Assistant
+# pip install -r performance-requirements.txt
+
+# HTTP API Server
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# System Monitoring
+psutil>=5.9.0
+
+# Audio Testing
+numpy>=1.21.0
+
+# WebSocket Testing
+websockets>=11.0.0
+
+# Development Tools
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# Optional: Prometheus Metrics (für erweiterte Überwachung)
+# prometheus-client>=0.16.0
+
+# Optional: Grafana Dashboard Export
+# python-grafana-api>=1.5.0
