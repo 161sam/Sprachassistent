@@ -7,12 +7,22 @@ Ermöglicht dynamischen Wechsel zwischen Piper und Kokoro TTS
 import asyncio
 import logging
 import time
+import os
 from typing import Dict, Optional, List, Any, Union
 from enum import Enum
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSEngineError
 from .piper_tts_engine import PiperTTSEngine
-from .kokoro_tts_engine import KokoroTTSEngine
+
+# Optional Kokoro Import depending on environment
+TTS_ENGINE = os.getenv("TTS_ENGINE", "piper").lower()
+if TTS_ENGINE == "kokoro":  # noqa: F401
+    from .kokoro_tts_engine import KokoroTTSEngine
+else:  # pragma: no cover - optional dependency
+    try:
+        from .kokoro_tts_engine import KokoroTTSEngine  # type: ignore
+    except Exception:  # pragma: no cover
+        KokoroTTSEngine = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +62,7 @@ class TTSManager:
         # Engine-Switching-Callbacks
         self.engine_change_callbacks: List[callable] = []
         
-    async def initialize(self, 
+    async def initialize(self,
                         piper_config: Optional[TTSConfig] = None,
                         kokoro_config: Optional[TTSConfig] = None,
                         default_engine: TTSEngineType = TTSEngineType.PIPER) -> bool:
@@ -94,6 +104,9 @@ class TTSManager:
                 model_dir="models"
             )
             
+        self._validate_model_dir(piper_config)
+        self._validate_model_dir(kokoro_config)
+
         self.default_configs[TTSEngineType.PIPER] = piper_config
         self.default_configs[TTSEngineType.KOKORO] = kokoro_config
         
@@ -113,13 +126,16 @@ class TTSManager:
         # Kokoro TTS initialisieren
         try:
             logger.info("Initialisiere Kokoro TTS Engine...")
-            kokoro_engine = KokoroTTSEngine(kokoro_config)
-            if await kokoro_engine.initialize():
-                self.engines[TTSEngineType.KOKORO] = kokoro_engine
-                success_count += 1
-                logger.info("✅ Kokoro TTS erfolgreich initialisiert")
+            if KokoroTTSEngine is not None:
+                kokoro_engine = KokoroTTSEngine(kokoro_config)
+                if await kokoro_engine.initialize():
+                    self.engines[TTSEngineType.KOKORO] = kokoro_engine
+                    success_count += 1
+                    logger.info("✅ Kokoro TTS erfolgreich initialisiert")
+                else:
+                    logger.error("❌ Kokoro TTS Initialisierung fehlgeschlagen")
             else:
-                logger.error("❌ Kokoro TTS Initialisierung fehlgeschlagen")
+                logger.warning("KokoroTTSEngine nicht verfügbar")
         except Exception as e:
             logger.error(f"❌ Kokoro TTS Fehler: {e}")
             
@@ -137,6 +153,17 @@ class TTSManager:
         logger.info(f"✅ TTS-Manager initialisiert mit {success_count} Engine(s)")
         
         return success_count > 0
+
+    def _validate_model_dir(self, config: TTSConfig) -> None:
+        """Stelle sicher, dass das Modellverzeichnis existiert und lesbar ist."""
+        if not config.model_dir:
+            config.model_dir = "models"
+        try:
+            os.makedirs(config.model_dir, exist_ok=True)
+        except Exception as err:
+            logger.error(f"Kann Modell-Verzeichnis '{config.model_dir}' nicht anlegen: {err}")
+        if not os.access(config.model_dir, os.R_OK):
+            logger.warning(f"Modell-Verzeichnis '{config.model_dir}' ist nicht lesbar")
         
     async def synthesize(self, 
                         text: str, 
@@ -157,7 +184,7 @@ class TTSManager:
         """
         # Engine bestimmen
         target_engine = engine or self.active_engine
-        
+
         if not target_engine or target_engine not in self.engines:
             return TTSResult(
                 audio_data=None,
@@ -168,11 +195,19 @@ class TTSManager:
             
         engine_instance = self.engines[target_engine]
         start_time = time.time()
-        
+
         # Statistiken aktualisieren
         stats = self.engine_stats[target_engine]
         stats["total_requests"] += 1
         stats["last_used"] = time.time()
+
+        chosen_voice = voice or engine_instance.config.voice
+        logger.info(
+            "TTS Synthese mit %s | Stimme: %s | Model-Dir: %s",
+            target_engine.value,
+            chosen_voice,
+            engine_instance.config.model_dir,
+        )
         
         try:
             # Synthese durchführen

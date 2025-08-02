@@ -40,12 +40,20 @@ Ein verteilter Sprachassistent, der lokal Sprache versteht (STT), antwortet (TTS
 
 ```mermaid
 flowchart LR
-  Raspi400 -->|Spracheingabe (Mic)| Raspi4
-  Raspi4 -->|Transkript| Klassifikation
-  Klassifikation -->|Intent| Odroid
-  Odroid -->|Antwort / Workflow| Raspi4
-  Raspi4 -->|Sprachausgabe| Raspi400
+  GUI -->|Audio| WS
+  WS -->|STT| STT
+  STT -->|Text| Intent
+  Intent -->|Routing| TTS
+  TTS -->|Audio + Text| GUI
 ```
+
+Der typische Ablauf:
+
+1. **GUI** zeichnet Audio auf und sendet es an den **WebSocket-Server (WS)**.
+2. Der WS leitet den Strom an die **STT**-Komponente weiter.
+3. Aus der Transkription erkennt die **Intent**-Logik den passenden Skill oder ruft externe Dienste (Flowise/n8n) auf.
+4. Die Antwort wird mit **TTS** in Audio umgewandelt.
+5. Audio und Text gehen zurück an die **GUI** und werden abgespielt/angezeigt.
 
 ---
 
@@ -75,6 +83,23 @@ scripts/
 ws-server/
 voice-assistant-apps/
 ```
+
+### Standardprofile & `.env`
+
+Profile werden mit `./config/setup_env.sh <profile>` aktiviert und erzeugen eine `.env` im Projektstamm. Wichtige Variablen:
+
+| Variable | Beschreibung |
+|----------|--------------|
+| `TTS_ENGINE` | Standard TTS Engine (`piper`/`kokoro`) |
+| `TTS_MODEL_DIR` | Verzeichnis der TTS-Modelle |
+| `FLOWISE_URL` / `N8N_URL` | Endpunkte externer Dienste |
+
+### Empfohlene Verzeichnisse
+
+* `~/models/` – zentrale Modelle (Whisper, Piper, Kokoro)
+* `~/.config/` – benutzerspezifische Einstellungen
+
+*Pfadvariablen können in der `.env` überschrieben werden.*
 
 ---
 

@@ -10,10 +10,13 @@ import os
 import time
 import logging
 import numpy as np
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from concurrent.futures import ThreadPoolExecutor
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSInitializationError, TTSSynthesisError
+
+if TYPE_CHECKING:  # pragma: no cover - used for type hints only
+    from kokoro_onnx import Kokoro
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +97,7 @@ class KokoroTTSEngine(BaseTTSEngine):
             self.is_initialized = False
             return False
             
-    def _load_kokoro_model(self, model_path: str, voices_path: str) -> Kokoro:
+    def _load_kokoro_model(self, model_path: str, voices_path: str) -> "Kokoro":
         """Lade Kokoro-Modell synchron"""
         try:
             return Kokoro(model_path, voices_path)

@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onStartRecording: (callback) => ipcRenderer.on('start-recording', callback),
   onStopRecording: (callback) => ipcRenderer.on('stop-recording', callback),
   onOpenAudioSettings: (callback) => ipcRenderer.on('open-audio-settings', callback),
+  onBackendLog: (callback) => ipcRenderer.on('backend-log', callback),
+  onBackendError: (callback) => ipcRenderer.on('backend-error', callback),
   
   // Event Listener entfernen
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),

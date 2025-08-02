@@ -120,6 +120,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+logger.info(f"Loaded .env profile: {os.getenv('ENV_PROFILE', 'default')}")
 
 class AudioChunk:
     """Optimized audio chunk representation"""
@@ -474,27 +475,37 @@ class AudioStreamManager:
 
         intent_result = self.intent_classifier.classify(text)
         intent = intent_result.intent if intent_result.confidence >= 0.5 else "unknown"
+        logger.info(
+            "Intent erkannt: %s (%.2f)", intent, intent_result.confidence
+        )
 
         if intent == "external_request":
+            logger.info("Routing decision: external")
             external = await self._route_external(text, client_id)
             if external:
                 return external
 
         for skill in self.skills:
             if getattr(skill, "intent_name", None) == intent:
+                logger.info("Routing decision: skill %s", skill.__class__.__name__)
                 return skill.handle(text)
 
         for skill in self.skills:
             if skill.can_handle(text):
+                logger.info("Routing decision: skill %s", skill.__class__.__name__)
                 return skill.handle(text)
 
+        logger.info("Routing decision: fallback response")
         return "Entschuldigung, dafür habe ich keine Antwort."
 
     async def _route_external(self, text: str, client_id: str) -> Optional[str]:
         if config.flowise_url and config.flowise_id:
+            logger.info("Routing external via Flowise")
             return await self._ask_flowise(text, client_id)
         if config.n8n_url:
+            logger.info("Routing external via n8n")
             return await self._trigger_n8n(text, client_id)
+        logger.info("No external routing configured")
         return None
 
     async def _ask_flowise(self, query: str, client_id: str) -> str:
