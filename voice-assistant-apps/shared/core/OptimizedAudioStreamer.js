@@ -65,7 +65,11 @@ class OptimizedAudioStreamer {
                 lastPing: 0
             }
         };
-        
+        // TODO (docs/Sofortiger-Aktionsplan.md §Frontend Performance Monitoring,
+        //   docs/Projekt-Verbesserungen.md §Backend-Optimierungen): Report
+        //   these metrics to the backend metrics API for centralized
+        //   monitoring.
+
         // Event handlers
         this.onConnected = null;
         this.onDisconnected = null;

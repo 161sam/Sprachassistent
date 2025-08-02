@@ -32,7 +32,9 @@ class IntentClassifier:
                 return self.model.predict([text])[0]
             except Exception as exc:
                 logger.error("Intent-Klassifikation fehlgeschlagen: %s", exc)
-
+        # TODO (docs/Code-und-Dokumentationsreview.md §Fortschrittlichere Intent-Erkennung):
+        #   Provide a trained ML model and expose confidence scores instead of
+        #   relying on keyword heuristics.
         lower = text.lower()
         if any(word in lower for word in ["zeit", "uhrzeit", "wie spät"]):
             return "time_query"

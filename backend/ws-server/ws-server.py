@@ -460,6 +460,9 @@ class AudioStreamManager:
         text = transcription.lower().strip()
 
         intent = self.intent_classifier.classify(text)
+        # TODO (docs/Code-und-Dokumentationsreview.md §Fortschrittlichere Intent-Erkennung,
+        #   docs/skill-system.md §Intent-Klassifikation): Utilize confidence
+        #   scores from the ML classifier as the primary routing mechanism.
 
         if intent == "external_request":
             external = await self._route_external(text, client_id)
@@ -606,7 +609,7 @@ class OptimizedVoiceServer:
         
         self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
         self.connection_manager = ConnectionManager(self.stream_manager, self.tts_manager)
-        
+
         # Performance metrics
         self.stats = {
             'connections': 0,
@@ -615,6 +618,10 @@ class OptimizedVoiceServer:
             'tts_switches': 0,
             'start_time': time.time()
         }
+        # TODO (docs/Projekt-Verbesserungen.md §Backend-Optimierungen,
+        #   docs/Sofortiger-Aktionsplan.md §Monitoring): Extend metrics with
+        #   latency and processing times for STT/TTS and expose them via the
+        #   metrics API.
         
     async def initialize(self):
         """Initialize all components"""
@@ -656,6 +663,8 @@ class OptimizedVoiceServer:
         
     async def handle_websocket(self, websocket, path):
         """Handle WebSocket connection with optimized message processing"""
+        # TODO (docs/security.md): Validate authentication tokens and enforce
+        #   the IP whitelist before registering the connection.
         client_id = await self.connection_manager.register(websocket)
         
         try:
