@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Optimiertes WebSocket Audio-Streaming Backend mit TTS-Engine-Switching
-Unterstützt Realtime-Wechsel zwischen Piper und Kokoro TTS
+Optimiertes WebSocket Audio-Streaming Backend
+Reduziert Audio-Latenz von ~200ms auf ~50ms durch:
+- Non-blocking async operations
+- Real-time audio streaming
+- Memory-optimierte Verarbeitung
+- Concurrent connection handling
 """
 
 import asyncio
@@ -22,10 +26,6 @@ from collections import deque
 import aiohttp
 import aiofiles
 from faster_whisper import WhisperModel
-
-# Importiere neues TTS-System
-from .tts import TTSManager, TTSEngineType, TTSConfig
-
 from metrics_api import start_metrics_api
 
 # Enhanced configuration
@@ -39,6 +39,7 @@ class StreamingConfig:
     
     # Processing settings
     stt_workers: int = 2  # Parallel STT processing
+    tts_workers: int = 1
     max_audio_duration: float = 30.0  # seconds
     
     # WebSocket settings
@@ -50,10 +51,6 @@ class StreamingConfig:
     stt_model: str = "base"
     stt_device: str = "cpu"
     stt_precision: str = "int8"
-    
-    # TTS Configuration
-    default_tts_engine: str = "piper"  # "piper" oder "kokoro"
-    enable_engine_switching: bool = True
 
 config = StreamingConfig()
 
@@ -180,12 +177,71 @@ class AsyncSTTEngine:
             logger.error(f"Sync transcription error: {e}")
             return f"[Transcription failed: {str(e)}]"
 
+class AsyncTTSEngine:
+    """Non-blocking TTS engine"""
+    
+    def __init__(self, model_path: str = None, workers: int = 1):
+        self.model_path = model_path or os.path.expanduser("~/.local/share/piper/de-thorsten-low.onnx")
+        self.executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="TTS")
+        
+    async def synthesize(self, text: str, voice: str = "de-thorsten") -> Optional[bytes]:
+        """Generate speech audio without blocking"""
+        if not text.strip():
+            return None
+            
+        loop = asyncio.get_event_loop()
+        
+        try:
+            start_time = time.time()
+            audio_data = await loop.run_in_executor(
+                self.executor,
+                self._synthesize_sync,
+                text
+            )
+            
+            processing_time = time.time() - start_time
+            logger.debug(f"TTS processing took {processing_time:.2f}s")
+            
+            return audio_data
+            
+        except Exception as e:
+            logger.error(f"TTS synthesis failed: {e}")
+            return None
+            
+    def _synthesize_sync(self, text: str) -> Optional[bytes]:
+        """Synchronous TTS in worker thread"""
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as output_file:
+                output_path = output_file.name
+                
+            # Run piper TTS
+            import subprocess
+            process = subprocess.run([
+                'piper',
+                '--model', self.model_path,
+                '--output_file', output_path,
+                '--text', text
+            ], capture_output=True, text=True, timeout=10)
+            
+            if process.returncode == 0 and os.path.exists(output_path):
+                with open(output_path, 'rb') as f:
+                    audio_data = f.read()
+                os.unlink(output_path)
+                return audio_data
+            else:
+                logger.error(f"Piper TTS failed: {process.stderr}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"TTS synthesis error: {e}")
+            return None
+
 class AudioStreamManager:
     """Manages real-time audio streams with minimal latency"""
     
-    def __init__(self, stt_engine: AsyncSTTEngine, tts_manager: TTSManager):
+    def __init__(self, stt_engine: AsyncSTTEngine, tts_engine: AsyncTTSEngine):
         self.stt_engine = stt_engine
-        self.tts_manager = tts_manager
+        self.tts_engine = tts_engine
         self.active_streams: Dict[str, Dict] = {}
         self.processing_queue = asyncio.Queue(maxsize=1000)
         self.response_callbacks: Dict[str, callable] = {}
@@ -203,9 +259,7 @@ class AudioStreamManager:
             'start_time': time.time(),
             'last_activity': time.time(),
             'is_active': True,
-            'chunk_count': 0,
-            'tts_engine': None,  # Client-spezifische TTS-Engine
-            'tts_voice': None    # Client-spezifische Stimme
+            'chunk_count': 0
         }
         
         self.response_callbacks[stream_id] = response_callback
@@ -264,9 +318,7 @@ class AudioStreamManager:
                     'stream_id': stream_id,
                     'audio_data': audio_data,
                     'client_id': stream['client_id'],
-                    'chunk_count': stream['chunk_count'],
-                    'tts_engine': stream.get('tts_engine'),
-                    'tts_voice': stream.get('tts_voice')
+                    'chunk_count': stream['chunk_count']
                 })
                 logger.debug(f"Queued stream {stream_id} for processing ({len(audio_data)} bytes)")
                 return True
@@ -277,14 +329,6 @@ class AudioStreamManager:
             logger.warning(f"No audio data in finalized stream {stream_id}")
             return False
             
-    async def set_stream_tts_config(self, stream_id: str, engine: Optional[str] = None, voice: Optional[str] = None):
-        """Setze TTS-Konfiguration für Stream"""
-        if stream_id in self.active_streams:
-            if engine:
-                self.active_streams[stream_id]['tts_engine'] = engine
-            if voice:
-                self.active_streams[stream_id]['tts_voice'] = voice
-                
     async def _process_audio_queue(self):
         """Background processor for audio streams"""
         while True:
@@ -304,8 +348,6 @@ class AudioStreamManager:
         stream_id = item['stream_id']
         audio_data = item['audio_data']
         client_id = item['client_id']
-        tts_engine = item.get('tts_engine')
-        tts_voice = item.get('tts_voice')
         
         try:
             start_time = time.time()
@@ -316,20 +358,8 @@ class AudioStreamManager:
             # Generate response (simplified - would include intent routing)
             response_text = await self._generate_response(transcription, client_id)
             
-            # TTS-Engine bestimmen
-            target_engine = None
-            if tts_engine:
-                if tts_engine.lower() == "piper":
-                    target_engine = TTSEngineType.PIPER
-                elif tts_engine.lower() == "kokoro":
-                    target_engine = TTSEngineType.KOKORO
-                    
-            # Generate TTS audio mit spezifizierter Engine
-            tts_result = await self.tts_manager.synthesize(
-                response_text, 
-                engine=target_engine,
-                voice=tts_voice
-            )
+            # Generate TTS audio
+            tts_audio = await self.tts_engine.synthesize(response_text)
             
             processing_time = time.time() - start_time
             logger.info(f"Processed stream {stream_id} in {processing_time:.2f}s: '{transcription[:50]}...'")
@@ -341,12 +371,8 @@ class AudioStreamManager:
                     'type': 'audio_response',
                     'transcription': transcription,
                     'response_text': response_text,
-                    'audio_data': tts_result.audio_data if tts_result.success else None,
+                    'audio_data': tts_audio,
                     'processing_time_ms': round(processing_time * 1000),
-                    'tts_engine_used': tts_result.engine_used,
-                    'tts_voice_used': tts_result.voice_used,
-                    'tts_success': tts_result.success,
-                    'tts_error': tts_result.error_message if not tts_result.success else None,
                     'stream_id': stream_id
                 })
                 
@@ -376,20 +402,16 @@ class AudioStreamManager:
             return "Hallo! Wie kann ich Ihnen helfen?"
         elif any(word in text for word in ['danke', 'vielen dank']):
             return "Gern geschehen!"
-        elif any(word in text for word in ['stimme', 'voice', 'engine']):
-            current_engine = self.tts_manager.get_current_engine()
-            return f"Ich verwende aktuell {current_engine.value if current_engine else 'keine'} TTS-Engine."
         else:
             return f"Sie sagten: {transcription}"
 
 class ConnectionManager:
     """Manages WebSocket connections with optimized handling"""
     
-    def __init__(self, stream_manager: AudioStreamManager, tts_manager: TTSManager):
+    def __init__(self, stream_manager: AudioStreamManager):
         self.active_connections: Dict[str, websockets.WebSocketServerProtocol] = {}
         self.connection_info: Dict[str, Dict] = {}
         self.stream_manager = stream_manager
-        self.tts_manager = tts_manager
         
     async def register(self, websocket: websockets.WebSocketServerProtocol) -> str:
         """Register new WebSocket connection"""
@@ -401,9 +423,7 @@ class ConnectionManager:
             'last_activity': time.time(),
             'remote_addr': websocket.remote_address[0] if websocket.remote_address else 'unknown',
             'messages_sent': 0,
-            'messages_received': 0,
-            'preferred_tts_engine': config.default_tts_engine,
-            'preferred_tts_voice': None
+            'messages_received': 0
         }
         
         logger.info(f"Client {client_id} connected from {websocket.remote_address}")
@@ -442,7 +462,7 @@ class ConnectionManager:
             return False
 
 class OptimizedVoiceServer:
-    """Main server with optimized audio streaming and TTS switching"""
+    """Main server with optimized audio streaming"""
     
     def __init__(self):
         self.stt_engine = AsyncSTTEngine(
@@ -450,56 +470,25 @@ class OptimizedVoiceServer:
             device=config.stt_device,
             workers=config.stt_workers
         )
-        
-        # Initialisiere TTS-Manager
-        self.tts_manager = TTSManager()
-        
-        self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
-        self.connection_manager = ConnectionManager(self.stream_manager, self.tts_manager)
+        self.tts_engine = AsyncTTSEngine(workers=config.tts_workers)
+        self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_engine)
+        self.connection_manager = ConnectionManager(self.stream_manager)
         
         # Performance metrics
         self.stats = {
             'connections': 0,
             'messages_processed': 0,
             'audio_streams': 0,
-            'tts_switches': 0,
             'start_time': time.time()
         }
         
     async def initialize(self):
         """Initialize all components"""
-        logger.info("Initializing optimized voice server with TTS switching...")
+        logger.info("Initializing optimized voice server...")
         
         # Initialize STT engine
         await self.stt_engine.initialize()
         
-        # Initialize TTS Manager
-        # Standard-Konfigurationen für beide Engines
-        piper_config = TTSConfig(
-            engine_type="piper",
-            model_path="",  # Wird automatisch ermittelt
-            voice="de-thorsten-low",
-            speed=1.0,
-            language="de",
-            sample_rate=22050
-        )
-        
-        kokoro_config = TTSConfig(
-            engine_type="kokoro",
-            model_path="",  # Wird automatisch ermittelt
-            voice="af_sarah",
-            speed=1.0,
-            language="en",
-            sample_rate=24000
-        )
-        
-        # Bestimme Standard-Engine
-        default_engine = TTSEngineType.PIPER if config.default_tts_engine.lower() == "piper" else TTSEngineType.KOKORO
-        
-        success = await self.tts_manager.initialize(piper_config, kokoro_config, default_engine)
-        if not success:
-            logger.error("TTS-Manager Initialisierung fehlgeschlagen!")
-            
         logger.info("Voice server initialized successfully")
         
     async def handle_websocket(self, websocket, path):
@@ -507,10 +496,7 @@ class OptimizedVoiceServer:
         client_id = await self.connection_manager.register(websocket)
         
         try:
-            # Send welcome message with TTS info
-            available_engines = await self.tts_manager.get_available_engines()
-            current_engine = self.tts_manager.get_current_engine()
-            
+            # Send welcome message
             await self.connection_manager.send_to_client(client_id, {
                 'type': 'connected',
                 'client_id': client_id,
@@ -518,13 +504,7 @@ class OptimizedVoiceServer:
                 'config': {
                     'chunk_size': config.chunk_size,
                     'sample_rate': config.sample_rate,
-                    'max_duration': config.max_audio_duration,
-                    'tts_switching_enabled': config.enable_engine_switching
-                },
-                'tts_info': {
-                    'available_engines': available_engines,
-                    'current_engine': current_engine.value if current_engine else None,
-                    'switching_enabled': config.enable_engine_switching
+                    'max_duration': config.max_audio_duration
                 }
             })
             
@@ -564,14 +544,6 @@ class OptimizedVoiceServer:
             await self._handle_end_audio_stream(client_id, data)
         elif message_type == 'text':
             await self._handle_text_message(client_id, data)
-        elif message_type == 'switch_tts_engine':
-            await self._handle_switch_tts_engine(client_id, data)
-        elif message_type == 'get_tts_info':
-            await self._handle_get_tts_info(client_id, data)
-        elif message_type == 'set_tts_voice':
-            await self._handle_set_tts_voice(client_id, data)
-        elif message_type == 'test_tts_engines':
-            await self._handle_test_tts_engines(client_id, data)
         elif message_type == 'ping':
             await self._handle_ping(client_id, data)
         else:
@@ -582,24 +554,15 @@ class OptimizedVoiceServer:
             
     async def _handle_start_audio_stream(self, client_id: str, data: Dict):
         """Start new audio stream"""
-        # TTS-Konfiguration aus Client-Einstellungen
-        tts_engine = data.get('tts_engine')
-        tts_voice = data.get('tts_voice')
-        
         # Create response callback
         async def response_callback(response_data):
             await self._send_audio_response(client_id, response_data)
             
         stream_id = await self.stream_manager.start_stream(client_id, response_callback)
         
-        # TTS-Konfiguration für Stream setzen
-        await self.stream_manager.set_stream_tts_config(stream_id, tts_engine, tts_voice)
-        
         await self.connection_manager.send_to_client(client_id, {
             'type': 'audio_stream_started',
             'stream_id': stream_id,
-            'tts_engine': tts_engine,
-            'tts_voice': tts_voice,
             'timestamp': time.time()
         })
         
@@ -650,173 +613,27 @@ class OptimizedVoiceServer:
     async def _handle_text_message(self, client_id: str, data: Dict):
         """Handle text-only message"""
         text = data.get('content', '').strip()
-        tts_engine = data.get('tts_engine')
-        tts_voice = data.get('tts_voice')
-        
         if not text:
             return
             
         # Generate response
         response_text = await self.stream_manager._generate_response(text, client_id)
         
-        # TTS-Engine bestimmen
-        target_engine = None
-        if tts_engine:
-            if tts_engine.lower() == "piper":
-                target_engine = TTSEngineType.PIPER
-            elif tts_engine.lower() == "kokoro":
-                target_engine = TTSEngineType.KOKORO
-                
         # Generate TTS
-        tts_result = await self.tts_manager.synthesize(
-            response_text, 
-            engine=target_engine,
-            voice=tts_voice
-        )
+        tts_audio = await self.tts_engine.synthesize(response_text)
         
         await self._send_text_response(client_id, {
             'input_text': text,
             'response_text': response_text,
-            'audio_data': tts_result.audio_data if tts_result.success else None,
-            'tts_engine_used': tts_result.engine_used,
-            'tts_voice_used': tts_result.voice_used,
-            'tts_success': tts_result.success,
-            'tts_error': tts_result.error_message if not tts_result.success else None
-        })
-        
-    async def _handle_switch_tts_engine(self, client_id: str, data: Dict):
-        """Handle TTS engine switch request"""
-        if not config.enable_engine_switching:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_switch_error',
-                'message': 'TTS engine switching is disabled'
-            })
-            return
-            
-        engine_name = data.get('engine', '').lower()
-        
-        # Engine-Type bestimmen
-        if engine_name == 'piper':
-            target_engine = TTSEngineType.PIPER
-        elif engine_name == 'kokoro':
-            target_engine = TTSEngineType.KOKORO
-        else:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_switch_error',
-                'message': f'Unknown engine: {engine_name}'
-            })
-            return
-            
-        # Engine wechseln
-        success = await self.tts_manager.switch_engine(target_engine)
-        
-        if success:
-            self.stats['tts_switches'] += 1
-            
-            # Update client preferences
-            self.connection_manager.connection_info[client_id]['preferred_tts_engine'] = engine_name
-            
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_engine_switched',
-                'engine': engine_name,
-                'timestamp': time.time()
-            })
-        else:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_switch_error',
-                'message': f'Failed to switch to {engine_name}'
-            })
-            
-    async def _handle_get_tts_info(self, client_id: str, data: Dict):
-        """Handle TTS info request"""
-        available_engines = await self.tts_manager.get_available_engines()
-        available_voices = await self.tts_manager.get_available_voices()
-        current_engine = self.tts_manager.get_current_engine()
-        engine_stats = self.tts_manager.get_engine_stats()
-        
-        await self.connection_manager.send_to_client(client_id, {
-            'type': 'tts_info',
-            'available_engines': available_engines,
-            'available_voices': available_voices,
-            'current_engine': current_engine.value if current_engine else None,
-            'engine_stats': engine_stats,
-            'switching_enabled': config.enable_engine_switching,
-            'timestamp': time.time()
-        })
-        
-    async def _handle_set_tts_voice(self, client_id: str, data: Dict):
-        """Handle TTS voice change request"""
-        voice = data.get('voice')
-        engine = data.get('engine')  # Optional: spezifische Engine
-        
-        if not voice:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_voice_error',
-                'message': 'No voice specified'
-            })
-            return
-            
-        # Engine bestimmen
-        target_engine = None
-        if engine:
-            if engine.lower() == 'piper':
-                target_engine = TTSEngineType.PIPER
-            elif engine.lower() == 'kokoro':
-                target_engine = TTSEngineType.KOKORO
-                
-        success = await self.tts_manager.set_voice(voice, target_engine)
-        
-        if success:
-            # Update client preferences
-            self.connection_manager.connection_info[client_id]['preferred_tts_voice'] = voice
-            
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_voice_changed',
-                'voice': voice,
-                'engine': engine or self.tts_manager.get_current_engine().value,
-                'timestamp': time.time()
-            })
-        else:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'tts_voice_error',
-                'message': f'Failed to set voice: {voice}'
-            })
-            
-    async def _handle_test_tts_engines(self, client_id: str, data: Dict):
-        """Handle TTS engine test request"""
-        test_text = data.get('text', 'Test der Sprachsynthese')
-        
-        results = await self.tts_manager.test_all_engines(test_text)
-        
-        # Convert results for JSON serialization
-        serializable_results = {}
-        for engine_name, result in results.items():
-            serializable_results[engine_name] = {
-                'success': result.success,
-                'processing_time_ms': result.processing_time_ms,
-                'voice_used': result.voice_used,
-                'engine_used': result.engine_used,
-                'error_message': result.error_message,
-                'audio_length_ms': result.audio_length_ms,
-                'sample_rate': result.sample_rate
-            }
-            
-        await self.connection_manager.send_to_client(client_id, {
-            'type': 'tts_test_results',
-            'results': serializable_results,
-            'test_text': test_text,
-            'timestamp': time.time()
+            'audio_data': tts_audio
         })
         
     async def _handle_ping(self, client_id: str, data: Dict):
         """Handle ping message"""
-        current_engine = self.tts_manager.get_current_engine()
-        
         await self.connection_manager.send_to_client(client_id, {
             'type': 'pong',
             'timestamp': time.time(),
-            'client_timestamp': data.get('timestamp'),
-            'current_tts_engine': current_engine.value if current_engine else None
+            'client_timestamp': data.get('timestamp')
         })
         
     async def _send_audio_response(self, client_id: str, response_data: Dict):
@@ -833,10 +650,6 @@ class OptimizedVoiceServer:
             'content': response_data.get('response_text'),
             'audio': f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
             'processing_time_ms': response_data.get('processing_time_ms'),
-            'tts_engine_used': response_data.get('tts_engine_used'),
-            'tts_voice_used': response_data.get('tts_voice_used'),
-            'tts_success': response_data.get('tts_success'),
-            'tts_error': response_data.get('tts_error'),
             'timestamp': time.time()
         })
         
@@ -852,10 +665,6 @@ class OptimizedVoiceServer:
             'type': 'response',
             'content': response_data.get('response_text'),
             'audio': f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
-            'tts_engine_used': response_data.get('tts_engine_used'),
-            'tts_voice_used': response_data.get('tts_voice_used'),
-            'tts_success': response_data.get('tts_success'),
-            'tts_error': response_data.get('tts_error'),
             'timestamp': time.time()
         })
         
@@ -866,11 +675,9 @@ class OptimizedVoiceServer:
             'total_connections': self.stats['connections'],
             'messages_processed': self.stats['messages_processed'],
             'audio_streams_processed': self.stats['audio_streams'],
-            'tts_engine_switches': self.stats['tts_switches'],
             'uptime_seconds': time.time() - self.stats['start_time'],
             'active_audio_streams': len(self.stream_manager.active_streams),
-            'processing_queue_size': self.stream_manager.processing_queue.qsize(),
-            'tts_engines': self.tts_manager.get_engine_stats()
+            'processing_queue_size': self.stream_manager.processing_queue.qsize()
         }
 
 # Main server instance
@@ -890,7 +697,7 @@ async def main():
         metrics_runner = None
     
     # Start WebSocket server
-    logger.info(f"Starting optimized WebSocket server with TTS switching on port 8123")
+    logger.info(f"Starting optimized WebSocket server on port 8123")
     
     try:
         async with websockets.serve(
@@ -902,15 +709,13 @@ async def main():
             ping_timeout=config.ping_timeout,
             close_timeout=10
         ):
-            logger.info("🚀 Optimized Voice Server with TTS switching is running!")
+            logger.info("🚀 Optimized Voice Server is running!")
             logger.info("📊 Metrics available at: http://localhost:8124/metrics")
             logger.info("🏥 Health check at: http://localhost:8124/health")
-            logger.info("🎙️  TTS Engine switching enabled" if config.enable_engine_switching else "🎙️  TTS Engine switching disabled")
             await asyncio.Future()  # Run forever
     finally:
         if metrics_runner:
             await metrics_runner.cleanup()
-        await server.tts_manager.cleanup()
 
 if __name__ == "__main__":
     try:
