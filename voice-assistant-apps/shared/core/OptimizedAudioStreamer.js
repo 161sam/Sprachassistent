@@ -463,6 +463,10 @@ class EnhancedVoiceAssistant {
         };
         
         this.setupEventHandlers();
+
+        // Simple in-memory TTS cache (text -> data URL)
+        this.ttsCache = new Map();
+        this.loadTtsCache();
     }
     
     detectPlatform() {
@@ -567,9 +571,9 @@ class EnhancedVoiceAssistant {
             this.displayResponse(data.content || data.transcription);
         }
         
-        // Play TTS audio if available
-        if (data.audio) {
-            this.playTTSAudio(data.audio);
+        // Play TTS audio if available or cached
+        if (data.audio || this.ttsCache.has(data.content)) {
+            this.playTTSAudio(data.content, data.audio);
         }
     }
     
@@ -603,11 +607,40 @@ class EnhancedVoiceAssistant {
         }, 30);
     }
     
-    playTTSAudio(audioDataUrl) {
-        const audio = new Audio(audioDataUrl);
-        audio.play().catch(error => {
-            console.warn('TTS audio playback failed:', error);
-        });
+    loadTtsCache() {
+        if (typeof localStorage === 'undefined') return;
+        try {
+            const stored = JSON.parse(localStorage.getItem('ttsCache') || '{}');
+            for (const [k, v] of Object.entries(stored)) {
+                this.ttsCache.set(k, v);
+            }
+        } catch (e) {
+            console.warn('Failed to load TTS cache', e);
+        }
+    }
+
+    saveTtsCache() {
+        if (typeof localStorage === 'undefined') return;
+        try {
+            localStorage.setItem('ttsCache', JSON.stringify(Object.fromEntries(this.ttsCache)));
+        } catch (e) {
+            console.warn('Failed to save TTS cache', e);
+        }
+    }
+
+    playTTSAudio(text, audioData) {
+        let src = this.ttsCache.get(text);
+        if (!src && audioData) {
+            src = audioData.startsWith('data:') ? audioData : `data:audio/wav;base64,${audioData}`;
+            this.ttsCache.set(text, src);
+            this.saveTtsCache();
+        }
+        if (src) {
+            const audio = new Audio(src);
+            audio.play().catch(error => {
+                console.warn('TTS audio playback failed:', error);
+            });
+        }
     }
     
     updateStatus(type, message) {
