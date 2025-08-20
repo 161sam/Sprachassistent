@@ -260,8 +260,14 @@ class AudioStreamManager:
             logger.info("Aktive Skills: %s", ", ".join(type(s).__name__ for s in self.skills))
         self.intent_classifier = IntentClassifier(config.intent_model)
 
-        # Start background processor
-        asyncio.create_task(self._process_audio_queue())
+        # Start background processor (nur wenn bereits ein Loop läuft)
+        self._queue_task = None
+        try:
+            loop = asyncio.get_running_loop()
+            self._queue_task = loop.create_task(self._process_audio_queue())
+        except RuntimeError:
+            # wird in OptimizedVoiceServer.initialize() gestartet
+            pass
         
     async def start_stream(self, client_id: str, response_callback) -> str:
         """Start new audio stream for client"""
@@ -645,7 +651,7 @@ class OptimizedVoiceServer:
         self.tts_manager = TTSManager()
         
         self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
-        self.stream_manager.stats = self.stats
+        # self.stream_manager.stats wird weiter unten gesetzt, nachdem self.stats existiert
         self.connection_manager = ConnectionManager(self.stream_manager, self.tts_manager)
 
         # Performance metrics
@@ -658,6 +664,8 @@ class OptimizedVoiceServer:
             'tts_latency_ms': [],
             'start_time': time.time()
         }
+        # jetzt dem Stream-Manager zuweisen
+        self.stream_manager.stats = self.stats
         
     async def initialize(self):
         """Initialize all components"""
@@ -701,9 +709,13 @@ class OptimizedVoiceServer:
         else:
             default_engine=TTSEngineType.PIPER
         
-        success = await self.tts_manager.initialize(piper_config, kokoro_config, default_engine)
+        success = await self.tts_manager.initialize(piper_config, kokoro_config, None, default_engine=default_engine)
         if not success:
             logger.error("TTS-Manager Initialisierung fehlgeschlagen!")
+
+        # Sicherstellen, dass der Audio-Queue-Prozessor läuft
+        if getattr(self.stream_manager, "_queue_task", None) is None:
+            self.stream_manager._queue_task = asyncio.create_task(self.stream_manager._process_audio_queue())
 
         # Optional Headscale connection check
         if config.headscale_api:
