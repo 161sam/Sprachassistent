@@ -17,6 +17,7 @@ from zonos.model import Zonos
 from zonos.conditioning import make_cond_dict
 
 from .base_tts_engine import (
+    BaseTTSEngine,
     TTSConfig,
     TTSInitializationError,
     TTSResult,
@@ -24,8 +25,18 @@ from .base_tts_engine import (
 
 logger = logging.getLogger(__name__)
 
+SUPPORTED_LANGS = {
+    'en','de','fr','es','it','pt','pl','ja','ko','zh','nl','sv','no','da','fi','tr','cs','ru','uk','el','hu'
+}
 
-class ZonosTTSEngine:
+def _normalize_lang(lang: str|None) -> str:
+    if not lang: return 'en'
+    l = lang.replace('_','-').lower()
+    special = {'pt-br':'pt','zh-cn':'zh','zh-tw':'zh','nb-no':'no','nn-no':'no'}
+    return special.get(l, l.split('-')[0])
+
+
+class ZonosTTSEngine(BaseTTSEngine):
     """
     Zonos v0.1 TTS Engine
     Erwartet optional eine Sprecher-Referenzdatei in spk_cache/<voice>.* (wav/mp3/flac/m4a/ogg/webm)
@@ -36,7 +47,7 @@ class ZonosTTSEngine:
         self.model: Optional[Zonos] = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._active_voice: Optional[str] = config.voice or None
-        self._active_lang: str = (config.language or "de-de").lower()
+        self._active_lang: str = _normalize_lang(config.language or 'de')
         self._target_sr: int = int(config.sample_rate or 48000)
 
     async def initialize(self) -> bool:
@@ -53,7 +64,7 @@ class ZonosTTSEngine:
             dtype = torch.float16 if (self.device == "cuda") else torch.float32
 
             logger.info(f"Zonos: lade Modell '{model_id}' auf {self.device} ({dtype}) …")
-            self.model = Zonos.from_pretrained(model_id, device=self.device, dtype=dtype)  # noqa: E501
+            self.model = Zonos.from_pretrained(model_id, device=self.device, )  # noqa: E501
             # native Samplerate (44.1k/48k je nach Autoencoder); wir resampeln später falls nötig
             self.native_sr: int = int(getattr(self.model.autoencoder, "sampling_rate", 44100))  # noqa: E501
             logger.info(f"Zonos: initialisiert (native SR: {self.native_sr} Hz)")
@@ -62,7 +73,7 @@ class ZonosTTSEngine:
             raise TTSInitializationError(f"Zonos Init-Fehler: {e}")
 
     # kompatibel zur Nutzung im Manager
-    async def set_voice(self, voice: Optional[str] = None, engine=None) -> bool:
+    def set_voice(self, voice: Optional[str] = None, engine=None) -> bool:
         self._active_voice = voice or self._active_voice
         return True
 
@@ -113,11 +124,11 @@ class ZonosTTSEngine:
     ) -> TTSResult:
         t0 = time.perf_counter()
         if not self.model:
-            return TTSResult(False, None, 0.0, "Zonos nicht initialisiert")
+            return TTSResult(success=False, audio_data=None, processing_time_ms=0.0, error_message="Zonos nicht initialisiert", engine_used="zonos")
 
         try:
             voice = voice or self._active_voice
-            lang = (language or self._active_lang or "de-de").lower()
+            lang = _normalize_lang(language or self._active_lang or 'de')
 
             speaker_embed = None
             spk_file = self._find_speaker_file(voice)
@@ -131,6 +142,10 @@ class ZonosTTSEngine:
             # Conditioning gemäß README
             cond_dict = make_cond_dict(text=text, language=lang, speaker=speaker_embed)
             conditioning = self.model.prepare_conditioning(cond_dict)
+            if lang not in SUPPORTED_LANGS:
+                dt = (time.perf_counter() - t0) * 1000.0
+                return TTSResult(success=False, audio_data=None, processing_time_ms=dt,
+                                  error_message=f"Zonos: Sprache '{lang}' nicht unterstützt", engine_used='zonos')
 
             # Optional rudimentäre Prosodie-Controls (speed) via conditioning-Keys:
             # Zonos unterstützt u.a. 'rate', 'pitch', 'emotion' – nur setzen falls gegeben.
@@ -140,8 +155,16 @@ class ZonosTTSEngine:
                 except Exception:
                     pass
 
-            codes = self.model.generate(conditioning)
-            wavs: torch.Tensor = self.model.autoencoder.decode(codes).cpu()  # (B, 1, T)
+            use_fp16 = (self.device == 'cuda')
+
+            param = next(self.model.parameters(), None)
+
+            amp_dtype = getattr(param, 'dtype', torch.float16)
+
+            ctx = torch.autocast(device_type='cuda', dtype=amp_dtype, enabled=use_fp16)
+            with ctx:
+                codes = self.model.generate(conditioning)
+                wavs: torch.Tensor = self.model.autoencoder.decode(codes).cpu()  # (B, 1, T)
             wav: torch.Tensor = wavs[0]  # (1, T)
 
             # Resample falls Ziel-SR gesetzt
@@ -150,8 +173,76 @@ class ZonosTTSEngine:
 
             audio_bytes = self._to_wav_bytes(out_wav, out_sr)
             dt = (time.perf_counter() - t0) * 1000.0
-            return TTSResult(True, audio_bytes, dt, None)
+            return TTSResult(success=True, audio_data=audio_bytes, processing_time_ms=dt, error_message=None, engine_used="zonos")
 
         except Exception as e:
             dt = (time.perf_counter() - t0) * 1000.0
-            return TTSResult(False, None, dt, f"Zonos Synthese-Fehler: {e}")
+            return TTSResult(success=False, audio_data=None, processing_time_ms=dt, error_message=f"Zonos Synthese-Fehler: {e}", engine_used="zonos")
+
+
+    async def test_synthesis(self, text: str = "Test der Sprachsynthese") -> TTSResult:
+        """Kompatibel zum TTSManager.selftest"""
+        return await self.synthesize(text, voice=self._active_voice, language=self._active_lang)
+    
+
+    def get_engine_info(self) -> dict:
+        return {
+            "name": "Zonos v0.1",
+            "device": self.device,
+            "native_sr": getattr(self, "native_sr", None),
+            "voices_dir": (self.config.engine_params or {}).get("speaker_dir") or os.getenv("ZONOS_SPEAKER_DIR","spk_cache"),
+        }
+    
+
+    def get_available_voices(self) -> list:
+        voices = []
+        spk_dir = (self.config.engine_params or {}).get("speaker_dir") or os.getenv("ZONOS_SPEAKER_DIR","spk_cache")
+        try:
+            exts = (".wav",".mp3",".flac",".m4a",".ogg",".webm")
+            for fn in os.listdir(spk_dir):
+                for ext in exts:
+                    if fn.endswith(ext):
+                        voices.append(fn[:-len(ext)])
+                        break
+        except Exception:
+            pass
+        # Fallback: aktive Stimme wenigstens anbieten
+        if self._active_voice and self._active_voice not in voices:
+            voices.append(self._active_voice)
+        return sorted(set(voices))
+    
+
+    def update_config(self, **kwargs) -> None:
+        # einfache Updates; Re-Init nur wenn model_id sich ändert
+        ep = dict(self.config.engine_params or {})
+        changed_model = False
+        for k, v in kwargs.items():
+            if k == "engine_params" and isinstance(v, dict):
+                # merge
+                for ek, ev in v.items():
+                    if ek == "model_id" and ep.get("model_id") != ev:
+                        changed_model = True
+                    ep[ek] = ev
+            elif hasattr(self.config, k):
+                setattr(self.config, k, v)
+                if k == "sample_rate":
+                    self._target_sr = int(v)
+            elif k == "voice":
+                self._active_voice = v
+            elif k == "language":
+                self._active_lang = str(v).lower()
+        self.config.engine_params = ep
+        if changed_model:
+            # Lazy: Modell beim nächsten synth neu laden
+            self.model = None
+    
+
+    async def cleanup(self):
+        try:
+            self.model = None
+            if self.device == "cuda":
+                import torch
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+    
