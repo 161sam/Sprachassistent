@@ -42,7 +42,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Importiere neues TTS-System
-from .tts import TTSManager, TTSEngineType, TTSConfig
+from backend.tts import TTSManager, TTSEngineType, TTSConfig
 
 from metrics_api import start_metrics_api
 from skills import load_all_skills
@@ -403,10 +403,13 @@ class AudioStreamManager:
 
             target_engine = None
             if tts_engine:
-                if tts_engine.lower() == "piper":
+                t = tts_engine.lower()
+                if t == 'piper':
                     target_engine = TTSEngineType.PIPER
-                elif tts_engine.lower() == "kokoro":
+                elif t == 'kokoro':
                     target_engine = TTSEngineType.KOKORO
+                elif t == 'zonos':
+                    target_engine = TTSEngineType.ZONOS
 
             tts_kwargs = {}
             if tts_speed is not None:
@@ -642,6 +645,7 @@ class OptimizedVoiceServer:
         self.tts_manager = TTSManager()
         
         self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
+        self.stream_manager.stats = self.stats
         self.connection_manager = ConnectionManager(self.stream_manager, self.tts_manager)
 
         # Performance metrics
@@ -687,7 +691,15 @@ class OptimizedVoiceServer:
         )
         
         # Bestimme Standard-Engine
-        default_engine = TTSEngineType.PIPER if config.default_tts_engine.lower() == "piper" else TTSEngineType.KOKORO
+        _de=(config.default_tts_engine or 'piper').lower()
+        if _de=='piper':
+            default_engine=TTSEngineType.PIPER
+        elif _de=='kokoro':
+            default_engine=TTSEngineType.KOKORO
+        elif _de=='zonos':
+            default_engine=TTSEngineType.ZONOS
+        else:
+            default_engine=TTSEngineType.PIPER
         
         success = await self.tts_manager.initialize(piper_config, kokoro_config, default_engine)
         if not success:
@@ -920,12 +932,14 @@ class OptimizedVoiceServer:
         # TTS-Engine bestimmen
         target_engine = None
         if tts_engine:
-            if tts_engine.lower() == "piper":
+            t = tts_engine.lower()
+            if t == 'piper':
                 target_engine = TTSEngineType.PIPER
-            elif tts_engine.lower() == "kokoro":
+            elif t == 'kokoro':
                 target_engine = TTSEngineType.KOKORO
-                
-        # Generate TTS
+            elif t == 'zonos':
+                target_engine = TTSEngineType.ZONOS
+
         tts_kwargs = {}
         if tts_speed is not None:
             tts_kwargs['speed'] = tts_speed
@@ -964,6 +978,8 @@ class OptimizedVoiceServer:
             target_engine = TTSEngineType.PIPER
         elif engine_name == 'kokoro':
             target_engine = TTSEngineType.KOKORO
+        elif engine_name == 'zonos':
+            target_engine = TTSEngineType.ZONOS
         else:
             await self.connection_manager.send_to_client(client_id, {
                 'type': 'tts_switch_error',
@@ -1027,7 +1043,9 @@ class OptimizedVoiceServer:
                 target_engine = TTSEngineType.PIPER
             elif engine.lower() == 'kokoro':
                 target_engine = TTSEngineType.KOKORO
-                
+            elif engine.lower() == 'zonos':
+                target_engine = TTSEngineType.ZONOS
+
         success = await self.tts_manager.set_voice(voice, target_engine)
         
         if success:

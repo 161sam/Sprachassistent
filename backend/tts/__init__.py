@@ -17,6 +17,7 @@ from .base_tts_engine import (
 from .piper_tts_engine import PiperTTSEngine
 from .kokoro_tts_engine import KokoroTTSEngine
 from .tts_manager import TTSManager, TTSEngineType, create_default_tts_manager, quick_synthesize
+from .engine_zonos import ZonosTTSEngine  
 
 __version__ = "1.0.0"
 __author__ = "Sprachassistent Team"
@@ -35,6 +36,7 @@ __all__ = [
     # Engine implementations
     "PiperTTSEngine",
     "KokoroTTSEngine",
+    "ZonosTTSEngine",
     
     # Manager
     "TTSManager",

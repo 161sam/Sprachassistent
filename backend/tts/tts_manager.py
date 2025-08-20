@@ -3,6 +3,7 @@
 TTS Manager für Realtime-Engine-Switching
 Ermöglicht dynamischen Wechsel zwischen Piper und Kokoro TTS
 """
+from .engine_zonos import ZonosTTSEngine  # optional
 
 import asyncio
 import logging
@@ -30,6 +31,7 @@ class TTSEngineType(Enum):
     """Verfügbare TTS-Engine-Typen"""
     PIPER = "piper"
     KOKORO = "kokoro"
+    ZONOS = "zonos"
 
 class TTSManager:
     """Manager für TTS-Engines mit Realtime-Switching"""
@@ -56,6 +58,14 @@ class TTSManager:
                 "total_processing_time_ms": 0.0,
                 "average_processing_time_ms": 0.0,
                 "last_used": None
+            },
+            TTSEngineType.ZONOS: {   # <— neu
+                "total_requests": 0,
+                "successful_requests": 0,
+                "failed_requests": 0,
+                "total_processing_time_ms": 0.0,
+                "average_processing_time_ms": 0.0,
+                "last_used": None
             }
         }
         
@@ -65,6 +75,7 @@ class TTSManager:
     async def initialize(self,
                         piper_config: Optional[TTSConfig] = None,
                         kokoro_config: Optional[TTSConfig] = None,
+			zonos_config: Optional[TTSConfig] = None,
                         default_engine: TTSEngineType = TTSEngineType.PIPER) -> bool:
         """
         Initialisiere TTS-Manager mit beiden Engines
@@ -139,6 +150,41 @@ class TTSManager:
         except Exception as e:
             logger.error(f"❌ Kokoro TTS Fehler: {e}")
             
+        # Defaults anlegen
+        if zonos_config is None:
+            zonos_config = TTSConfig(
+                engine_type="zonos",
+                model_path="",  # wird via model_id aus engine_params gesteuert
+                voice=os.getenv("ZONOS_VOICE", "thorsten"),
+                speed=float(os.getenv("TTS_SPEED", "1.0")),
+                language=os.getenv("ZONOS_LANG", "de-de"),
+                sample_rate=int(os.getenv("TTS_OUTPUT_SR", "48000")),
+                model_dir=os.getenv("TTS_MODEL_DIR", "models"),
+                engine_params={
+                    "model_id": os.getenv("ZONOS_MODEL", "Zyphra/Zonos-v0.1-transformer"),
+                    "lang": os.getenv("ZONOS_LANG", "de-de"),
+                    "output_sr": int(os.getenv("TTS_OUTPUT_SR", "48000")),
+                    "speaker_dir": os.getenv("ZONOS_SPEAKER_DIR", "spk_cache"),
+                }
+            )
+
+        self._validate_model_dir(zonos_config)  # harmless, legt nur Verzeichnis an
+
+        self.default_configs[TTSEngineType.ZONOS] = zonos_config
+
+        # Zonos initialisieren
+        try:
+            logger.info("Initialisiere Zonos TTS Engine...")
+            zonos_engine = ZonosTTSEngine(zonos_config)
+            if await zonos_engine.initialize():
+                self.engines[TTSEngineType.ZONOS] = zonos_engine
+                success_count += 1
+                logger.info("✅ Zonos TTS erfolgreich initialisiert")
+            else:
+                logger.error("❌ Zonos TTS Initialisierung fehlgeschlagen")
+        except Exception as e:
+            logger.error(f"❌ Zonos TTS Fehler: {e}")
+
         # Standard-Engine setzen
         if default_engine in self.engines:
             self.active_engine = default_engine
@@ -444,7 +490,15 @@ async def quick_synthesize(text: str, engine: str = "piper", voice: Optional[str
     try:
         await manager.initialize()
         
-        engine_type = TTSEngineType.PIPER if engine.lower() == "piper" else TTSEngineType.KOKORO
+        e=(engine or 'piper').lower()
+        if e=='piper':
+            engine_type=TTSEngineType.PIPER
+        elif e=='kokoro':
+            engine_type=TTSEngineType.KOKORO
+        elif e=='zonos':
+            engine_type=TTSEngineType.ZONOS
+        else:
+            engine_type=TTSEngineType.PIPER
         await manager.switch_engine(engine_type)
         
         return await manager.synthesize(text, voice=voice)

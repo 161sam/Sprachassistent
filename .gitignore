@@ -282,3 +282,20 @@ sw.js.map
 .rollup.cache/
 .terser-cache/
 .babel-cache/
+
+# Python virtual env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+\
+# Modelle & große Artefakte
+models/**
+!models/.gitkeep
+*.onnx
+*.onnx.json
+\
+# Backups / temporär
+*.bak
+*.bak_*
+*.old
