@@ -357,12 +357,19 @@ const config = {
   flowise: {
     url: 'http://odroid-gateway.headscale:3000'
   },
-  
+
   n8n: {
-    url: 'http://odroid-gateway.headscale:5678'  
+    url: 'http://odroid-gateway.headscale:5678'
   }
 };
 ```
+
+### Lokale LLMs (LM Studio)
+
+- LM Studio starten und ein Modell laden
+- In `.env` `LLM_API_BASE` setzen, z. B. `http://localhost:1234/v1`
+- Der Backend-Server ruft beim Start `GET /models` ab und wählt das erste Modell
+- Die Web-GUI zeigt alle Modelle in einem Auswahlfeld
 
 ## 🧠 Intent-Routing Logik
 

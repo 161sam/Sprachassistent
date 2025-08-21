@@ -1403,6 +1403,14 @@
       });
       const saved = localStorage.getItem('llmModel');
       select.value = saved && models.includes(saved) ? saved : (current || models[0] || '');
+      if (models.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = '(kein Modell)';
+        select.appendChild(opt);
+        select.value = '';
+      }
+      select.disabled = models.length <= 1;
     }
 
     function setupPerformanceMonitoring() {

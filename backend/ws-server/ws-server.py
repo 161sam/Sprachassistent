@@ -407,9 +407,9 @@ class AudioStreamManager:
                     if resp.status == 200:
                         data = await resp.json()
                         models = [m.get("id") for m in data.get("data", []) if m.get("id")]
-                        if models:
-                            self.llm_models = models
-                            self.current_llm_model = self.current_llm_model or models[0]
+                        self.llm_models = models
+                        if self.current_llm_model not in models:
+                            self.current_llm_model = models[0] if models else None
         except Exception:
             logger.warning("Could not fetch LLM models from %s", url)
         
