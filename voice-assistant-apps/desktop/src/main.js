@@ -181,7 +181,7 @@ function createTray() {
 }
 
 // ---- Backend ----------------------------------------------------------------
-function waitForPort(port, host = '127.0.0.1', retries = 30, delay = 500) {
+function waitForPort(port, host = '127.0.0.1', retries = 240, delay = 500) {
   return new Promise((resolve, reject) => {
     const tryConnect = () => {
       const socket = net.connect(port, host, () => {
