@@ -125,7 +125,8 @@ def start_voice_assistant():
         'WS_HOST': '127.0.0.1',
         'WS_PORT': '48231',
         'METRICS_PORT': '48232',
-        'TTS_ENGINE': 'piper',  # Faster startup
+        # Use Zonos by default
+        'TTS_ENGINE': 'zonos',
         'STT_DEVICE': 'cpu',
         'LOGLEVEL': 'INFO'
     })

@@ -18,7 +18,8 @@ from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSEngineError
 from .piper_tts_engine import PiperTTSEngine
 
 # Optional imports
-TTS_ENGINE = os.getenv("TTS_ENGINE", "piper").lower()
+# Use Zonos as default engine to match current project preference.
+TTS_ENGINE = os.getenv("TTS_ENGINE", "zonos").lower()
 KokoroTTSEngine = None  # Initialize as None
 
 try:

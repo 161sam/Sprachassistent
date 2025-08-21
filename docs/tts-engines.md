@@ -4,7 +4,7 @@ This project can synthesize speech using different engines. Defaults are read fr
 
 ## `.env` settings
 
-- `TTS_ENGINE` – default engine (`"piper"` or `"kokoro"`)
+- `TTS_ENGINE` – default engine (`"piper"`, `"kokoro"` or `"zonos"`)
 - `TTS_VOICE` – default voice identifier
 - `TTS_SPEED` – playback speed (1.0 = normal)
 - `TTS_VOLUME` – output volume factor (1.0 = normal)

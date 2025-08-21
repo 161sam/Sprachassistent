@@ -90,7 +90,7 @@ Profile werden mit `./config/setup_env.sh <profile>` aktiviert und erzeugen eine
 
 | Variable | Beschreibung |
 |----------|--------------|
-| `TTS_ENGINE` | Standard TTS Engine (`piper`/`kokoro`) |
+| `TTS_ENGINE` | Standard TTS Engine (`piper`/`kokoro`/`zonos`) |
 | `TTS_MODEL_DIR` | Verzeichnis der TTS-Modelle |
 | `FLOWISE_URL` / `N8N_URL` | Endpunkte externer Dienste |
 
