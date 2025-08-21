@@ -270,6 +270,20 @@ class AsyncSTTEngine:
     def _load_model(self) -> WhisperModel:
         """Load model synchronously in worker thread"""
         target = self.model_path if self.model_path else self.model_size
+
+        # Some Hugging Face repositories such as "openai/whisper-base" only ship
+        # the original PyTorch weights.  Those do not contain the required
+        # CTranslate2 files used by faster-whisper.  Detect such names early and
+        # redirect to the official faster-whisper repositories to avoid startup
+        # warnings and failed first attempts.
+        if not self.model_path and target.startswith("openai/whisper-"):
+            base_name = target.split("/")[-1].replace("whisper-", "")
+            alt = f"Systran/faster-whisper-{base_name}"
+            logger.info(
+                f"Using faster-whisper model '{alt}' instead of '{target}'"
+            )
+            target = alt
+
         try:
             return WhisperModel(
                 target,
@@ -282,22 +296,17 @@ class AsyncSTTEngine:
             # ready-to-use converted models. This prevents startup failures when
             # a PyTorch model repository is mistakenly used.
             if "model.bin" in str(exc) and not self.model_path:
-                # Extract the base model name even if a namespace like "openai/" is
-                # provided (e.g. "openai/whisper-base" -> "base").  Some Hugging Face
-                # repositories such as "openai/whisper-base" only contain the original
-                # PyTorch weights which are missing the required CTranslate2 files.  In
-                # that case we transparently fall back to the official faster-whisper
-                # repository which hosts ready-to-use converted models.
-                base_name = self.model_size.split("/")[-1].replace("whisper-", "")
+                base_name = target.split("/")[-1].replace("whisper-", "")
                 alt = f"Systran/faster-whisper-{base_name}"
-                logger.warning(
-                    f"CT2 model not found for '{target}', trying fallback '{alt}'"
-                )
-                return WhisperModel(
-                    alt,
-                    device=self.device,
-                    compute_type=config.stt_precision
-                )
+                if target != alt:
+                    logger.warning(
+                        f"CT2 model not found for '{target}', trying fallback '{alt}'"
+                    )
+                    return WhisperModel(
+                        alt,
+                        device=self.device,
+                        compute_type=config.stt_precision
+                    )
             raise
         
     async def transcribe_audio(self, audio_data: bytes) -> str:

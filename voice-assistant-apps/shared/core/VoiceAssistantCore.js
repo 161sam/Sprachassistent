@@ -254,7 +254,10 @@ class VoiceAssistantCore {
   }
 
   async initializeWebSocket() {
-    const wsUrl = this.getWebSocketURL();
+    // Retrieve token and append it to the WebSocket URL so the backend can
+    // authenticate the connection before the handshake completes.
+    const token = await this.getAuthToken();
+    const wsUrl = `${this.getWebSocketURL()}?token=${encodeURIComponent(token)}`;
     console.log('🔌 Connecting to:', wsUrl);
 
     try {
@@ -263,6 +266,22 @@ class VoiceAssistantCore {
 
       this.ws.onopen = () => {
         console.log('✅ WebSocket connected');
+
+        // Send initial handshake expected by the server
+        const streamId = (globalThis.crypto?.randomUUID?.())
+          || Math.random().toString(36).slice(2);
+        try {
+          this.ws.send(JSON.stringify({
+            op: 'hello',
+            version: 1,
+            stream_id: streamId,
+            device: this.platform
+          }));
+        } catch (e) {
+          console.warn('Failed to send handshake', e);
+        }
+
+        // Optionally send auth capabilities after handshake
         this.authenticate();
         this.updateConnectionStatus('connected', '✅ Connected');
         this.metrics.reconnections++;
@@ -700,9 +719,12 @@ class VoiceAssistantCore {
   }
 
   async getAuthToken() {
-    // Generate or retrieve JWT token
-    // This would integrate with your auth system
-    return localStorage.getItem('voice_auth_token') || 'demo-token';
+    // Generate or retrieve JWT token.  The token is also stored under
+    // "wsToken" so other components (e.g. OptimizedAudioStreamer) can reuse
+    // it when establishing their own WebSocket connections.
+    const token = localStorage.getItem('voice_auth_token') || 'demo-token';
+    try { localStorage.setItem('wsToken', token); } catch (_) {}
+    return token;
   }
 
   getMetrics() {

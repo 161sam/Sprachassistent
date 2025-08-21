@@ -11,11 +11,16 @@ python3 -m faster_whisper.transcribe audio.wav
 
 ## Troubleshooting
 - Ensure `ffmpeg` is installed for audio conversion.
-- Use `WHISPER_DEVICE=cuda` on systems with CUDA.
+- Use `STT_DEVICE=cuda` on systems with CUDA.
 
 ## .env Example
 ```
-WHISPER_MODEL_SIZE=medium-int8
-WHISPER_DEVICE=cpu
-WHISPER_LANG=de
+STT_MODEL=Systran/faster-whisper-base
+STT_DEVICE=cpu
+STT_PRECISION=int8
 ```
+
+> ⚠️ Using repositories such as `openai/whisper-base` will download the
+> original PyTorch weights which miss the required CTranslate2 files.  Set
+> `STT_MODEL` to the corresponding `Systran/faster-whisper-*` repository to
+> avoid startup warnings and ensure faster-whisper works correctly.
