@@ -15,6 +15,18 @@ const projectRoot = app.isPackaged
   ? path.join(process.resourcesPath, 'app')
   : path.resolve(__dirname, '../../../');
 
+function resolveBackendBinary(projectRoot) {
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    return { cmd: process.env.PYTHON || 'python', args: [path.join(projectRoot, 'backend', 'ws-server', 'ws-server.py')], mode: 'script' };
+  }
+  const base = process.resourcesPath;
+  const bin = process.platform === 'win32'
+    ? path.join(base, 'bin', 'win', 'ws-server.exe')
+    : path.join(base, 'bin', 'linux', 'ws-server');
+  return { cmd: bin, args: [], mode: 'binary' };
+}
+
 let mainWindow;
 let tray;
 let backendProcess;
@@ -161,38 +173,30 @@ function createTray() {
 // ---- Backend ----------------------------------------------------------------
 function startBackend() {
   try {
-    const pythonVenv = path.join(projectRoot, '.venv', 'bin', 'python');
-    const pythonCmd  = fs.existsSync(pythonVenv) ? pythonVenv : (process.env.PYTHON_EXECUTABLE || 'python3');
-    const serverScript = path.join(projectRoot, 'backend', 'ws-server', 'ws-server.py');
-    const env = { ...process.env, PYTHONPATH: projectRoot,
-    WS_HOST: process.env.WS_HOST || '127.0.0.1',
-    WS_PORT: process.env.WS_PORT || '48231',
-    METRICS_PORT: process.env.METRICS_PORT || '48232'
-  };
+    const backend = resolveBackendBinary(projectRoot);
 
-    log.info(`Starting backend with: ${pythonCmd} ${serverScript}`);
-    
-// --- FORCE LOCAL WS ENV (autopatch) ---
-env.WS_HOST = '127.0.0.1';
-env.WS_PORT = '48231';
-env.METRICS_PORT = '48232';
-delete env.PORT;
-delete env.HTTP_PORT;
-delete env.APP_PORT;
-delete env.NEXT_PUBLIC_PORT;
-console.log('[desktop] Spawning backend with WS_HOST=%s WS_PORT=%s METRICS_PORT=%s', env.WS_HOST, env.WS_PORT, env.METRICS_PORT);
-backendProcess = spawn(pythonCmd, [serverScript], { cwd: projectRoot, env });
+    // --- FORCE LOCAL WS ENV (autopatch) ---
+    const env = {
+      ...process.env,
+      WS_HOST: '127.0.0.1',
+      WS_PORT: '48231',
+      METRICS_PORT: '48232',
+      JWT_SECRET: process.env.JWT_SECRET || 'devsecret',
+      JWT_ALLOW_PLAIN: process.env.JWT_ALLOW_PLAIN || '1',
+      JWT_BYPASS: process.env.JWT_BYPASS || '0'
+    };
+    delete env.PORT; delete env.HTTP_PORT; delete env.APP_PORT; delete env.NEXT_PUBLIC_PORT;
 
-    backendProcess.stdout.on('data', d => log.info(`[backend] ${d.toString()}`));
-    backendProcess.stderr.on('data', d => log.error(`[backend] ${d.toString()}`));
-    backendProcess.on('spawn', () => log.info('Backend process started'));
-    backendProcess.on('close', code => log.info(`Backend exited with code ${code}`));
-    backendProcess.on('error', err => {
-      log.error('Failed to start backend:', err);
-      dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
+    console.log('[desktop] Spawning backend (%s): %s %s', app.isPackaged ? 'prod' : 'dev', backend.cmd, backend.args.join(' '));
+
+    backendProcess = spawn(backend.cmd, backend.args, {
+      env,
+      cwd: projectRoot,
+      stdio: 'inherit'
     });
+    backendProcess.on('exit', (code) => console.log('[desktop] Backend exited', code));
   } catch (err) {
-    log.error('Failed to start backend (outer):', err);
+    log.error('Failed to start backend:', err);
     dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
   }
 }

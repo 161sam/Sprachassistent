@@ -689,3 +689,26 @@ Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert.
 - 🤝 **[Contributing Guidelines](CONTRIBUTING.md)**
 - 🐛 **[Issues & Support](https://github.com/your-repo/issues)**
 - 💬 **[Discussions](https://github.com/your-repo/discussions)**
+
+## Standalone Desktop-App (Electron + Python-Backend)
+
+* DEV-Start:
+
+  ```bash
+  # Backend im Repo-Root:
+  . .venv/bin/activate
+  python backend/ws-server/ws-server.py
+  # Electron (in voice-assistant-apps/desktop):
+  npm start
+  ```
+
+  > Alternativ: Nur `npm start` im Desktop-Ordner – der Mainprozess startet das Backend automatisch.
+
+* Build/Packaging: siehe **docs/Build-Anleitung.md**.
+  Wir nutzen **electron-builder**. In Produktion startet die App ein mit PyInstaller erstelltes Backend-Binary aus `process.resourcesPath`.
+
+* Ports/ENV: Standard ist lokal `127.0.0.1:48231` (WebSocket) und `48232` (Metrics).
+
+## Lizenz / Danksagung
+
+Bitte alle Modell-/Lib-Lizenzen vor Release prüfen.
