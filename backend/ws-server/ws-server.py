@@ -204,7 +204,7 @@ ALLOWED_IPS: List[str] = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "").spli
 logger.info(f"Loaded .env profile: {os.getenv('ENV_PROFILE', 'default')}")
 
 class AudioChunk:
-    """Optimized audio chunk representation"""
+    """Audio chunk representation"""
     __slots__ = ['data', 'timestamp', 'sequence', 'client_id']
     
     def __init__(self, data: bytes, timestamp: float, sequence: int, client_id: str):
@@ -380,7 +380,7 @@ class AudioStreamManager:
             loop = asyncio.get_running_loop()
             self._queue_task = loop.create_task(self._process_audio_queue())
         except RuntimeError:
-            # wird in OptimizedVoiceServer.initialize() gestartet
+            # wird in VoiceServer.initialize() gestartet
             pass
         
     async def start_stream(self, client_id: str, response_callback) -> str:
@@ -750,8 +750,8 @@ class ConnectionManager:
             await self.unregister(client_id)
             return False
 
-class OptimizedVoiceServer:
-    """Main server with optimized audio streaming and TTS switching"""
+class VoiceServer:
+    """Main server with audio streaming and TTS switching"""
     
     def __init__(self):
         self.stt_engine = AsyncSTTEngine(
@@ -810,7 +810,7 @@ class OptimizedVoiceServer:
         
     async def initialize(self):
         """Initialize all components"""
-        logger.info("Initializing optimized voice server with TTS switching...")
+        logger.info("Initializing voice server with TTS switching...")
         
         # Initialize STT engine
         logger.info("🎤 Initialisiere STT Engine...")
@@ -1394,7 +1394,7 @@ class OptimizedVoiceServer:
         }
 
 # Main server instance
-server = OptimizedVoiceServer()
+server = VoiceServer()
 
 async def main():
     """Main server entry point with improved error handling"""
@@ -1429,7 +1429,7 @@ async def main():
                 ping_interval=config.ping_interval,
                 ping_timeout=config.ping_timeout
             ):
-                logger.info("🚀 Optimized Voice Server with TTS switching is running!")
+                logger.info("🚀 Voice Server with TTS switching is running!")
                 logger.info(f"🔗 WebSocket server: ws://{WS_HOST}:{WS_PORT}")
                 if metrics_runner:
                     logger.info(f"📊 Metrics available at: http://{WS_HOST}:{config.metrics_port}/metrics")

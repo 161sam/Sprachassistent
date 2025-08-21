@@ -156,11 +156,11 @@ def debug_server_init():
         os.chdir('/home/saschi/Sprachassistent/backend/ws-server')
         
         # Try importing the server class
-        from ws_server import OptimizedVoiceServer
-        print("✓ OptimizedVoiceServer import erfolgreich")
-        
+        from ws_server import VoiceServer
+        print("✓ VoiceServer import erfolgreich")
+
         # Try creating instance
-        server = OptimizedVoiceServer()
+        server = VoiceServer()
         print("✓ Server-Instanz erstellt")
         
         return server

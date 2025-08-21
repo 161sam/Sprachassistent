@@ -88,7 +88,7 @@ def run_test():
                             startup_success = True
                         elif "✅ Metrics API started successfully" in line:
                             metrics_ready = True
-                        elif "🚀 Optimized Voice Server" in line:
+                        elif "🚀 Voice Server" in line:
                             websocket_ready = True
                         elif "✨ Server startup completed successfully!" in line:
                             print(f"🎉 Server startup completed! ({i+1}s)")

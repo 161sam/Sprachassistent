@@ -16,12 +16,12 @@ spec = importlib.util.spec_from_file_location("ws_server_legacy", _legacy_path)
 ws_server_legacy = importlib.util.module_from_spec(spec)
 assert spec and spec.loader
 spec.loader.exec_module(ws_server_legacy)  # type: ignore
-OptimizedVoiceServer = ws_server_legacy.OptimizedVoiceServer
+VoiceServer = ws_server_legacy.VoiceServer
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-voice_server = OptimizedVoiceServer()
+voice_server = VoiceServer()
 
 ALLOWED_IPS: List[str] = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "").split(",") if ip.strip()]
 

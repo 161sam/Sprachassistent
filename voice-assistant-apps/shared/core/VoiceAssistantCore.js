@@ -1,6 +1,6 @@
 /**
  * Voice Assistant Core with Audio Streaming & Mobile-First Design
- * Optimized for low latency, real-time audio streaming, and mobile UX
+ * Designed for low latency, real-time audio streaming, and mobile UX
  */
 
 class VoiceAssistantCore {
@@ -24,14 +24,14 @@ class VoiceAssistantCore {
     
     // Audio streaming configuration
     this.audioConfig = {
-      sampleRate: 16000, // Optimized for speech
+      sampleRate: 16000, // for speech
       channels: 1,
       chunkSize: 4096,
       bufferSize: 2048,
       codec: 'opus'
     };
     
-    // Enhanced settings with mobile optimizations
+    // Settings with mobile optimizations
     this.settings = {
       // Core features
       responseNebel: true,
@@ -81,11 +81,11 @@ class VoiceAssistantCore {
     this.gestureHandler = null;
     this.serviceWorker = null;
     
-    console.log(`🚀 Enhanced Voice Assistant Core initialized (Platform: ${this.platform})`);
+    console.log(`🚀 Voice Assistant Core initialized (Platform: ${this.platform})`);
   }
 
   detectPlatform() {
-    // Enhanced platform detection
+    // Platform detection
     if (typeof cordova !== 'undefined') return 'mobile';
     if (window.electronAPI?.isElectron) return 'desktop';
     
@@ -102,7 +102,7 @@ class VoiceAssistantCore {
   async initialize() {
     if (this.isInitialized) return;
 
-    console.log('🔧 Initializing Enhanced Voice Assistant...');
+    console.log('🔧 Initializing Voice Assistant...');
 
     try {
       // Initialize audio context early
@@ -127,7 +127,7 @@ class VoiceAssistantCore {
       this.startPerformanceMonitoring();
       
       this.isInitialized = true;
-      console.log('✅ Enhanced Voice Assistant successfully initialized');
+      console.log('✅ Voice Assistant successfully initialized');
       
       this.showNotification('success', 'System Ready', 'Voice Assistant optimized and ready');
       
@@ -389,7 +389,7 @@ class VoiceAssistantCore {
     }
   }
 
-  // Enhanced Audio Recording with Real-time Streaming
+  // Audio Recording with Real-time Streaming
   async startRecording() {
     if (this.isRecording) return;
 
@@ -444,7 +444,7 @@ class VoiceAssistantCore {
     // Create media recorder for streaming
     this.mediaRecorder = new MediaRecorder(this.currentStream, {
       mimeType: 'audio/webm;codecs=opus',
-      audioBitsPerSecond: 32000 // Optimized bitrate
+      audioBitsPerSecond: 32000 // bitrate
     });
 
     let chunkCounter = 0;
@@ -531,7 +531,7 @@ class VoiceAssistantCore {
     }
   }
 
-  // Enhanced gesture support for mobile
+  // Gesture support for mobile
   initializeGestures() {
     if (!this.settings.gestureSupport) return;
 
@@ -676,7 +676,7 @@ class VoiceAssistantCore {
     }
   }
 
-  // Enhanced caching with IndexedDB
+  // Caching with IndexedDB
   async cacheResponse(key, response) {
     if (!this.settings.cacheResponses) return;
     
@@ -698,7 +698,7 @@ class VoiceAssistantCore {
     return this.cache.get(key);
   }
 
-  // Enhanced notification system with mobile optimizations
+  // Notification system with mobile optimizations
   showNotification(type, title, message, options = {}) {
     if (!this.settings.notifications) return;
 
@@ -744,7 +744,7 @@ class VoiceAssistantCore {
 
   async getAuthToken() {
     // Generate or retrieve JWT token.  The token is also stored under
-    // "wsToken" so other components (e.g. OptimizedAudioStreamer) can reuse
+    // "wsToken" so other components (e.g. AudioStreamer) can reuse
     // it when establishing their own WebSocket connections.
     // Prefer an existing token from localStorage (either a previously stored
     // voice_auth_token or wsToken).  Fallback to the development token
@@ -756,8 +756,7 @@ class VoiceAssistantCore {
       'devsecret';
 
     // Expose the token under "wsToken" so other components (e.g. the
-    // OptimizedAudioStreamer) can append it automatically to their WebSocket
-    // URLs.
+    // AudioStreamer) can append it automatically to their WebSocket URLs.
     try { localStorage.setItem('wsToken', token); } catch (_) {}
     return token;
   }

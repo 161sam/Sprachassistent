@@ -29,17 +29,17 @@ try {
 // --- /DEV token bootstrap ---
 
 /**
- * Enhanced Voice Assistant GUI with Optimized Audio Streaming
+ * Voice Assistant GUI with low-latency audio streaming
  * Features:
  * - Real-time audio streaming with minimal latency
- * - Enhanced UI with performance monitoring
+ * - UI with performance monitoring
  * - Mobile-optimized interface
  * - Advanced settings management
  */
 
 // Import the optimized components
 // Note: These will be loaded via script tags in the HTML
-// OptimizedAudioStreamer and EnhancedVoiceAssistant are globally available
+// AudioStreamer and VoiceAssistant are globally available
 
 class VoiceAssistantGUI {
     constructor() {
@@ -48,7 +48,7 @@ class VoiceAssistantGUI {
         this.recordingTimer = null;
         this.recordingStartTime = null;
         
-        // Enhanced settings with new streaming options
+        // Settings with streaming options
         this.settings = {
             // Audio streaming settings
             audioStreaming: true,
@@ -90,10 +90,10 @@ class VoiceAssistantGUI {
     }
 
     async initialize() {
-        console.log('🚀 Initializing Enhanced Voice Assistant GUI...');
+        console.log('🚀 Initializing Voice Assistant GUI...');
         
         try {
-            // Initialize the optimized voice assistant
+            // Initialize the voice assistant
             const config = {
                 wsUrl: this.getWebSocketURL(),
                 chunkSize: this.settings.chunkSize,
@@ -102,7 +102,7 @@ class VoiceAssistantGUI {
                 enableMetrics: this.settings.enableLatencyMonitoring
             };
             
-            this.voiceAssistant = new EnhancedVoiceAssistant(config);
+            this.voiceAssistant = new VoiceAssistant(config);
             
             // Set up UI elements
             this.voiceAssistant.ui = {
@@ -116,8 +116,8 @@ class VoiceAssistantGUI {
             const success = await this.voiceAssistant.initialize();
             
             if (success) {
-                console.log('✅ Enhanced Voice Assistant initialized successfully');
-                this.showNotification('success', 'System Ready', 'Voice Assistant optimized and ready');
+                console.log('✅ Voice Assistant initialized successfully');
+                this.showNotification('success', 'System Ready', 'Voice Assistant ready');
                 this.updateStatus('connected', '✅ Verbunden mit optimiertem Server');
                 
                 // Start performance monitoring if enabled
@@ -783,7 +783,7 @@ let voiceAssistantGUI = null;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🎨 Initializing Enhanced Voice Assistant GUI...');
+    console.log('🎨 Initializing Voice Assistant GUI...');
     
     voiceAssistantGUI = new VoiceAssistantGUI();
     await voiceAssistantGUI.initialize();
