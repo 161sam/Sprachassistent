@@ -959,6 +959,10 @@
         </select>
       </div>
       <div class="settings-row">
+        <label for="llmModel">LLM-Modell</label>
+        <select id="llmModel"></select>
+      </div>
+      <div class="settings-row">
         <label for="wsHost">WS Host</label>
         <input type="text" id="wsHost" />
       </div>
@@ -1015,6 +1019,8 @@
         if (!localStorage.getItem('sttModel')) localStorage.setItem('sttModel', stt);
         const tts = localStorage.getItem('ttsEngine') || 'Zonos';
         if (!localStorage.getItem('ttsEngine')) localStorage.setItem('ttsEngine', tts);
+        const llmModel = localStorage.getItem('llmModel') || '';
+        if (!localStorage.getItem('llmModel')) localStorage.setItem('llmModel', llmModel);
 
         // Initialize voice assistant with low-latency settings
         voiceAssistant = new VoiceAssistantClient({
@@ -1035,6 +1041,22 @@
         
         // Initialize connection
         await voiceAssistant.initialize();
+
+        // Handle LLM model updates
+        voiceAssistant.ws.addEventListener('message', (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'llm_models') {
+              populateLlmModels(data.models, data.current);
+            } else if (data.type === 'llm_model_switched') {
+              showNotification('info', 'LLM gewechselt', data.model);
+            }
+          } catch (e) {
+            console.error('LLM message error', e);
+          }
+        });
+
+        voiceAssistant.sendMessage({ type: 'get_llm_models' });
         
         // Setup UI event handlers
         setupEventHandlers();
@@ -1336,6 +1358,7 @@
       document.getElementById('wsToken').value = localStorage.getItem('wsToken') || '';
       document.getElementById('sttModel').value = localStorage.getItem('sttModel') || 'Faster-Whisper';
       document.getElementById('ttsEngine').value = localStorage.getItem('ttsEngine') || 'Zonos';
+      document.getElementById('llmModel').value = localStorage.getItem('llmModel') || '';
       modal.classList.add('open');
     }
 
@@ -1349,6 +1372,7 @@
       const token = document.getElementById('wsToken').value.trim();
       const stt = document.getElementById('sttModel').value;
       const tts = document.getElementById('ttsEngine').value;
+      const llm = document.getElementById('llmModel').value;
 
       localStorage.setItem('wsHost', host);
       localStorage.setItem('wsPort', port);
@@ -1356,9 +1380,27 @@
       if (token) localStorage.setItem('wsToken', token);
       localStorage.setItem('sttModel', stt);
       localStorage.setItem('ttsEngine', tts);
+      localStorage.setItem('llmModel', llm);
+
+      if (llm) {
+        voiceAssistant.sendMessage({ type: 'switch_llm_model', model: llm });
+      }
 
       closeSettings();
       showNotification('success', 'Gespeichert', 'Einstellungen aktualisiert');
+    }
+
+    function populateLlmModels(models, current) {
+      const select = document.getElementById('llmModel');
+      select.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        select.appendChild(opt);
+      });
+      const saved = localStorage.getItem('llmModel');
+      select.value = saved && models.includes(saved) ? saved : (current || models[0] || '');
     }
 
     function setupPerformanceMonitoring() {
