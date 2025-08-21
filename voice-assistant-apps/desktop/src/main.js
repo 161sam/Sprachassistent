@@ -159,12 +159,14 @@ function createMainWindow() {
     log.error(`GUI did-fail-load: ${code} ${desc} @ ${theUrl}`);
     dialog.showErrorBox('GUI-Fehler', `Konnte GUI nicht laden:\n${desc} (Code ${code})`);
   });
-  mainWindow.webContents.on('did-finish-load', () => log.info('GUI did-finish-load'));
-
-  mainWindow.once('ready-to-show', () => {
+  const showWindow = () => {
+    if (!mainWindow) return;
+    log.info('GUI did-finish-load');
     try { mainWindow.show(); } catch {}
     if (isDev) mainWindow.webContents.openDevTools();
-  });
+  };
+  mainWindow.webContents.once('did-finish-load', showWindow);
+  mainWindow.once('ready-to-show', showWindow);
 
   mainWindow.on('closed', () => { mainWindow = null; });
 
