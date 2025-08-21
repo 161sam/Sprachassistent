@@ -725,7 +725,18 @@ class VoiceAssistantCore {
     // Generate or retrieve JWT token.  The token is also stored under
     // "wsToken" so other components (e.g. OptimizedAudioStreamer) can reuse
     // it when establishing their own WebSocket connections.
-    const token = localStorage.getItem('voice_auth_token') || 'demo-token';
+    // Prefer an existing token from localStorage (either a previously stored
+    // voice_auth_token or wsToken).  Fallback to the development token
+    // "devsecret" so that desktop and web clients behave consistently during
+    // local testing.
+    const token =
+      localStorage.getItem('voice_auth_token') ||
+      localStorage.getItem('wsToken') ||
+      'devsecret';
+
+    // Expose the token under "wsToken" so other components (e.g. the
+    // OptimizedAudioStreamer) can append it automatically to their WebSocket
+    // URLs.
     try { localStorage.setItem('wsToken', token); } catch (_) {}
     return token;
   }
