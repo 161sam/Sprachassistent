@@ -335,8 +335,8 @@
     }
 
     .settings-item {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 1fr 200px;
       align-items: center;
       padding: 1rem;
       background: var(--glass-bg);
@@ -344,6 +344,7 @@
       border-radius: 12px;
       margin-bottom: 0.75rem;
       transition: all 0.3s ease;
+      gap: 1rem;
     }
 
     .settings-item:hover {
@@ -374,6 +375,7 @@
       border-radius: 13px;
       cursor: pointer;
       transition: all 0.3s ease;
+      justify-self: end;
     }
 
     .settings-toggle.active {
@@ -475,7 +477,7 @@
       padding: 0.5rem;
       color: var(--text-primary);
       cursor: pointer;
-      min-width: 100px;
+      width: 100%;
     }
 
     .settings-select option {
@@ -489,7 +491,7 @@
       border-radius: 8px;
       padding: 0.5rem;
       color: var(--text-primary);
-      min-width: 100px;
+      width: 100%;
     }
 
     .container {
@@ -532,7 +534,7 @@
       transition: all 0.3s ease;
       display: flex;
       flex-direction: column;
-      gap: 2rem;
+      gap: 1.5rem;
       flex: 1;
     }
 
@@ -797,13 +799,14 @@
       backdrop-filter: blur(10px);
       border: 1px solid var(--glass-border);
       border-radius: 20px;
-      padding: 1.5rem;
+      padding: 2rem;
       flex: 1;
       position: relative;
       display: flex;
       align-items: flex-start;
       justify-content: center;
       overflow-y: auto;
+      min-height: 0;
     }
 
     .response-content {
@@ -827,8 +830,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 240px;
-      height: 240px;
+      width: 480px;
+      height: 480px;
       display: none;
     }
 
@@ -844,12 +847,12 @@
       height: 100%;
       border-radius: 50%;
       background: radial-gradient(circle,
-        rgba(99, 102, 241, 0.8) 0%,
-        rgba(99, 102, 241, 0.4) 30%,
-        rgba(99, 102, 241, 0.1) 60%,
+        rgba(99, 102, 241, 0.6) 0%,
+        rgba(99, 102, 241, 0.25) 40%,
+        rgba(99, 102, 241, 0.1) 70%,
         transparent 100%);
       animation: nebelWaver 3s ease-in-out infinite;
-      filter: blur(4px);
+      filter: blur(8px);
     }
 
     .nebel-circle:nth-child(1) {
@@ -860,47 +863,45 @@
     .nebel-circle:nth-child(2) {
       animation-delay: 1s;
       transform: scale(0.8);
-      background: radial-gradient(circle, 
-        rgba(16, 185, 129, 0.8) 0%, 
-        rgba(16, 185, 129, 0.4) 30%, 
-        rgba(16, 185, 129, 0.1) 60%, 
+      background: radial-gradient(circle,
+        rgba(16, 185, 129, 0.6) 0%,
+        rgba(16, 185, 129, 0.25) 40%,
+        rgba(16, 185, 129, 0.1) 70%,
         transparent 100%);
     }
 
     .nebel-circle:nth-child(3) {
       animation-delay: 2s;
       transform: scale(0.6);
-      background: radial-gradient(circle, 
-        rgba(245, 158, 11, 0.8) 0%, 
-        rgba(245, 158, 11, 0.4) 30%, 
-        rgba(245, 158, 11, 0.1) 60%, 
+      background: radial-gradient(circle,
+        rgba(245, 158, 11, 0.6) 0%,
+        rgba(245, 158, 11, 0.25) 40%,
+        rgba(245, 158, 11, 0.1) 70%,
         transparent 100%);
     }
 
     @keyframes nebelWaver {
-      0%, 100% { 
+      0%, 100% {
         transform: scale(var(--scale, 1)) rotate(0deg);
         opacity: 0.8;
-        filter: blur(0px);
+        filter: blur(8px);
       }
-      25% { 
+      25% {
         transform: scale(calc(var(--scale, 1) * 1.2)) rotate(90deg);
         opacity: 1;
-        filter: blur(2px);
+        filter: blur(12px);
       }
-      50% { 
+      50% {
         transform: scale(calc(var(--scale, 1) * 0.8)) rotate(180deg);
         opacity: 0.6;
-        filter: blur(4px);
+        filter: blur(16px);
       }
-      75% { 
+      75% {
         transform: scale(calc(var(--scale, 1) * 1.1)) rotate(270deg);
         opacity: 0.9;
-        filter: blur(1px);
+        filter: blur(10px);
       }
     }
-
-    /* Status Bar */
 
     /* Push Notifications */
     .notification-container {
@@ -1784,9 +1785,9 @@
     function initWebSocket() {
       try {
         ws = new WebSocket("ws://raspi4.local:8123");
-        
+
         ws.onopen = () => {
-          updateStatus('connected', '✅ Verbunden mit Sprachassistent');
+          console.log('✅ Verbunden mit Sprachassistent');
           showNotification('success', 'Verbunden', 'Erfolgreich mit dem Sprachassistenten verbunden');
         };
         
@@ -1797,44 +1798,32 @@
         };
         
         ws.onclose = () => {
-          updateStatus('error', '❌ Verbindung getrennt');
+          console.log('❌ Verbindung getrennt');
           showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
-          
+
           if (settings.autoReconnect) {
             setTimeout(initWebSocket, settings.connectionTimeout);
           }
         };
         
         ws.onerror = (err) => {
-          updateStatus('error', '❌ Verbindungsfehler');
+          console.error('WebSocket Error:', err);
           showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
-          
+
           if (settings.debugMode) {
             console.error('WebSocket Error:', err);
           }
         };
       } catch (e) {
-        updateStatus('error', '❌ Server nicht erreichbar');
+        console.error('Connection Error:', e);
         showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Konfiguration');
-        
+
         if (settings.debugMode) {
           console.error('Connection Error:', e);
         }
       }
     }
-
-    // Status aktualisieren
-    function updateStatus(type, message) {
-      const statusDot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      if (statusDot && statusText) {
-        statusDot.className = `status-dot ${type}`;
-        statusText.textContent = message;
-      } else {
-        console.log(`Status: ${type} - ${message}`);
-      }
-    }
-
+    
     function closeNotification(button) {
       const notification = button.closest('.notification');
       notification.classList.remove('show');
@@ -2134,14 +2123,6 @@ Modulares Design mit WebSocket-Verbindung
         const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
         document.getElementById('recordingTime').textContent = `${elapsed}s`;
       }
-    }
-
-    // Antwort löschen
-    function clearResponse() {
-      const responseElement = document.getElementById('response');
-      responseElement.innerHTML = '<div class="response-empty">Ihre Antwort erscheint hier...</div>';
-      hideNebelAnimation();
-      showNotification('success', 'Gelöscht', 'Antwort wurde gelöscht');
     }
 
     // App initialisieren
