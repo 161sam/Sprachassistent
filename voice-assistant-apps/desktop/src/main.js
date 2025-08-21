@@ -7,6 +7,7 @@ const { autoUpdater } = require('electron-updater');
 const dotenv = require('dotenv');
 const http = require('http');
 const url = require('url');
+const net = require('net');
 
 // ---- Basics -----------------------------------------------------------------
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
@@ -62,10 +63,10 @@ app.commandLine.appendSwitch('disable-setuid-sandbox');
 app.commandLine.appendSwitch('disable-dev-shm-usage');
 
 // ---- App lifecycle ----------------------------------------------------------
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   loadEnv();
-  startBackend();
   startGuiServer();
+  await startBackend();
   createMainWindow();
   createTray();
   if (!isDev && app.isPackaged) autoUpdater.checkForUpdatesAndNotify();
@@ -180,7 +181,27 @@ function createTray() {
 }
 
 // ---- Backend ----------------------------------------------------------------
-function startBackend() {
+function waitForPort(port, host = '127.0.0.1', retries = 30, delay = 500) {
+  return new Promise((resolve, reject) => {
+    const tryConnect = () => {
+      const socket = net.connect(port, host, () => {
+        socket.end();
+        resolve();
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        if (retries-- <= 0) {
+          reject(new Error('Backend start timed out'));
+        } else {
+          setTimeout(tryConnect, delay);
+        }
+      });
+    };
+    tryConnect();
+  });
+}
+
+async function startBackend() {
   try {
     const backend = resolveBackendBinary(projectRoot);
 
@@ -209,9 +230,12 @@ function startBackend() {
       log.error('Backend spawn error:', err);
       dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
     });
+
+    await waitForPort(Number(env.WS_PORT));
   } catch (err) {
     log.error('Failed to start backend:', err);
     dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
+    throw err;
   }
 }
 
