@@ -262,9 +262,9 @@ config/local.json
 .env.staging
 
 # LOGS UND MONITORING
-logs/
-*.log.*
-crash-reports/
+#logs/
+#*.log.*
+#crash-reports/
 
 # BACKUP FILES
 *.bak.*
