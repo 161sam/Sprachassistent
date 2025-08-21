@@ -167,7 +167,8 @@ class StreamingConfig:
     stt_precision: str = os.getenv("STT_PRECISION", "int8")
 
     # TTS Configuration
-    default_tts_engine: str = os.getenv("TTS_ENGINE", os.getenv("DEFAULT_TTS_ENGINE", "piper"))
+    # Zonos is the preferred default TTS engine
+    default_tts_engine: str = os.getenv("TTS_ENGINE", os.getenv("DEFAULT_TTS_ENGINE", "zonos"))
     default_tts_voice: str = os.getenv("TTS_VOICE", "de-thorsten-low")
     default_tts_speed: float = float(os.getenv("TTS_SPEED", 1.0))
     default_tts_volume: float = float(os.getenv("TTS_VOLUME", 1.0))
@@ -269,11 +270,28 @@ class AsyncSTTEngine:
     def _load_model(self) -> WhisperModel:
         """Load model synchronously in worker thread"""
         target = self.model_path if self.model_path else self.model_size
-        return WhisperModel(
-            target,
-            device=self.device,
-            compute_type=config.stt_precision
-        )
+        try:
+            return WhisperModel(
+                target,
+                device=self.device,
+                compute_type=config.stt_precision
+            )
+        except RuntimeError as exc:
+            # If the downloaded model is missing the CTranslate2 files (model.bin),
+            # fall back to the official faster-whisper repository which provides
+            # ready-to-use converted models. This prevents startup failures when
+            # a PyTorch model repository is mistakenly used.
+            if "model.bin" in str(exc) and not self.model_path:
+                alt = f"guillaumekln/whisper-{self.model_size}"
+                logger.warning(
+                    f"CT2 model not found for '{target}', trying fallback '{alt}'"
+                )
+                return WhisperModel(
+                    alt,
+                    device=self.device,
+                    compute_type=config.stt_precision
+                )
+            raise
         
     async def transcribe_audio(self, audio_data: bytes) -> str:
         """Transcribe audio without blocking event loop."""

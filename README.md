@@ -82,7 +82,7 @@ flowchart TB
 
 ### 🎯 Kernfunktionen
 - **🎤 Lokale Spracheingabe** mit faster-whisper STT
-- **🔊 Flexible TTS-Engines** mit Piper & Kokoro TTS + Realtime-Switching  
+- **🔊 Flexible TTS-Engines** mit Piper, Kokoro & Zonos + Realtime-Switching
 - **🧠 Intelligentes Routing** zwischen lokalen Skills und Cloud-LLMs
 - **🌊 Moderne animierte UI** mit konfigurierbaren Effekten
 - **🔄 Automatisierung** mit n8n Workflows
@@ -140,7 +140,7 @@ Das System unterstützt jetzt flexibles Text-to-Speech mit Echtzeitwechsel zwisc
 // Beispiel: Engine wechseln per WebSocket
 {
   "type": "switch_tts_engine",
-  "engine": "kokoro"  // oder "piper"
+  "engine": "kokoro"  // oder "piper"/"zonos"
 }
 
 // Beispiel: Spezifische Engine für Text
@@ -163,7 +163,7 @@ Das System unterstützt jetzt flexibles Text-to-Speech mit Echtzeitwechsel zwisc
 
 ### Hardware-Backend
 - 🎤 **STT**: [Faster-Whisper](https://github.com/guillaumekln/faster-whisper) – lokale Speech-to-Text
-- 🔊 **TTS**: [Piper TTS](https://github.com/rhasspy/piper) & [Kokoro TTS](https://huggingface.co/hexgrad/Kokoro-82M) – Flexible Text-to-Speech Engines
+- 🔊 **TTS**: [Piper TTS](https://github.com/rhasspy/piper), [Kokoro TTS](https://huggingface.co/hexgrad/Kokoro-82M) & [Zonos](https://github.com/Zyphra/Zonos) – Flexible Text-to-Speech Engines
 - 🗣 **Voice OS**: [RaspOVOS](https://openvoiceos.github.io/raspOVOS/) – Wakeword-Erkennung
 - 🧠 **LLM-Routing**: [FlowiseAI](https://github.com/FlowiseAI/Flowise) – No-Code Agent-Flows
 - 🔁 **Automation**: [n8n](https://n8n.io/) – Workflow-Automatisierung

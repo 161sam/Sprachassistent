@@ -133,7 +133,7 @@ def debug_configs():
     print(f"  METRICS_PORT: {metrics_port}")
     
     # TTS configs
-    tts_engine = os.getenv('TTS_ENGINE', 'piper')
+    tts_engine = os.getenv('TTS_ENGINE', 'zonos')
     tts_model_dir = os.getenv('TTS_MODEL_DIR', 'models')
     
     print(f"  TTS_ENGINE: {tts_engine}")
