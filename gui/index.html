@@ -238,83 +238,7 @@
       font-weight: 400;
     }
 
-    /* Status Section */
-    .status-section {
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      padding: var(--spacing-lg);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .status-info {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-    }
-
-    .status-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--warning-color);
-      animation: pulse 2s infinite;
-    }
-
-    .status-dot.connected {
-      background: var(--success-color);
-      animation: glow 2s infinite;
-    }
-
-    .status-dot.error {
-      background: var(--danger-color);
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    @keyframes glow {
-      0%, 100% { 
-        box-shadow: 0 0 10px var(--success-color);
-        transform: scale(1);
-      }
-      50% { 
-        box-shadow: 0 0 20px var(--success-color);
-        transform: scale(1.1);
-      }
-    }
-
-    .status-text {
-      font-weight: 500;
-      font-size: 0.95rem;
-    }
-
-    .status-actions {
-      display: flex;
-      gap: var(--spacing-sm);
-    }
-
-    .status-button {
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: 12px;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all var(--animation-speed) var(--animation-easing);
-    }
-
-    .status-button:hover, .status-button:active {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      transform: translateY(-1px);
-    }
+    /* Statusleiste entfernt */
 
     /* Avatar Section */
     .avatar-section {
@@ -326,22 +250,21 @@
     }
 
     .avatar {
-      width: clamp(120px, 25vw, 180px);
-      height: clamp(120px, 25vw, 180px);
+      width: clamp(240px, 50vw, 360px);
+      height: clamp(240px, 50vw, 360px);
       border-radius: 50%;
-      background: var(--glass-bg);
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 60%, transparent 100%);
       backdrop-filter: blur(20px);
-      border: 2px solid var(--glass-border);
+      border: none;
       position: relative;
       overflow: hidden;
       transition: all 0.5s var(--animation-easing);
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 0 80px rgba(99, 102, 241, 0.4);
       will-change: transform;
     }
 
     .avatar.active {
-      border-color: var(--primary-color);
-      box-shadow: 0 0 60px rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 100px rgba(99, 102, 241, 0.5);
       transform: scale(1.05);
     }
 
@@ -428,8 +351,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 30px;
-      height: 30px;
+      width: 60px;
+      height: 60px;
       background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
       border-radius: 50%;
       box-shadow: 0 0 30px rgba(99, 102, 241, 0.8);
@@ -454,6 +377,7 @@
       border: 1px solid var(--glass-border);
       border-radius: 24px;
       padding: var(--spacing-xl);
+      flex: 1;
       min-height: 200px;
       position: relative;
       display: flex;
@@ -484,8 +408,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 150px;
-      height: 150px;
+      width: 300px;
+      height: 300px;
       opacity: 0;
       transition: opacity 0.3s ease;
       pointer-events: none;
@@ -502,19 +426,20 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+      background: radial-gradient(circle, var(--primary-color) 0%, rgba(99, 102, 241, 0) 70%);
+      filter: blur(10px);
       animation: processingWave 2s ease-in-out infinite;
     }
 
     .processing-circle:nth-child(2) {
       animation-delay: 0.7s;
-      background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+      background: radial-gradient(circle, var(--secondary-color) 0%, rgba(16, 185, 129, 0) 70%);
       transform: scale(0.8);
     }
 
     .processing-circle:nth-child(3) {
       animation-delay: 1.4s;
-      background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+      background: radial-gradient(circle, var(--accent-color) 0%, rgba(245, 158, 11, 0) 70%);
       transform: scale(0.6);
     }
 
@@ -694,6 +619,75 @@
       100% { opacity: 0; }
     }
 
+    /* Settings Modal */
+    .settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+
+    .settings-modal.open { display: flex; }
+
+    .settings-dialog {
+      background: var(--bg-secondary);
+      padding: var(--spacing-xl);
+      border-radius: 16px;
+      min-width: 300px;
+      max-width: 90%;
+      color: var(--text-primary);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .settings-row label {
+      flex: 0 0 140px;
+    }
+
+    .settings-row input,
+    .settings-row select {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--glass-border);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .settings-actions {
+      text-align: right;
+      margin-top: var(--spacing-lg);
+    }
+
+    .settings-actions button {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      margin-left: var(--spacing-sm);
+    }
+
+    .settings-actions .btn-primary {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .settings-actions .btn-secondary {
+      background: var(--glass-bg);
+      color: var(--text-primary);
+    }
+
     /* Notification System */
     .notification-container {
       position: fixed;
@@ -838,8 +832,8 @@
     /* Landscape Orientation */
     @media (orientation: landscape) and (max-height: 500px) {
       .avatar {
-        width: 100px;
-        height: 100px;
+        width: 200px;
+        height: 200px;
       }
       
       .main-content {
@@ -879,19 +873,6 @@
       <section class="header-section">
         <h1 class="main-title">KI-Sprachassistent</h1>
         <p class="main-subtitle">Sprechen Sie mit Ihrem intelligenten Assistenten</p>
-      </section>
-
-      <!-- Status Section -->
-      <section class="status-section">
-        <div class="status-info">
-          <div class="status-dot" id="statusDot"></div>
-          <span class="status-text" id="statusText">Verbindung wird hergestellt...</span>
-        </div>
-        <div class="status-actions">
-          <button class="status-button" onclick="clearResponse()">
-            🗑️ Löschen
-          </button>
-        </div>
       </section>
 
       <!-- Avatar Section -->
@@ -955,6 +936,44 @@
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div class="settings-modal" id="settingsModal">
+    <div class="settings-dialog">
+      <h2>Einstellungen</h2>
+      <div class="settings-row">
+        <label for="sttModel">STT-Modell</label>
+        <select id="sttModel">
+          <option value="Faster-Whisper">Faster-Whisper</option>
+          <option value="Whisper">Whisper</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label for="ttsEngine">TTS-Engine</label>
+        <select id="ttsEngine">
+          <option value="Zonos">Zonos</option>
+          <option value="Piper">Piper</option>
+          <option value="Kokoro">Kokoro</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label for="wsHost">WS Host</label>
+        <input type="text" id="wsHost" />
+      </div>
+      <div class="settings-row">
+        <label for="wsPort">WS Port</label>
+        <input type="number" id="wsPort" />
+      </div>
+      <div class="settings-row">
+        <label for="wsToken">Token</label>
+        <input type="text" id="wsToken" />
+      </div>
+      <div class="settings-actions">
+        <button class="btn-secondary" onclick="closeSettings()">Abbrechen</button>
+        <button class="btn-primary" onclick="saveSettings()">Speichern</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
@@ -975,16 +994,24 @@
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        // Ensure token and URL exist in localStorage
+        // Ensure token and connection settings exist
         const token = localStorage.getItem('wsToken') || 'devsecret';
         if (!localStorage.getItem('wsToken')) {
           localStorage.setItem('wsToken', token);
         }
+        const wsHost = localStorage.getItem('wsHost') || '127.0.0.1';
+        const wsPort = localStorage.getItem('wsPort') || '48231';
+        if (!localStorage.getItem('wsHost')) localStorage.setItem('wsHost', wsHost);
+        if (!localStorage.getItem('wsPort')) localStorage.setItem('wsPort', wsPort);
 
-        let wsUrl = localStorage.getItem('wsUrl') || 'ws://127.0.0.1:48231';
+        let wsUrl = localStorage.getItem('wsUrl') || `ws://${wsHost}:${wsPort}`;
         if (!wsUrl.includes('token=')) {
           wsUrl += (wsUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
         }
+        const stt = localStorage.getItem('sttModel') || 'Faster-Whisper';
+        if (!localStorage.getItem('sttModel')) localStorage.setItem('sttModel', stt);
+        const tts = localStorage.getItem('ttsEngine') || 'Zonos';
+        if (!localStorage.getItem('ttsEngine')) localStorage.setItem('ttsEngine', tts);
 
         // Initialize voice assistant with low-latency settings
         voiceAssistant = new VoiceAssistantClient({
@@ -997,7 +1024,6 @@
         });
         
         // Setup UI bindings
-        voiceAssistant.ui.statusElement = document.getElementById('statusText');
         voiceAssistant.ui.responseElement = document.getElementById('response');
         voiceAssistant.ui.recordButton = document.getElementById('voiceBtn');
         
@@ -1301,8 +1327,35 @@
     }
 
     function showSettings() {
-      // Placeholder for settings modal
-      showNotification('info', 'Einstellungen', 'Einstellungen-Modal wird implementiert');
+      const modal = document.getElementById('settingsModal');
+      document.getElementById('wsHost').value = localStorage.getItem('wsHost') || '127.0.0.1';
+      document.getElementById('wsPort').value = localStorage.getItem('wsPort') || '48231';
+      document.getElementById('wsToken').value = localStorage.getItem('wsToken') || '';
+      document.getElementById('sttModel').value = localStorage.getItem('sttModel') || 'Faster-Whisper';
+      document.getElementById('ttsEngine').value = localStorage.getItem('ttsEngine') || 'Zonos';
+      modal.classList.add('open');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function saveSettings() {
+      const host = document.getElementById('wsHost').value.trim();
+      const port = document.getElementById('wsPort').value.trim();
+      const token = document.getElementById('wsToken').value.trim();
+      const stt = document.getElementById('sttModel').value;
+      const tts = document.getElementById('ttsEngine').value;
+
+      localStorage.setItem('wsHost', host);
+      localStorage.setItem('wsPort', port);
+      localStorage.setItem('wsUrl', `ws://${host}:${port}`);
+      if (token) localStorage.setItem('wsToken', token);
+      localStorage.setItem('sttModel', stt);
+      localStorage.setItem('ttsEngine', tts);
+
+      closeSettings();
+      showNotification('success', 'Gespeichert', 'Einstellungen aktualisiert');
     }
 
     function setupPerformanceMonitoring() {
@@ -1454,13 +1507,9 @@
       }
     }
 
-    // Handle status updates from voice assistant
-    window.updateConnectionStatus = function(type, message) {
-      const statusDot = document.getElementById('statusDot');
-      const statusText = document.getElementById('statusText');
-      
-      statusDot.className = `status-dot ${type}`;
-      statusText.textContent = message;
+    // Verbindungstatus in der Konsole ausgeben
+    window.updateStatus = function(type, message) {
+      console.log(`Status: ${type} - ${message}`);
     };
 
     // Handle PWA install prompt
