@@ -143,15 +143,31 @@ class LMClient:
         self.base = base.rstrip("/")
         self.timeout = aiohttp.ClientTimeout(total=timeout)
 
-    async def list_models(self):
+    async def list_models(self) -> Dict[str, List[str]]:
+        """Return available and loaded model identifiers from the LLM service.
+
+        The LM Studio API returns a list of model objects.  Some builds expose a
+        ``loaded`` or ``isLoaded`` flag to mark models that are currently
+        resident in memory.  This helper normalizes the response to two simple
+        lists: ``available`` (all known models) and ``loaded`` (models flagged as
+        loaded).  If the service does not expose such a flag the ``loaded`` list
+        remains empty.
+        """
+
         url = f"{self.base}/models"
         async with aiohttp.ClientSession(timeout=self.timeout) as s:
             async with s.get(url) as r:
                 if r.status != 200:
-                    return []
+                    return {"available": [], "loaded": []}
                 data = await r.json()
                 items = data.get("data", [])
-                return [m.get("id") for m in items if m.get("id")]
+                available = [m.get("id") for m in items if m.get("id")]
+                loaded = [
+                    m.get("id")
+                    for m in items
+                    if m.get("id") and (m.get("loaded") or m.get("isLoaded"))
+                ]
+                return {"available": available, "loaded": loaded}
 
     async def chat(self, model: str, messages: list, temperature: float = 0.7,
                    max_tokens: int = 256, tools: list | None = None,
@@ -952,7 +968,8 @@ class VoiceServer:
         logger.info("🎆 Audio Queue Processor gestartet")
 
         if self.llm_enabled:
-            self.llm_models = await self.llm.list_models()
+            info = await self.llm.list_models()
+            self.llm_models = info.get('available', [])
             chosen = None
             pref = config.llm_default_model
             if pref != "auto" and pref in self.llm_models:
@@ -1448,11 +1465,18 @@ class VoiceServer:
 
     async def _handle_get_llm_models(self, client_id: str, data: Dict):
         """Send available LLM models to the client."""
-        models = await self.llm.list_models() if self.llm_enabled else []
-        self.llm_models = models
+        if self.llm_enabled:
+            info = await self.llm.list_models()
+            self.llm_models = info.get('available', [])
+            loaded = info.get('loaded', [])
+        else:
+            self.llm_models = []
+            loaded = []
+
         await self.connection_manager.send_to_client(client_id, {
             'type': 'llm_models',
-            'models': models,
+            'available': self.llm_models,
+            'loaded': loaded,
             'current': self.llm_model
         })
 
@@ -1461,7 +1485,8 @@ class VoiceServer:
         target = data.get('model')
         ok = False
         if self.llm_enabled and target:
-            models = await self.llm.list_models()
+            info = await self.llm.list_models()
+            models = info.get('available', [])
             if target in models:
                 self.llm_model = target
                 self.chat_histories.pop(client_id, None)
