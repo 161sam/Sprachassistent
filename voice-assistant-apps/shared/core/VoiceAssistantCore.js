@@ -264,7 +264,7 @@ class VoiceAssistantCore {
       this.ws = new WebSocket(wsUrl);
       this.ws.binaryType = 'arraybuffer';
 
-      this.ws.onopen = () => {
+      const handleOpen = () => {
         try {
           console.log('✅ WebSocket connected');
 
@@ -284,6 +284,13 @@ class VoiceAssistantCore {
           console.warn('Failed to complete WebSocket handshake', e);
         }
       };
+
+      this.ws.onopen = handleOpen;
+      // It's possible for extremely fast connections to reach OPEN before the
+      // onopen handler is registered. Trigger manually in that case.
+      if (this.ws.readyState === WebSocket.OPEN) {
+        handleOpen();
+      }
 
       this.ws.onmessage = (event) => {
         this.handleWebSocketMessage(event);
