@@ -184,6 +184,9 @@ class StreamingConfig:
     headscale_api: str = os.getenv("HEADSCALE_API", "")
     headscale_token: str = os.getenv("HEADSCALE_TOKEN", "")
 
+    # Local LLM (LM Studio compatible)
+    llm_api_base: str = os.getenv("LLM_API_BASE", "")
+
     # Retry configuration for external services
     retry_limit: int = int(os.getenv("RETRY_LIMIT", 3))
     retry_backoff: float = float(os.getenv("RETRY_BACKOFF", 1.0))
@@ -367,6 +370,17 @@ class AudioStreamManager:
         self.processing_queue = asyncio.Queue(maxsize=1000)
         self.response_callbacks: Dict[str, callable] = {}
 
+        # LLM model handling
+        self.llm_models: List[str] = []
+        self.current_llm_model: Optional[str] = None
+        self.conversations: Dict[str, List[Dict[str, str]]] = {}
+        if config.llm_api_base:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._refresh_llm_models())
+            except RuntimeError:
+                pass
+
         # Skills und Intent-Klassifizierer laden
         skills_path = Path(__file__).parent / "skills"
         self.skills = load_all_skills(skills_path, config.enabled_skills)
@@ -382,6 +396,22 @@ class AudioStreamManager:
         except RuntimeError:
             # wird in VoiceServer.initialize() gestartet
             pass
+
+    async def _refresh_llm_models(self) -> None:
+        """Fetch available LLM models from LM Studio."""
+        url = f"{config.llm_api_base.rstrip('/')}/models"
+        try:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        models = [m.get("id") for m in data.get("data", []) if m.get("id")]
+                        if models:
+                            self.llm_models = models
+                            self.current_llm_model = self.current_llm_model or models[0]
+        except Exception:
+            logger.warning("Could not fetch LLM models from %s", url)
         
     async def start_stream(self, client_id: str, response_callback) -> str:
         """Start new audio stream for client"""
@@ -622,6 +652,9 @@ class AudioStreamManager:
         return "Entschuldigung, dafür habe ich keine Antwort."
 
     async def _route_external(self, text: str, client_id: str) -> Optional[str]:
+        if config.llm_api_base and self.current_llm_model:
+            logger.info("Routing external via LLM")
+            return await self._ask_llm(text, client_id)
         if config.flowise_url and config.flowise_id:
             logger.info("Routing external via Flowise")
             return await self._ask_flowise(text, client_id)
@@ -630,6 +663,37 @@ class AudioStreamManager:
             return await self._trigger_n8n(text, client_id)
         logger.info("No external routing configured")
         return None
+
+    async def _ask_llm(self, query: str, client_id: str) -> str:
+        """Send query to local LLM (LM Studio API)."""
+        if not self.current_llm_model:
+            return "(kein Modell geladen)"
+
+        history = self.conversations.setdefault(client_id, [
+            {"role": "system", "content": "Du bist ein hilfreicher Assistent."}
+        ])
+        history.append({"role": "user", "content": query})
+
+        payload = {"model": self.current_llm_model, "messages": history}
+        url = f"{config.llm_api_base.rstrip('/')}/chat/completions"
+        try:
+            timeout = aiohttp.ClientTimeout(total=15)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, json=payload) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        answer = answer.strip() or "(keine Antwort)"
+                        history.append({"role": "assistant", "content": answer})
+                        # keep last 6 messages to limit context
+                        self.conversations[client_id] = history[-6:]
+                        return answer
+                    return f"[LLM Fehler {resp.status}]"
+        except asyncio.TimeoutError:
+            logger.error("LLM request timed out")
+        except Exception:
+            logging.exception("LLM request failed")
+        return "(LLM nicht erreichbar)"
 
     async def _ask_flowise(self, query: str, client_id: str) -> str:
         """Send query to Flowise REST API."""
@@ -1054,6 +1118,10 @@ class VoiceServer:
             await self._handle_set_tts_voice(client_id, data)
         elif message_type == 'test_tts_engines':
             await self._handle_test_tts_engines(client_id, data)
+        elif message_type == 'get_llm_models':
+            await self._handle_get_llm_models(client_id, data)
+        elif message_type == 'switch_llm_model':
+            await self._handle_switch_llm_model(client_id, data)
         elif message_type == 'ping':
             await self._handle_ping(client_id, data)
         else:
@@ -1330,6 +1398,31 @@ class VoiceServer:
             'test_text': test_text,
             'timestamp': time.time()
         })
+
+    async def _handle_get_llm_models(self, client_id: str, data: Dict):
+        """Send available LLM models to the client."""
+        await self._refresh_llm_models()
+        await self.connection_manager.send_to_client(client_id, {
+            'type': 'llm_models',
+            'models': self.llm_models,
+            'current': self.current_llm_model
+        })
+
+    async def _handle_switch_llm_model(self, client_id: str, data: Dict):
+        """Switch the active LLM model."""
+        model = data.get('model')
+        if model in self.llm_models:
+            self.current_llm_model = model
+            self.conversations.pop(client_id, None)
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'llm_model_switched',
+                'model': model
+            })
+        else:
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'llm_model_error',
+                'message': f'Unknown model: {model}'
+            })
         
     async def _handle_ping(self, client_id: str, data: Dict):
         """Handle ping message"""
