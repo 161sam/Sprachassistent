@@ -34,3 +34,6 @@
     cd voice-assistant-apps/desktop && npm start 
    ```
 
+---
+
+Ensure that all files and functions are named consistently and clearly. Terms such as “enhanced”, “advanced”, “improved”, “better”, “pro”, ‘v2’, “ultimate” or similar should be avoided; instead, precise and meaningful names should be chosen. Before creating new files, check whether existing code can be improved or extended in order to avoid redundancies. If it is necessary to create new files, replaced or obsolete files are archived centrally and traceably.
