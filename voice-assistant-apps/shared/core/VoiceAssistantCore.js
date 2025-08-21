@@ -13,6 +13,9 @@ class VoiceAssistantCore {
     this.audioWorklet = null;
     this.currentStream = null;
     this.streamId = null;
+
+    this.llmModels = [];
+    this.currentLlmModel = null;
     
     // Performance monitoring
     this.metrics = {
@@ -372,6 +375,7 @@ class VoiceAssistantCore {
   handleConnected(data) {
     this.updateConnectionStatus('connected', '✅ Connected');
     this.authenticate();
+    this.sendMessage({ type: 'get_llm_models' });
   }
 
   handleWebSocketMessage(event) {
@@ -383,10 +387,16 @@ class VoiceAssistantCore {
           this.handleConnected(data);
           break;
         case 'response':
-          this.handleResponse(data);
-          break;
+      this.handleResponse(data);
+      break;
         case 'audio_ready':
           this.streamId = data.stream_id;
+          break;
+        case 'llm_models':
+          this.handleLlmModels(data);
+          break;
+        case 'llm_model_switched':
+          this.handleLlmModelSwitched(data);
           break;
         case 'audio_error':
           this.handleAudioError(data);
@@ -395,12 +405,33 @@ class VoiceAssistantCore {
           this.handlePong(data);
           break;
         case 'error':
-          this.handleError(data);
-          break;
-      }
-    } catch (error) {
-      console.error('Message parsing error:', error);
+      this.handleError(data);
+      break;
     }
+  } catch (error) {
+    console.error('Message parsing error:', error);
+  }
+}
+
+  handleLlmModels(data) {
+    this.llmModels = data.models || [];
+    this.currentLlmModel = data.current || null;
+    if (typeof window.renderModelDropdown === 'function') {
+      window.renderModelDropdown(this.llmModels, this.currentLlmModel);
+    }
+  }
+
+  handleLlmModelSwitched(data) {
+    if (data.ok) {
+      this.currentLlmModel = data.current;
+    }
+    if (typeof window.updateLlmModel === 'function') {
+      window.updateLlmModel(data.current, data.ok);
+    }
+  }
+
+  switchLlmModel(model) {
+    this.sendMessage({ type: 'switch_llm_model', model });
   }
 
   // Audio Recording with Real-time Streaming

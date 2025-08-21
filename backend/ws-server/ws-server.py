@@ -137,6 +137,41 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
         pass
     return out
 
+# --- Minimal LM Studio client -------------------------------------------------
+class LMClient:
+    def __init__(self, base: str, timeout: int = 20):
+        self.base = base.rstrip("/")
+        self.timeout = aiohttp.ClientTimeout(total=timeout)
+
+    async def list_models(self):
+        url = f"{self.base}/models"
+        async with aiohttp.ClientSession(timeout=self.timeout) as s:
+            async with s.get(url) as r:
+                if r.status != 200:
+                    return []
+                data = await r.json()
+                items = data.get("data", [])
+                return [m.get("id") for m in items if m.get("id")]
+
+    async def chat(self, model: str, messages: list, temperature: float = 0.7,
+                   max_tokens: int = 256, tools: list | None = None,
+                   tool_choice: str | None = None):
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        if tools:
+            payload["tools"] = tools
+        if tool_choice:
+            payload["tool_choice"] = tool_choice
+        url = f"{self.base}/chat/completions"
+        async with aiohttp.ClientSession(timeout=self.timeout) as s:
+            async with s.post(url, json=payload) as r:
+                data = await r.json()
+                return data
+
 # Normalize ZONOS_LANG after helpers are defined
 _normalized_lang = _normalize_zonos_lang()
 @dataclass
@@ -185,7 +220,13 @@ class StreamingConfig:
     headscale_token: str = os.getenv("HEADSCALE_TOKEN", "")
 
     # Local LLM (LM Studio compatible)
+    llm_enabled: bool = os.getenv("LLM_ENABLED", "true").lower() == "true"
     llm_api_base: str = os.getenv("LLM_API_BASE", "")
+    llm_default_model: str = os.getenv("LLM_DEFAULT_MODEL", "auto")
+    llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", 0.7))
+    llm_max_tokens: int = int(os.getenv("LLM_MAX_TOKENS", 256))
+    llm_max_turns: int = int(os.getenv("LLM_MAX_TURNS", 5))
+    llm_timeout_seconds: int = int(os.getenv("LLM_TIMEOUT_SECONDS", 20))
 
     # Retry configuration for external services
     retry_limit: int = int(os.getenv("RETRY_LIMIT", 3))
@@ -370,17 +411,6 @@ class AudioStreamManager:
         self.processing_queue = asyncio.Queue(maxsize=1000)
         self.response_callbacks: Dict[str, callable] = {}
 
-        # LLM model handling
-        self.llm_models: List[str] = []
-        self.current_llm_model: Optional[str] = None
-        self.conversations: Dict[str, List[Dict[str, str]]] = {}
-        if config.llm_api_base:
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(self._refresh_llm_models())
-            except RuntimeError:
-                pass
-
         # Skills und Intent-Klassifizierer laden
         skills_path = Path(__file__).parent / "skills"
         self.skills = load_all_skills(skills_path, config.enabled_skills)
@@ -397,22 +427,6 @@ class AudioStreamManager:
             # wird in VoiceServer.initialize() gestartet
             pass
 
-    async def _refresh_llm_models(self) -> None:
-        """Fetch available LLM models from LM Studio."""
-        url = f"{config.llm_api_base.rstrip('/')}/models"
-        try:
-            timeout = aiohttp.ClientTimeout(total=5)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        models = [m.get("id") for m in data.get("data", []) if m.get("id")]
-                        self.llm_models = models
-                        if self.current_llm_model not in models:
-                            self.current_llm_model = models[0] if models else None
-        except Exception:
-            logger.warning("Could not fetch LLM models from %s", url)
-        
     async def start_stream(self, client_id: str, response_callback) -> str:
         """Start new audio stream for client"""
         stream_id = f"{client_id}_{uuid.uuid4().hex[:8]}"
@@ -549,7 +563,9 @@ class AudioStreamManager:
             if len(self.stats['stt_latency_ms']) > 100:
                 self.stats['stt_latency_ms'].pop(0)
 
-            response_text = await self._generate_response(transcription, client_id)
+            response_text = await server._ask_llm(client_id, transcription)
+            if not response_text:
+                response_text = await self._generate_response(transcription, client_id)
 
             target_engine = None
             if tts_engine:
@@ -652,9 +668,6 @@ class AudioStreamManager:
         return "Entschuldigung, dafür habe ich keine Antwort."
 
     async def _route_external(self, text: str, client_id: str) -> Optional[str]:
-        if config.llm_api_base and self.current_llm_model:
-            logger.info("Routing external via LLM")
-            return await self._ask_llm(text, client_id)
         if config.flowise_url and config.flowise_id:
             logger.info("Routing external via Flowise")
             return await self._ask_flowise(text, client_id)
@@ -663,37 +676,6 @@ class AudioStreamManager:
             return await self._trigger_n8n(text, client_id)
         logger.info("No external routing configured")
         return None
-
-    async def _ask_llm(self, query: str, client_id: str) -> str:
-        """Send query to local LLM (LM Studio API)."""
-        if not self.current_llm_model:
-            return "(kein Modell geladen)"
-
-        history = self.conversations.setdefault(client_id, [
-            {"role": "system", "content": "Du bist ein hilfreicher Assistent."}
-        ])
-        history.append({"role": "user", "content": query})
-
-        payload = {"model": self.current_llm_model, "messages": history}
-        url = f"{config.llm_api_base.rstrip('/')}/chat/completions"
-        try:
-            timeout = aiohttp.ClientTimeout(total=15)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.post(url, json=payload) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                        answer = answer.strip() or "(keine Antwort)"
-                        history.append({"role": "assistant", "content": answer})
-                        # keep last 6 messages to limit context
-                        self.conversations[client_id] = history[-6:]
-                        return answer
-                    return f"[LLM Fehler {resp.status}]"
-        except asyncio.TimeoutError:
-            logger.error("LLM request timed out")
-        except Exception:
-            logging.exception("LLM request failed")
-        return "(LLM nicht erreichbar)"
 
     async def _ask_flowise(self, query: str, client_id: str) -> str:
         """Send query to Flowise REST API."""
@@ -859,6 +841,16 @@ class VoiceServer:
         # self.stream_manager.stats wird weiter unten gesetzt, nachdem self.stats existiert
         self.connection_manager = ConnectionManager(self.stream_manager, self.tts_manager)
 
+        # LLM configuration
+        self.llm_enabled = config.llm_enabled
+        self.llm = LMClient(config.llm_api_base, timeout=config.llm_timeout_seconds)
+        self.llm_model: Optional[str] = None
+        self.llm_models: List[str] = []
+        self.chat_histories: Dict[str, List[Dict[str, str]]] = {}
+        self.llm_temperature = config.llm_temperature
+        self.llm_max_tokens = config.llm_max_tokens
+        self.llm_max_turns = config.llm_max_turns
+
         # Performance metrics
         self.stats = {
             'connections': 0,
@@ -958,9 +950,64 @@ class VoiceServer:
                 logger.warning(f"Headscale connection failed: {e}")
 
         logger.info("🎆 Audio Queue Processor gestartet")
-        
+
+        if self.llm_enabled:
+            self.llm_models = await self.llm.list_models()
+            chosen = None
+            pref = config.llm_default_model
+            if pref != "auto" and pref in self.llm_models:
+                chosen = pref
+            elif self.llm_models:
+                chosen = self.llm_models[0]
+            self.llm_model = chosen
+            if chosen:
+                logger.info(f"LLM enabled. Using model: {chosen}")
+            else:
+                logger.warning("LLM enabled but no loaded models found at LLM_API_BASE; will fallback to skills/legacy responses.")
+
         # Abschließende Initialisierung
         logger.info("✨ Voice server initialized successfully")
+
+    def _hist(self, client_id: str):
+        return self.chat_histories.setdefault(client_id, [])
+
+    def _hist_trim(self, client_id: str):
+        hist = self._hist(client_id)
+        if len(hist) > 2 * self.llm_max_turns + 1:
+            sys = hist[0] if hist and hist[0].get("role") == "system" else None
+            tail = hist[-(2 * self.llm_max_turns):]
+            self.chat_histories[client_id] = ([sys] + tail) if sys else tail
+
+    async def _ask_llm(self, client_id: str, user_text: str) -> Optional[str]:
+        if not (self.llm_enabled and self.llm_model):
+            return None
+
+        msgs = self._hist(client_id)
+        if not msgs or msgs[0].get("role") != "system":
+            msgs.insert(0, {
+                "role": "system",
+                "content": "You are a concise, helpful voice assistant. Answer in the user's language. When unsure, ask a brief clarifying question."
+            })
+        msgs.append({"role": "user", "content": user_text})
+        self._hist_trim(client_id)
+
+        try:
+            resp = await self.llm.chat(
+                model=self.llm_model,
+                messages=msgs,
+                temperature=self.llm_temperature,
+                max_tokens=self.llm_max_tokens
+            )
+            choice = (resp.get("choices") or [{}])[0]
+            msg = choice.get("message") or {}
+            content = msg.get("content") or ""
+            if content.strip():
+                msgs.append({"role": "assistant", "content": content})
+                self._hist_trim(client_id)
+                return content.strip()
+        except Exception:
+            logging.exception("LLM chat failed")
+        return None
         
     async def handle_websocket(self, websocket, path=None):
         # --- websockets v11+ compat: 'path' wird nicht mehr übergeben ---
@@ -1228,8 +1275,8 @@ class VoiceServer:
         if not text:
             return
             
-        # Generate response
-        response_text = await self.stream_manager._generate_response(text, client_id)
+        llm_text = await self._ask_llm(client_id, text)
+        response_text = llm_text or await self.stream_manager._generate_response(text, client_id)
         
         # TTS-Engine bestimmen
         target_engine = None
@@ -1401,28 +1448,29 @@ class VoiceServer:
 
     async def _handle_get_llm_models(self, client_id: str, data: Dict):
         """Send available LLM models to the client."""
-        await self._refresh_llm_models()
+        models = await self.llm.list_models() if self.llm_enabled else []
+        self.llm_models = models
         await self.connection_manager.send_to_client(client_id, {
             'type': 'llm_models',
-            'models': self.llm_models,
-            'current': self.current_llm_model
+            'models': models,
+            'current': self.llm_model
         })
 
     async def _handle_switch_llm_model(self, client_id: str, data: Dict):
         """Switch the active LLM model."""
-        model = data.get('model')
-        if model in self.llm_models:
-            self.current_llm_model = model
-            self.conversations.pop(client_id, None)
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'llm_model_switched',
-                'model': model
-            })
-        else:
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'llm_model_error',
-                'message': f'Unknown model: {model}'
-            })
+        target = data.get('model')
+        ok = False
+        if self.llm_enabled and target:
+            models = await self.llm.list_models()
+            if target in models:
+                self.llm_model = target
+                self.chat_histories.pop(client_id, None)
+                ok = True
+        await self.connection_manager.send_to_client(client_id, {
+            'type': 'llm_model_switched',
+            'ok': ok,
+            'current': self.llm_model
+        })
         
     async def _handle_ping(self, client_id: str, data: Dict):
         """Handle ping message"""

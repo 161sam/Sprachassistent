@@ -1219,6 +1219,14 @@
 
             <div class="settings-item">
               <div class="settings-item-info">
+                <div class="settings-item-label">LLM-Modell</div>
+                <div class="settings-item-desc">Lokales Sprachmodell</div>
+              </div>
+              <select class="settings-select" id="llmModel" disabled onchange="switchLlmModel(this.value)"></select>
+            </div>
+
+            <div class="settings-item">
+              <div class="settings-item-info">
                 <div class="settings-item-label">Auto-Aufnahme stoppen</div>
                 <div class="settings-item-desc">Stoppt Aufnahme automatisch nach bestimmter Zeit</div>
               </div>
@@ -1450,6 +1458,7 @@
       debugMode: false,
       sttModel: localStorage.getItem('sttModel') || 'Faster-Whisper',
       ttsEngine: localStorage.getItem('ttsEngine') || 'Zonos',
+      llmModel: localStorage.getItem('llmModel') || '',
       wsHost: localStorage.getItem('wsHost') || '127.0.0.1',
       wsPort: parseInt(localStorage.getItem('wsPort') || '48231'),
       authToken: localStorage.getItem('wsToken') || 'devsecret'
@@ -1501,6 +1510,7 @@
       document.getElementById('debugMode').classList.toggle('active', settings.debugMode);
       document.getElementById('sttModel').value = settings.sttModel;
       document.getElementById('ttsEngine').value = settings.ttsEngine;
+      document.getElementById('llmModel').value = settings.llmModel;
       document.getElementById('wsHost').value = settings.wsHost;
       document.getElementById('wsPort').value = settings.wsPort;
       document.getElementById('authToken').value = settings.authToken;
@@ -1577,6 +1587,39 @@
       localStorage.setItem('ttsEngine', value);
     }
 
+    function switchLlmModel(value) {
+      settings.llmModel = value;
+      localStorage.setItem('llmModel', value);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'switch_llm_model', model: value }));
+      }
+    }
+
+    function renderModelDropdown(models, current) {
+      const sel = document.getElementById('llmModel');
+      sel.innerHTML = '';
+      models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        sel.appendChild(opt);
+      });
+      sel.disabled = models.length === 0;
+      if (current) {
+        sel.value = current;
+        settings.llmModel = current;
+        localStorage.setItem('llmModel', current);
+      }
+    }
+
+    function updateLlmModel(current, ok) {
+      if (ok && current) {
+        document.getElementById('llmModel').value = current;
+        settings.llmModel = current;
+        localStorage.setItem('llmModel', current);
+      }
+    }
+
     function setNebelColor(type, color) {
       settings.nebelColors[type] = color;
       updateColorSelections();
@@ -1635,6 +1678,7 @@
           debugMode: false,
           sttModel: 'Faster-Whisper',
           ttsEngine: 'Zonos',
+          llmModel: '',
           wsHost: '127.0.0.1',
           wsPort: 48231,
           authToken: 'devsecret'
@@ -1642,6 +1686,7 @@
 
         localStorage.setItem('sttModel', settings.sttModel);
         localStorage.setItem('ttsEngine', settings.ttsEngine);
+        localStorage.setItem('llmModel', settings.llmModel);
         localStorage.setItem('wsHost', settings.wsHost);
         localStorage.setItem('wsPort', settings.wsPort);
         localStorage.setItem('wsToken', settings.authToken);
@@ -1789,12 +1834,21 @@
         ws.onopen = () => {
           console.log('✅ Verbunden mit Sprachassistent');
           showNotification('success', 'Verbunden', 'Erfolgreich mit dem Sprachassistenten verbunden');
+          ws.send(JSON.stringify({ type: 'get_llm_models' }));
         };
-        
+
         ws.onmessage = (event) => {
           hideNebelAnimation();
           const data = JSON.parse(event.data);
-          displayResponse(data.content || event.data);
+          if (data.type === 'llm_models') {
+            renderModelDropdown(data.models, data.current);
+          } else if (data.type === 'llm_model_switched') {
+            updateLlmModel(data.current, data.ok);
+          } else if (data.type === 'response') {
+            displayResponse(data.content || '');
+          } else if (data.content) {
+            displayResponse(data.content);
+          }
         };
         
         ws.onclose = () => {
