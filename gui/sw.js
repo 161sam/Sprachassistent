@@ -11,7 +11,7 @@ const urlsToCache = [
     './styles.css',
     './app.js',
     '/voice-assistant-apps/shared/core/VoiceAssistantCore.js',
-    '../voice-assistant-apps/shared/core/OptimizedAudioStreamer.js',
+    '../voice-assistant-apps/shared/core/AudioStreamer.js',
     '../voice-assistant-apps/shared/workers/audio-streaming-worklet.js',
     './audio-worklet-processor.js',
     './manifest.json'

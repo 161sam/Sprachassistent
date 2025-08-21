@@ -1,6 +1,6 @@
 /**
- * 🎵 OptimizedAudioStreamer.js
- * 
+ * 🎵 AudioStreamer.js
+ *
  * High-performance audio streaming with real-time processing
  * Reduces latency from ~200ms to ~50ms through:
  * - Small chunk streaming (1024 bytes vs 4096 bytes)
@@ -9,13 +9,13 @@
  * - GPU-accelerated audio processing via WebAudio API
  */
 
-class OptimizedAudioStreamer {
+class AudioStreamer {
     constructor(config = {}) {
         this.config = {
-            // Optimized for low latency
+            // Tuned for low latency
             chunkSize: 1024,              // Smaller chunks = lower latency
             chunkIntervalMs: 50,          // 50ms intervals instead of 100ms
-            sampleRate: 16000,            // Optimized for STT
+            sampleRate: 16000,            // for STT
             channels: 1,                  // Mono for efficiency
             bufferSize: 512,              // Small buffer for real-time processing
             
@@ -88,7 +88,7 @@ class OptimizedAudioStreamer {
             // Initialize WebAudio Context with optimized settings
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)({
                 sampleRate: this.config.sampleRate,
-                latencyHint: 'interactive'  // Optimized for real-time
+                latencyHint: 'interactive'  // for real-time
             });
             
             // Load audio worklet for GPU-accelerated processing
@@ -96,7 +96,7 @@ class OptimizedAudioStreamer {
                 await this.loadAudioWorklet();
             }
             
-            console.log('✅ OptimizedAudioStreamer initialized');
+            console.log('✅ AudioStreamer initialized');
         } catch (error) {
             console.error('❌ AudioStreamer initialization failed:', error);
             throw error;
@@ -146,10 +146,10 @@ class OptimizedAudioStreamer {
                         this.metrics.connection.connected = true;
                         this.metrics.connection.reconnectAttempts = 0;
 
-                        // Generate a unique stream identifier.  Some environments
-                        // (notably older Electron builds) may not implement
-                        // `crypto.randomUUID`, so fall back to a Math.random based
-                        // id to ensure the handshake packet is always sent.
+                        // Generate a unique stream identifier. Some environments
+                        // may not implement `crypto.randomUUID`, so fall back to
+                        // a Math.random based id to ensure the handshake packet
+                        // is always sent.
                         let streamId;
                         try {
                             streamId = globalThis.crypto?.randomUUID?.();
@@ -168,35 +168,49 @@ class OptimizedAudioStreamer {
                     } catch (e) {
                         console.warn('Handshake setup failed', e);
                     }
-                    resolve();
                 };
 
-                this.websocket.onopen = handleOpen;
+                const handleMessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.op === 'ready') {
+                            // Handshake acknowledged -> switch to normal handler
+                            this.websocket.removeEventListener('message', handleMessage);
+                            this.websocket.onmessage = (ev) => this.handleWebSocketMessage(ev);
+                            this.handleWebSocketMessage(event);
+                            resolve();
+                        } else {
+                            this.handleWebSocketMessage(event);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing WebSocket message:', e);
+                    }
+                };
+
+                this.websocket.addEventListener('open', handleOpen, { once: true });
                 // In very fast connections the `open` event may fire before the
                 // handler is attached. Handle that case explicitly.
                 if (this.websocket.readyState === WebSocket.OPEN) {
                     handleOpen();
                 }
 
-                this.websocket.onmessage = (event) => {
-                    this.handleWebSocketMessage(event);
-                };
-                
-                this.websocket.onclose = (ev) => {
+                this.websocket.addEventListener('message', handleMessage);
+
+                this.websocket.addEventListener('close', (ev) => {
                     this.metrics.connection.connected = false;
                     if (this.onDisconnected) this.onDisconnected(ev);
                     console.log(`❌ WebSocket disconnected (${ev.code} ${ev.reason || ''})`);
                     if (this.metrics.connection.reconnectAttempts < this.config.maxRetries) {
                         this.reconnect(wsUrl);
                     }
-                };
-                
-                this.websocket.onerror = (error) => {
+                });
+
+                this.websocket.addEventListener('error', (error) => {
                     if (this.onError) this.onError(error);
                     console.error('🔥 WebSocket error:', error);
                     reject(error);
-                };
-                
+                });
+
             } catch (error) {
                 reject(error);
             }
@@ -500,11 +514,11 @@ class OptimizedAudioStreamer {
 }
 
 /**
- * 🤖 Enhanced Voice Assistant Core
- * 
- * High-level interface combining OptimizedAudioStreamer with UI management
+ * 🤖 Voice Assistant Core
+ *
+ * High-level interface combining AudioStreamer with UI management
  */
-class EnhancedVoiceAssistant {
+class VoiceAssistant {
     constructor(config = {}) {
         this.config = {
             wsUrl: 'ws://127.0.0.1:48231',
@@ -516,7 +530,7 @@ class EnhancedVoiceAssistant {
             ...config
         };
         
-        this.streamer = new OptimizedAudioStreamer(this.config);
+        this.streamer = new AudioStreamer(this.config);
         this.isRecording = false;
         this.platform = this.detectPlatform();
         
@@ -757,8 +771,8 @@ class EnhancedVoiceAssistant {
     }
 }
 
-// Enhanced Voice Assistant Core (Compatibility Layer)
-class EnhancedVoiceAssistantCore extends EnhancedVoiceAssistant {
+// Voice Assistant Client (Compatibility Layer)
+class VoiceAssistantClient extends VoiceAssistant {
     constructor(config = {}) {
         super(config);
         
@@ -795,13 +809,13 @@ class EnhancedVoiceAssistantCore extends EnhancedVoiceAssistant {
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-        OptimizedAudioStreamer,
-        EnhancedVoiceAssistant,
-        EnhancedVoiceAssistantCore
+        AudioStreamer,
+        VoiceAssistant,
+        VoiceAssistantClient
     };
 }
 
 // Global access for script tags
-window.OptimizedAudioStreamer = OptimizedAudioStreamer;
-window.EnhancedVoiceAssistant = EnhancedVoiceAssistant;
-window.EnhancedVoiceAssistantCore = EnhancedVoiceAssistantCore;
+window.AudioStreamer = AudioStreamer;
+window.VoiceAssistant = VoiceAssistant;
+window.VoiceAssistantClient = VoiceAssistantClient;

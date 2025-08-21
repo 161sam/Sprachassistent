@@ -14,7 +14,7 @@
   
   <style>
     :root {
-      /* Enhanced Color System */
+      /* Color System */
       --primary-color: #6366f1;
       --primary-hover: #5855eb;
       --primary-light: rgba(99, 102, 241, 0.1);
@@ -48,7 +48,7 @@
       --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.25);
       --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.3);
       
-      /* Mobile-Optimized Spacing */
+      /* Mobile Spacing */
       --spacing-xs: 0.25rem;
       --spacing-sm: 0.5rem;
       --spacing-md: 1rem;
@@ -115,7 +115,7 @@
       touch-action: manipulation;
     }
 
-    /* Enhanced Background with Mobile Performance */
+    /* Background with Mobile Performance */
     body::before {
       content: '';
       position: fixed;
@@ -360,7 +360,7 @@
       }
     }
 
-    /* Enhanced Nebel Animation */
+    /* Nebel Animation */
     .avatar-nebel {
       position: absolute;
       top: 0;
@@ -958,11 +958,11 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <!-- Load optimized components -->
-  <script src="../voice-assistant-apps/shared/core/OptimizedAudioStreamer.js"></script>
+  <!-- Load core components -->
+  <script src="../voice-assistant-apps/shared/core/AudioStreamer.js"></script>
   
   <script>
-    // Enhanced Voice Assistant with Mobile-First optimizations and performance monitoring
+    // Voice Assistant with Mobile-First optimizations and performance monitoring
     let voiceAssistant = null;
     let recordingStartTime = null;
     let recordingTimer = null;
@@ -986,10 +986,10 @@
           wsUrl += (wsUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
         }
 
-        // Initialize enhanced voice assistant with optimized settings
-        voiceAssistant = new EnhancedVoiceAssistantCore({
+        // Initialize voice assistant with low-latency settings
+        voiceAssistant = new VoiceAssistantClient({
           wsUrl: wsUrl,
-          chunkSize: 1024,           // Optimized chunk size
+          chunkSize: 1024,           // Low-latency chunk size
           chunkIntervalMs: 50,       // 50ms intervals for low latency
           adaptiveQuality: true,     // Automatic quality adaptation
           enableNotifications: true,
@@ -1028,7 +1028,7 @@
           document.getElementById('textInput').focus();
         }
         
-        console.log('✅ Enhanced Voice Assistant initialized');
+        console.log('✅ Voice Assistant initialized');
         
       } catch (error) {
         console.error('❌ Initialization failed:', error);

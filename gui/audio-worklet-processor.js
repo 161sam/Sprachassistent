@@ -1,7 +1,7 @@
 /**
  * 🎵 Audio Worklet Processor for Voice Assistant GUI
  * 
- * Simple audio worklet processor that bridges to the main OptimizedAudioStreamer
+ * Simple audio worklet processor that bridges to the main AudioStreamer
  * This is a lightweight version for the GUI compatibility
  */
 
