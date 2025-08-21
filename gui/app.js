@@ -8,16 +8,22 @@ try {
   // 2) WebSocket monkey-patch: token immer anhängen
   (function() {
     const _WS = window.WebSocket;
-    window.WebSocket = function(url, protocols) {
+    function PatchedWebSocket(url, protocols) {
       try {
-        const t = (typeof localStorage!=='undefined' && localStorage.getItem('wsToken')) || '';
+        const t = (typeof localStorage !== 'undefined' && localStorage.getItem('wsToken')) || '';
         if (t && typeof url === 'string' && url.indexOf('token=') === -1) {
-          url += (url.indexOf('?')>-1 ? '&' : '?') + 'token=' + encodeURIComponent(t);
+          url += (url.indexOf('?') > -1 ? '&' : '?') + 'token=' + encodeURIComponent(t);
         }
-      } catch(e) {}
+      } catch (e) {}
       return new _WS(url, protocols);
-    };
-    window.WebSocket.prototype = _WS.prototype;
+    }
+    // Copy instance & static properties so behaviour matches native WebSocket
+    PatchedWebSocket.prototype = _WS.prototype;
+    PatchedWebSocket.CONNECTING = _WS.CONNECTING;
+    PatchedWebSocket.OPEN = _WS.OPEN;
+    PatchedWebSocket.CLOSING = _WS.CLOSING;
+    PatchedWebSocket.CLOSED = _WS.CLOSED;
+    window.WebSocket = PatchedWebSocket;
   })();
 } catch(e) {}
 // --- /DEV token bootstrap ---
