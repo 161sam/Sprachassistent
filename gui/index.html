@@ -975,9 +975,20 @@
     // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', async () => {
       try {
+        // Ensure token and URL exist in localStorage
+        const token = localStorage.getItem('wsToken') || 'devsecret';
+        if (!localStorage.getItem('wsToken')) {
+          localStorage.setItem('wsToken', token);
+        }
+
+        let wsUrl = localStorage.getItem('wsUrl') || 'ws://127.0.0.1:48231';
+        if (!wsUrl.includes('token=')) {
+          wsUrl += (wsUrl.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+        }
+
         // Initialize enhanced voice assistant with optimized settings
         voiceAssistant = new EnhancedVoiceAssistantCore({
-          wsUrl: (localStorage.getItem("wsUrl") || `ws://127.0.0.1:48231/?token=${localStorage.getItem("wsToken")||"devsecret"}`),
+          wsUrl: wsUrl,
           chunkSize: 1024,           // Optimized chunk size
           chunkIntervalMs: 50,       // 50ms intervals for low latency
           adaptiveQuality: true,     // Automatic quality adaptation
