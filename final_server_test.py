@@ -106,28 +106,45 @@ def run_test():
             
             # Wait a bit more for server to be fully ready
             time.sleep(3)
-            
+
             import urllib.request
             import json
-            
+            import asyncio
+            import websockets
+
             # Test health endpoint
             try:
                 response = urllib.request.urlopen("http://127.0.0.1:48232/health", timeout=5)
                 data = response.read().decode()
                 health_data = json.loads(data)
                 print(f"   ✅ Health endpoint: {health_data.get('status', 'unknown')}")
+                startup_success = True
             except Exception as e:
                 print(f"   ❌ Health endpoint failed: {e}")
-                
-            # Test metrics endpoint  
+
+            # Test metrics endpoint
             try:
                 response = urllib.request.urlopen("http://127.0.0.1:48232/metrics", timeout=5)
                 data = response.read().decode()
                 metrics_data = json.loads(data)
                 conn_count = metrics_data.get('active_connections', 'unknown')
                 print(f"   ✅ Metrics endpoint: {conn_count} active connections")
+                metrics_ready = True
             except Exception as e:
                 print(f"   ❌ Metrics endpoint failed: {e}")
+
+            # Test WebSocket connection
+            try:
+                async def check_ws():
+                    uri = "ws://127.0.0.1:48231"
+                    async with websockets.connect(uri):
+                        return True
+
+                asyncio.get_event_loop().run_until_complete(check_ws())
+                print("   ✅ WebSocket endpoint: connection successful")
+                websocket_ready = True
+            except Exception as e:
+                print(f"   ❌ WebSocket endpoint failed: {e}")
         
         # 5. Cleanup
         print("5️⃣  Stopping server...")
