@@ -126,14 +126,24 @@ class OptimizedAudioStreamer {
 console.log("🔌 Connecting to", wsUrl);
 this.websocket = new WebSocket(wsUrl);
                 
+                // Expect handshake: send {op:"hello", version, stream_id, device}
                 this.websocket.onopen = () => {
                     this.metrics.connection.connected = true;
                     this.metrics.connection.reconnectAttempts = 0;
 
+                    const streamId = crypto.randomUUID();
+                    this.currentStreamId = streamId;
+                    try {
+                        this.websocket.send(JSON.stringify({
+                            op: 'hello',
+                            version: 1,
+                            stream_id: streamId,
+                            device: 'web'
+                        }));
+                    } catch (e) {
+                        console.warn('Failed to send handshake', e);
+                    }
                     this.startPingMonitoring();
-                    // Request new audio stream
-                    try { this.websocket.send(JSON.stringify({ type: 'start_audio_stream' })); } catch (e) { console.warn('Failed to request audio stream', e); }
-                    if (this.onConnected) this.onConnected();
                     console.log('🔗 WebSocket connected to', wsUrl);
                     resolve();
                 };
@@ -142,10 +152,10 @@ this.websocket = new WebSocket(wsUrl);
                     this.handleWebSocketMessage(event);
                 };
                 
-                this.websocket.onclose = () => {
+                this.websocket.onclose = (ev) => {
                     this.metrics.connection.connected = false;
-                    if (this.onDisconnected) this.onDisconnected();
-                    console.log('❌ WebSocket disconnected');
+                    if (this.onDisconnected) this.onDisconnected(ev);
+                    console.log(`❌ WebSocket disconnected (${ev.code} ${ev.reason || ''})`);
                     if (this.metrics.connection.reconnectAttempts < this.config.maxRetries) {
                         this.reconnect(wsUrl);
                     }
@@ -192,6 +202,13 @@ this.websocket = new WebSocket(wsUrl);
         try {
             const data = JSON.parse(event.data);
             
+            if (data.op === 'ready') {
+                // Handshake acknowledged -> request audio stream
+                try { this.websocket.send(JSON.stringify({ type: 'start_audio_stream' })); } catch (e) { console.warn('Failed to request audio stream', e); }
+                if (this.onConnected) this.onConnected();
+                return;
+            }
+
             if (data.type === 'pong') {
                 // Calculate latency
                 const latency = Date.now() - data.client_timestamp;

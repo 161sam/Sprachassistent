@@ -258,6 +258,7 @@ logs/
 crash-reports/
 
 # BACKUP FILES
+*.bak.*
 *.backup
 *.old
 
