@@ -106,7 +106,6 @@ class VoiceAssistantGUI {
             
             // Set up UI elements
             this.voiceAssistant.ui = {
-                statusElement: document.getElementById('statusText'),
                 responseElement: document.getElementById('response'),
                 recordButton: document.getElementById('voiceBtn'),
                 metricsElement: document.getElementById('performanceMetrics')
@@ -526,18 +525,6 @@ class VoiceAssistantGUI {
         }, 50);
     }
 
-    clearResponse() {
-        const responseElement = document.getElementById('response');
-        if (responseElement) {
-            responseElement.innerHTML = '<div class="response-empty">Ihre Antwort erscheint hier...</div>';
-        }
-        
-        this.hideNebelAnimation();
-        
-        if (this.settings.notifications) {
-            this.showNotification('success', 'Gelöscht', 'Antwort wurde gelöscht');
-        }
-    }
 
     // Notification System
     showNotification(type, title, message, duration = 5000) {
@@ -783,7 +770,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Make functions globally available for HTML onclick handlers
 window.toggleRecording = () => voiceAssistantGUI?.toggleRecording();
 window.sendText = () => voiceAssistantGUI?.sendText();
-window.clearResponse = () => voiceAssistantGUI?.clearResponse();
 window.openSettingsModal = () => voiceAssistantGUI?.openSettingsModal();
 window.closeSettingsModal = () => voiceAssistantGUI?.closeSettingsModal();
 window.toggleSetting = (setting) => voiceAssistantGUI?.toggleSetting(setting);
