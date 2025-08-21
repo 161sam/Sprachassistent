@@ -118,8 +118,7 @@ class VoiceAssistantGUI {
             if (success) {
                 console.log('✅ Voice Assistant initialized successfully');
                 this.showNotification('success', 'System Ready', 'Voice Assistant ready');
-                this.updateStatus('connected', '✅ Verbunden mit optimiertem Server');
-                
+
                 // Start performance monitoring if enabled
                 if (this.settings.showPerformanceMetrics) {
                     this.startPerformanceMonitoring();
@@ -137,7 +136,6 @@ class VoiceAssistantGUI {
         } catch (error) {
             console.error('❌ GUI initialization failed:', error);
             this.showNotification('error', 'Initialization Failed', error.message);
-            this.updateStatus('error', '❌ Verbindungsfehler');
         }
     }
 
@@ -445,19 +443,6 @@ class VoiceAssistantGUI {
         if (this.recordingTimer) {
             clearInterval(this.recordingTimer);
             this.recordingTimer = null;
-        }
-    }
-
-    updateStatus(type, message) {
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
-        
-        if (statusDot) {
-            statusDot.className = `status-dot ${type}`;
-        }
-        
-        if (statusText) {
-            statusText.textContent = message;
         }
     }
 
