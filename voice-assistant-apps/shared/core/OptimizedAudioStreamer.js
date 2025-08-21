@@ -113,19 +113,33 @@ class OptimizedAudioStreamer {
             this.config.useWorklets = false;
         }
     }
-    
+
+    async getAuthToken() {
+        // Reuse token from localStorage or fall back to the development token.
+        // The token is mirrored under "wsToken" so other components can
+        // append it automatically to their WebSocket URLs.
+        const token =
+            (typeof localStorage !== 'undefined' &&
+             (localStorage.getItem('voice_auth_token') ||
+              localStorage.getItem('wsToken'))) ||
+            'devsecret';
+        try { localStorage.setItem('wsToken', token); } catch (_) {}
+        return token;
+    }
+
     async connect(wsUrl) {
+        // Ensure a valid token is always appended so the server can
+        // authenticate the connection before the handshake completes.
+        const token = await this.getAuthToken();
+        if (typeof wsUrl === 'string' && wsUrl.indexOf('token=') === -1) {
+            wsUrl += (wsUrl.indexOf('?') > -1 ? '&' : '?') + 'token=' + encodeURIComponent(token);
+        }
+
         return new Promise((resolve, reject) => {
             try {
-                try {
-  const _t = (typeof localStorage!=='undefined' && localStorage.getItem('wsToken')) || '';
-  if (_t && typeof wsUrl==='string' && wsUrl.indexOf('token=') === -1) {
-    wsUrl += (wsUrl.indexOf('?')>-1 ? '&' : '?') + 'token=' + encodeURIComponent(_t);
-  }
-} catch(_) {}
-console.log("🔌 Connecting to", wsUrl);
-this.websocket = new WebSocket(wsUrl);
-                
+                console.log("🔌 Connecting to", wsUrl);
+                this.websocket = new WebSocket(wsUrl);
+
                 // Expect handshake: send {op:"hello", version, stream_id, device}
                 this.websocket.onopen = () => {
                     this.metrics.connection.connected = true;
@@ -153,11 +167,10 @@ this.websocket = new WebSocket(wsUrl);
                     } catch (e) {
                         console.warn('Failed to send handshake', e);
                     }
-                    this.startPingMonitoring();
                     console.log('🔗 WebSocket connected to', wsUrl);
                     resolve();
                 };
-                
+
                 this.websocket.onmessage = (event) => {
                     this.handleWebSocketMessage(event);
                 };
@@ -213,8 +226,14 @@ this.websocket = new WebSocket(wsUrl);
             const data = JSON.parse(event.data);
             
             if (data.op === 'ready') {
-                // Handshake acknowledged -> request audio stream
-                try { this.websocket.send(JSON.stringify({ type: 'start_audio_stream' })); } catch (e) { console.warn('Failed to request audio stream', e); }
+                // Handshake acknowledged -> start connection maintenance
+                this.startPingMonitoring();
+                try {
+                    // Request audio stream once the server confirms the handshake
+                    this.websocket.send(JSON.stringify({ type: 'start_audio_stream' }));
+                } catch (e) {
+                    console.warn('Failed to request audio stream', e);
+                }
                 if (this.onConnected) this.onConnected();
                 return;
             }
