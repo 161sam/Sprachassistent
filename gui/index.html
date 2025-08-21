@@ -1131,6 +1131,24 @@
         clearTimeout(longPressTimer);
       });
 
+      // Theme toggle
+      const themeToggle = document.getElementById('themeToggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          const isLight = document.documentElement.classList.toggle('light-mode');
+          localStorage.setItem('theme', isLight ? 'light' : 'dark');
+          themeToggle.textContent = isLight ? '🌙' : '☀️';
+        });
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+          document.documentElement.classList.add('light-mode');
+          themeToggle.textContent = '🌙';
+        } else {
+          themeToggle.textContent = '☀️';
+        }
+      }
+
       // Settings button
       document.getElementById('settingsBtn').addEventListener('click', () => {
         showSettings();
@@ -1360,6 +1378,9 @@
       document.getElementById('sttModel').value = localStorage.getItem('sttModel') || 'Faster-Whisper';
       document.getElementById('ttsEngine').value = localStorage.getItem('ttsEngine') || 'Zonos';
       document.getElementById('llmModel').value = localStorage.getItem('llmModel') || '';
+      if (voiceAssistant) {
+        voiceAssistant.sendMessage({ type: 'get_llm_models' });
+      }
       modal.classList.add('open');
     }
 
@@ -1383,6 +1404,12 @@
       localStorage.setItem('ttsEngine', tts);
       localStorage.setItem('llmModel', llm);
 
+      if (stt) {
+        voiceAssistant.sendMessage({ type: 'switch_stt_model', model: stt });
+      }
+      if (tts) {
+        voiceAssistant.sendMessage({ type: 'switch_tts_engine', engine: tts });
+      }
       if (llm) {
         voiceAssistant.sendMessage({ type: 'switch_llm_model', model: llm });
       }
