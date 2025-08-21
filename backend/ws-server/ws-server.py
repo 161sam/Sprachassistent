@@ -949,15 +949,20 @@ class VoiceServer:
         try:
             # ---- Handshake ---------------------------------------------------
             # Erwartet erste Nachricht: {op:"hello", version, stream_id, device}
-            raw = await asyncio.wait_for(websocket.recv(), timeout=5)
+            raw = await asyncio.wait_for(websocket.recv(), timeout=10)
             try:
                 hello = json.loads(raw)
             except Exception:
                 logger.warning("Invalid handshake JSON from %s: %s", client_ip, raw)
                 await websocket.close(code=4400, reason="bad handshake")
                 return
-            if hello.get('op') != 'hello':
-                logger.warning("Unexpected handshake op=%s", hello.get('op'))
+
+            # Some older clients still send {"type":"hello"} instead of
+            # {"op":"hello"}.  Accept both to maintain compatibility and
+            # avoid connection drops.
+            op = hello.get('op') or hello.get('type')
+            if op != 'hello':
+                logger.warning("Unexpected handshake op=%s", op)
                 await websocket.close(code=4400, reason="bad handshake")
                 return
 
