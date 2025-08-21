@@ -275,7 +275,9 @@ class VoiceAssistantCore {
             op: 'hello',
             version: 1,
             stream_id: streamId,
-            device: this.platform
+            device: this.platform,
+            stt_model: localStorage.getItem('sttModel') || 'Faster-Whisper',
+            tts_engine: localStorage.getItem('ttsEngine') || 'Zonos'
           }));
 
           // Reset reconnection attempts after a successful connection
@@ -353,6 +355,14 @@ class VoiceAssistantCore {
       vibrate: !!navigator.vibrate,
       serviceWorker: !!navigator.serviceWorker
     };
+  }
+
+  updateConnectionStatus(type, message) {
+    if (typeof window !== 'undefined' && typeof window.updateStatus === 'function') {
+      window.updateStatus(type, message);
+    } else {
+      console.log(`Status: ${type} - ${message}`);
+    }
   }
 
   handleConnected(data) {
@@ -733,13 +743,10 @@ class VoiceAssistantCore {
   }
 
   getWebSocketURL() {
-    const hostname = window.location.hostname;
+    const host = localStorage.getItem('wsHost') || '127.0.0.1';
+    const port = localStorage.getItem('wsPort') || '48231';
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'ws://localhost:8123';
-    }
-    return `${protocol}//${hostname}:8123`;
+    return `${protocol}//${host}:${port}`;
   }
 
   async getAuthToken() {
