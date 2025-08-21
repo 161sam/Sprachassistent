@@ -70,12 +70,16 @@ class VoiceAssistantCore {
       optimizeForBattery: this.platform === 'mobile',
       
       // Visual effects
-      nebelColors: {
-        primary: '#6366f1',
-        secondary: '#10b981', 
-        accent: '#f59e0b'
-      }
-    };
+        nebelColors: {
+          primary: '#6366f1',
+          secondary: '#10b981',
+          accent: '#f59e0b'
+        },
+        sttModel: 'Faster-Whisper',
+        ttsEngine: 'Zonos',
+        wsHost: '127.0.0.1',
+        wsPort: 48231
+      };
 
     this.cache = new Map();
     this.gestureHandler = null;
@@ -276,8 +280,8 @@ class VoiceAssistantCore {
             version: 1,
             stream_id: streamId,
             device: this.platform,
-            stt_model: localStorage.getItem('sttModel') || 'Faster-Whisper',
-            tts_engine: localStorage.getItem('ttsEngine') || 'Zonos'
+            stt_model: localStorage.getItem('sttModel') || this.settings.sttModel,
+            tts_engine: localStorage.getItem('ttsEngine') || this.settings.ttsEngine
           }));
 
           // Reset reconnection attempts after a successful connection
@@ -743,8 +747,8 @@ class VoiceAssistantCore {
   }
 
   getWebSocketURL() {
-    const host = localStorage.getItem('wsHost') || '127.0.0.1';
-    const port = localStorage.getItem('wsPort') || '48231';
+    const host = localStorage.getItem('wsHost') || this.settings.wsHost;
+    const port = localStorage.getItem('wsPort') || this.settings.wsPort;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${host}:${port}`;
   }
