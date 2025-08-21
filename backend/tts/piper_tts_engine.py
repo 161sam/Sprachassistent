@@ -57,6 +57,59 @@ class PiperTTSEngine(BaseTTSEngine):
         }
         
     async def initialize(self) -> bool:
+        # --- BEGIN: robust local Piper model resolver ---
+        import os, logging
+        log = logging.getLogger("backend.tts.piper_tts_engine")
+        # Stimmenname aus Instanz, ENV oder Default ziehen
+        voice = getattr(self, "voice", None) or os.getenv("TTS_VOICE") or "de_DE-thorsten-low"
+        # Beide Namensvarianten testen
+        cand_names = list(dict.fromkeys([voice, voice.replace("de_DE-","de-"), voice.replace("de-","de_DE-")]));
+        # Mögliche Basisverzeichnisse (in Reihenfolge) sammeln
+        bases = []
+        for envk in ("TTS_MODEL_DIR", "MODELS_DIR"):
+            v = os.getenv(envk)
+            if v: bases.append(v)
+        # Fallback: <repo>/models
+        bases.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"))
+        tried = []
+        for b in bases:
+            for name in cand_names:
+                onnx = os.path.join(b, "piper", f"{name}.onnx")
+                js   = os.path.join(b, "piper", f"{name}.onnx.json")
+                tried.append((onnx, js))
+                if os.path.isfile(onnx) and os.path.isfile(js):
+                    log.info(f"Piper: benutze lokales Modell: {onnx}")
+                    self.model_path = onnx
+                    self.config_path = js
+                    self.voice_ready = True
+                    # Früh raus – Rest der Init überspringen
+                    return True
+        log.warning("Piper: kein lokales Modell gefunden; geprüft:")
+        for onnx, js in tried:
+            log.warning(f"  - {onnx} | {js}")
+        # --- END: robust local Piper model resolver ---
+        # --- BEGIN local model fallback for direct files ---
+        import os, logging
+        logger = logging.getLogger("backend.tts.piper_tts_engine")
+        base = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
+        voice = (os.getenv("TTS_VOICE") or "").strip()
+        def _resolve_local_files(v):
+            names = [v, v.replace("de_DE-", "de-"), v.replace("de-", "de_DE-")]
+            for name in names:
+                onnx  = os.path.join(base, "piper", f"{name}.onnx")
+                js    = os.path.join(base, "piper", f"{name}.onnx.json")
+                if os.path.isfile(onnx) and os.path.isfile(js):
+                    return onnx, js
+            return None, None
+        if voice:
+            onnx, js = _resolve_local_files(voice)
+            if onnx and js:
+                logger.info(f"Piper: benutze lokales Modell: {onnx}")
+                self.model_path = onnx
+                self.config_path = js
+                self.voice_ready = True
+                return True
+        # --- END local model fallback ---
         """Initialisiere Piper TTS Engine"""
         try:
             model_path = self._get_model_path(self.config.voice)

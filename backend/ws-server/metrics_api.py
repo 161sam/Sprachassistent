@@ -12,6 +12,19 @@ import time
 import logging
 from aiohttp import web
 
+from aiohttp import web
+
+@web.middleware
+async def cors_middleware(request, handler):
+    try:
+        resp = await handler(request)
+    except web.HTTPException as ex:
+        resp = ex
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    resp.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    return resp
+
 logger = logging.getLogger(__name__)
 
 # ENV
@@ -42,23 +55,19 @@ class MetricsAPI:
     def setup_routes(self):
         self.app.router.add_get('/metrics', self.get_metrics)
         self.app.router.add_get('/health', self.health_check)
-        self.app.router.add_get('/status', self.get_status)
+        self.app.router.add_get('/status', self.status_handler)
         self.app.router.add_options('/{path:.*}', self.handle_cors)
-        self.app.middlewares.append(self.cors_handler)
-
-    async def cors_handler(self, request, handler):
-        response = await handler(request)
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-        return response
+        self.app.middlewares.append(cors_middleware)
 
     async def handle_cors(self, request):
+        from aiohttp import web
         return web.Response(headers={
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type'
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
         })
+
+
 
     async def get_metrics(self, request):
         try:
@@ -69,40 +78,58 @@ class MetricsAPI:
                 'api_version': '2.1.0',
                 'endpoints': _endpoints()
             }
-            return web.json_response(metrics)
+            import json
+            return web.json_response(metrics, dumps=lambda d: json.dumps(d, default=str))
         except Exception as e:
             logger.error(f"Metrics API error: {e}")
             return web.json_response({'error': 'Internal server error'}, status=500)
+    def get_status(self):
+        """Interner Status für Boot‑Checks und /health."""
+        engines = []
+        default_engine = None
+        try:
+            tm = getattr(self, 'voice_server', None)
+            if tm and getattr(tm, 'tts_manager', None):
+                ttm = tm.tts_manager
+                engines = list(getattr(ttm, 'engines', {}).keys())
+                cur = getattr(ttm, 'get_current_engine', lambda: None)()
+                if cur is not None:
+                    default_engine = getattr(cur, 'value', str(cur))
+        except Exception:
+            pass
+        return {
+            'service': 'metrics',
+            'ok': True,
+            'engines': [str(e) for e in engines],
+            'default_engine': default_engine,
+        }
+
+
+    async def status_handler(self, request):
+        from aiohttp import web
+        return web.json_response(self.get_status())
+
+
+
+
+
+
+
+
+
 
     async def health_check(self, request):
-        try:
-            stats = self.voice_server.get_stats()
-            health_status = 'healthy'
-            if stats['active_connections'] > 100: health_status = 'degraded'
-            if stats['processing_queue_size'] > 20: health_status = 'unhealthy'
-            return web.json_response({
-                'status': health_status,
-                'timestamp': time.time(),
-                'uptime': stats['uptime_seconds'],
-                'connections': stats['active_connections']
-            })
-        except Exception as e:
-            logger.error(f"Health check error: {e}")
-            return web.json_response({'status': 'error', 'error': str(e)}, status=500)
+        from aiohttp import web
+        data = {'status': 'ok', **self.get_status()}
+        return web.json_response(data)
 
-    async def get_status(self, request):
-        try:
-            stats = self.voice_server.get_stats()
-            return web.json_response({
-                'server': 'Voice Assistant Backend',
-                'version': '2.1.0',
-                'status': 'running',
-                'uptime_hours': round(stats['uptime_seconds'] / 3600, 1),
-                'connections': stats['active_connections'],
-                'streams': stats['active_audio_streams']
-            })
-        except Exception as e:
-            return web.json_response({'status': 'error', 'error': str(e)}, status=500)
+
+
+
+
+
+
+
 
 async def start_metrics_api(voice_server, port=METRICS_PORT):
     """Startet die HTTP Metrics API (bindet auf WS_HOST, Port aus Param/ENV)."""

@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TTSConfig:
     """Konfiguration für TTS-Engines"""
-    engine_type: str  # "piper", "kokoro"
-    model_path: str
-    voice: str
+    engine_type: str = "piper"  # Default engine type
+    model_path: str = "models/piper/default.onnx"  # Default model path
+    voice: str = "default"  # Default voice
     speed: float = 1.0
     volume: float = 1.0
     sample_rate: int = 22050

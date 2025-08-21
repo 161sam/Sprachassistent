@@ -9,6 +9,22 @@ const http = require('http');
 const url = require('url');
 const net = require('net');
 
+const https = require('http');
+
+async function waitForHealth(url='http://127.0.0.1:48232/health', retries=120, delay=500) {
+  return new Promise((resolve, reject) => {
+    const ping = () => {
+      const req = https.get(url, res => {
+        if (res.statusCode === 200) { res.resume(); resolve(); }
+        else { res.resume(); retries-- > 0 ? setTimeout(ping, delay) : reject(new Error('health check failed')); }
+      });
+      req.on('error', () => { retries-- > 0 ? setTimeout(ping, delay) : reject(new Error('health check error')); });
+    };
+    ping();
+  });
+}
+
+
 // ---- Basics -----------------------------------------------------------------
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 const isMac = process.platform === 'darwin';
@@ -231,7 +247,7 @@ async function startBackend() {
       dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
     });
 
-    await waitForPort(Number(env.WS_PORT));
+    await waitForHealth();
   } catch (err) {
     log.error('Failed to start backend:', err);
     dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));

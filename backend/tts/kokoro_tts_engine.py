@@ -24,9 +24,12 @@ try:
     from kokoro_onnx import Kokoro
     import soundfile as sf
     KOKORO_AVAILABLE = True
-except ImportError:
+    logger.debug("Kokoro-TTS dependencies loaded successfully")
+except ImportError as e:
     KOKORO_AVAILABLE = False
-    logger.warning("Kokoro TTS nicht verfügbar - installiere: pip install kokoro-onnx soundfile")
+    logger.warning(f"Kokoro TTS nicht verfügbar: {e}")
+    logger.info("💡 Für Kokoro TTS installieren: pip install kokoro-onnx soundfile")
+
 
 class KokoroTTSEngine(BaseTTSEngine):
     """Kokoro TTS Engine für kompakte und schnelle Sprachsynthese"""
@@ -66,18 +69,30 @@ class KokoroTTSEngine(BaseTTSEngine):
             raise TTSInitializationError("Kokoro TTS Bibliothek nicht verfügbar")
             
         try:
-            # Modell- und Voice-Dateien suchen
-            model_path = self._find_model_file(self.model_file)
-            voices_path = self._find_model_file(self.voices_file)
+            # ENV-Overrides für Modell-Pfade
+            model_path = os.getenv("KOKORO_MODEL_PATH")
+            voices_path = os.getenv("KOKORO_VOICES_PATH")
+            disable_download = os.getenv("KOKORO_DISABLE_DOWNLOAD", "0").lower() in ("1", "true", "yes")
             
-            if not model_path or not voices_path:
-                # Versuche Download-URLs zu laden
-                await self._ensure_model_files()
-                model_path = self._find_model_file(self.model_file)
-                voices_path = self._find_model_file(self.voices_file)
+            # Modell-Pfade bestimmen
+            if not model_path:
+                model_path = os.path.join(self.model_dir, "kokoro", "kokoro-v1.0.onnx")
+            if not voices_path:
+                voices_path = os.path.join(self.model_dir, "kokoro", "voices-v1.0.bin")
                 
-            if not model_path or not voices_path:
-                raise TTSInitializationError("Kokoro-Modell-Dateien nicht gefunden")
+            # Lokale Dateien prüfen
+            if disable_download:
+                if not (os.path.isfile(model_path) and os.path.isfile(voices_path)):
+                    raise TTSInitializationError("Kokoro: lokale Dateien nicht gefunden; Download ist deaktiviert")
+                logger.info("Kokoro: benutze lokale Dateien (Download deaktiviert)")
+            else:
+                # Modell- und Voice-Dateien suchen oder herunterladen
+                model_path = self._find_model_file(self.model_file) or model_path
+                voices_path = self._find_model_file(self.voices_file) or voices_path
+                
+                if not (os.path.exists(model_path) and os.path.exists(voices_path)):
+                    logger.info("Kokoro-Modell-Dateien nicht gefunden, überspringe Download...")
+                    raise TTSInitializationError("Kokoro-Modell-Dateien nicht verfügbar")
                 
             # Initialisiere Kokoro-Modell im Thread Pool
             loop = asyncio.get_event_loop()
@@ -232,59 +247,6 @@ class KokoroTTSEngine(BaseTTSEngine):
                 
         return None
         
-    async def _ensure_model_files(self):
-        """Stelle sicher, dass Modell-Dateien verfügbar sind"""
-        logger.info("Lade Kokoro-Modell-Dateien herunter...")
-        
-        # URLs für Modell-Dateien
-        model_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx"
-        voices_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"
-        
-        # Download-Verzeichnis erstellen
-        download_dir = os.path.expanduser("~/.local/share/kokoro")
-        os.makedirs(download_dir, exist_ok=True)
-        
-        try:
-            import aiohttp
-            import aiofiles
-            
-            async with aiohttp.ClientSession() as session:
-                # Modell-Datei herunterladen
-                model_path = os.path.join(download_dir, self.model_file)
-                if not os.path.exists(model_path):
-                    logger.info(f"Lade {self.model_file} herunter...")
-                    await self._download_file(session, model_url, model_path)
-                    
-                # Voices-Datei herunterladen
-                voices_path = os.path.join(download_dir, self.voices_file)
-                if not os.path.exists(voices_path):
-                    logger.info(f"Lade {self.voices_file} herunter...")
-                    await self._download_file(session, voices_url, voices_path)
-                    
-        except ImportError:
-            logger.warning("aiohttp/aiofiles nicht verfügbar für Download")
-            raise TTSInitializationError("Modell-Dateien müssen manuell heruntergeladen werden")
-        except Exception as e:
-            logger.error(f"Download fehlgeschlagen: {e}")
-            raise TTSInitializationError(f"Modell-Download fehlgeschlagen: {e}")
-            
-    async def _download_file(self, session, url: str, path: str):
-        """Lade Datei herunter"""
-        try:
-            async with session.get(url) as response:
-                response.raise_for_status()
-                
-                async with aiofiles.open(path, 'wb') as f:
-                    async for chunk in response.content.iter_chunked(8192):
-                        await f.write(chunk)
-                        
-            logger.info(f"Download abgeschlossen: {path}")
-            
-        except Exception as e:
-            if os.path.exists(path):
-                os.unlink(path)  # Unvollständige Datei löschen
-            raise e
-            
     def _estimate_audio_length(self, audio_data: bytes) -> float:
         """Schätze Audio-Länge in Millisekunden"""
         if not audio_data or len(audio_data) < 44:  # WAV-Header

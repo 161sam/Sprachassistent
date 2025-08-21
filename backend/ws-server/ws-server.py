@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 import os
 WS_HOST = os.getenv('WS_HOST','127.0.0.1')
 WS_PORT = int(os.getenv('WS_PORT','48231'))
@@ -26,7 +27,11 @@ Features integrated from previous versions:
 
 import asyncio
 import websockets
-from websockets.server import WebSocketServerProtocol
+# Updated websockets import (v11+ compatibility)
+try:
+    from websockets.legacy.server import WebSocketServerProtocol
+except ImportError:
+    from websockets.server import WebSocketServerProtocol
 import json
 import base64
 import time
@@ -45,8 +50,6 @@ from faster_whisper import WhisperModel
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Importiere neues TTS-System
-
 # --- PYTHONPATH bootstrap (project root) ---
 import sys as _sys
 from pathlib import Path as _P
@@ -54,18 +57,88 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 (_sys.path.insert(0, str(_PROJECT_ROOT))
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
-
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
 
-from metrics_api import start_metrics_api
-from skills import load_all_skills
-from intent_classifier import IntentClassifier
 from auth.token_utils import verify_token
 
 # Load environment variables from optional defaults then override with .env
 load_dotenv('.env.defaults', override=False)
 load_dotenv()
-# Enhanced configuration
+
+# Set up logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Safe imports with fallbacks
+try:
+    from intent_classifier import IntentClassifier
+except ImportError as e:
+    logger.warning(f"Intent classifier not available: {e}")
+    class IntentClassifier:
+        def __init__(self, *args, **kwargs):
+            pass
+        def classify(self, text):
+            return type('obj', (object,), {'intent': 'unknown', 'confidence': 0.0})
+
+try:
+    from skills import load_all_skills
+except ImportError as e:
+    logger.warning(f"Skills module not available: {e}")
+    def load_all_skills(*args, **kwargs):
+        return []
+
+try:
+    from metrics_api import start_metrics_api
+except ImportError as e:
+    logger.error(f"Metrics API not available: {e}")
+    async def start_metrics_api(*args, **kwargs):
+        raise ImportError("Metrics API module not available")
+
+# --- Helpers: Zonos-Language-Normalization & Kokoro-Voice listing ---
+def _normalize_zonos_lang():
+    import os
+    try:
+        from zonos.conditioning import supported_language_codes
+    except Exception:
+        supported_language_codes = set(["de","en-us","fr-fr","es","it","ja","cmn"])
+    raw = os.getenv("ZONOS_LANG", "de").strip().lower().replace("_","-")
+    m = {
+        "de-de": "de", "deu": "de", "ger": "de", "german": "de",
+        "en": "en-us", "en_us": "en-us", "en-us": "en-us",
+        "en-gb": "en-gb", "uk": "en-gb",
+        "fr": "fr-fr", "fra": "fr-fr", "fre": "fr-fr",
+        "pt": "pt-br", "pt-br": "pt-br",
+        "zh": "cmn", "zh-cn": "cmn",
+        "jp": "ja"
+    }
+    cand = m.get(raw, raw)
+    if cand not in supported_language_codes and "-" in cand:
+        cand = cand.split("-")[0]
+    if cand not in supported_language_codes:
+        cand = "en-us" if "en-us" in supported_language_codes else next(iter(sorted(supported_language_codes)))
+    os.environ["ZONOS_LANG"] = cand
+    return cand
+
+def _kokoro_voice_labels(voices_path: str, model_path: str):
+    """Return list of {label, key} from Kokoro voices (safe if Kokoro not installed)."""
+    out = []
+    try:
+        from kokoro_onnx import Kokoro
+        tts = Kokoro(model_path, voices_path=voices_path)
+        for k in sorted(getattr(tts, "voices", {}).keys()):
+            base = k.split("_")
+            pretty = base[-1].capitalize() if base else k
+            label = f"{pretty} [{k}]"
+            out.append({"label": label, "key": k})
+    except Exception:
+        pass
+    return out
+
+# Normalize ZONOS_LANG after helpers are defined
+_normalized_lang = _normalize_zonos_lang()
 @dataclass
 class StreamingConfig:
     """Configuration read from environment variables."""
@@ -127,12 +200,6 @@ config = StreamingConfig()
 
 ALLOWED_IPS: List[str] = [ip.strip() for ip in os.getenv("ALLOWED_IPS", "").split(",") if ip.strip()]
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 logger.info(f"Loaded .env profile: {os.getenv('ENV_PROFILE', 'default')}")
 
 class AudioChunk:
@@ -259,7 +326,7 @@ class AsyncSTTEngine:
 class AudioStreamManager:
     """Manages real-time audio streams with minimal latency"""
     
-    def __init__(self, stt_engine: AsyncSTTEngine, tts_manager: TTSManager):
+    def __init__(self, stt_engine: AsyncSTTEngine, tts_manager: "TTSManager"):
         self.stt_engine = stt_engine
         self.tts_manager = tts_manager
         self.active_streams: Dict[str, Dict] = {}
@@ -581,7 +648,7 @@ class AudioStreamManager:
 class ConnectionManager:
     """Manages WebSocket connections with optimized handling"""
     
-    def __init__(self, stream_manager: AudioStreamManager, tts_manager: TTSManager):
+    def __init__(self, stream_manager: AudioStreamManager, tts_manager: "TTSManager"):
         self.active_connections: Dict[str, WebSocketServerProtocol] = {}
         self.connection_info: Dict[str, Dict] = {}
         self.stream_manager = stream_manager
@@ -660,8 +727,35 @@ class OptimizedVoiceServer:
             workers=config.stt_workers
         )
         
-        # Initialisiere TTS-Manager
-        self.tts_manager = TTSManager()
+        # Initialisiere TTS-Manager mit Fallback
+        try:
+            self.tts_manager = TTSManager()
+            logger.info("✅ TTSManager created successfully")
+        except Exception as e:
+            logger.error(f"❌ TTSManager creation failed: {e}")
+            # Create dummy TTS manager for testing
+            class DummyTTSManager:
+                async def initialize(self, *args, **kwargs):
+                    return True
+                async def synthesize(self, *args, **kwargs):
+                    from backend.tts.base_tts_engine import TTSResult
+                    return TTSResult(success=False, error_message="TTS not available")
+                async def cleanup(self):
+                    pass
+                def get_available_engines(self):
+                    return []
+                def get_current_engine(self):
+                    return None
+                def get_engine_stats(self):
+                    return {}
+                async def switch_engine(self, *args):
+                    return False
+                async def set_voice(self, *args):
+                    return False
+                async def test_all_engines(self, *args):
+                    return {}
+            self.tts_manager = DummyTTSManager()
+            logger.warning("⚠️  Using dummy TTS manager - TTS features disabled")
         
         self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
         # self.stream_manager.stats wird weiter unten gesetzt, nachdem self.stats existiert
@@ -685,7 +779,9 @@ class OptimizedVoiceServer:
         logger.info("Initializing optimized voice server with TTS switching...")
         
         # Initialize STT engine
+        logger.info("🎤 Initialisiere STT Engine...")
         await self.stt_engine.initialize()
+        logger.info("✅ STT Engine initialisiert")
         
         # Initialize TTS Manager
         # Standard-Konfigurationen für beide Engines
@@ -710,6 +806,18 @@ class OptimizedVoiceServer:
             sample_rate=24000,
             model_dir=config.tts_model_dir
         )
+
+        zonos_config = TTSConfig(
+            engine_type="zonos",
+            model_path=os.getenv("ZONOS_MODEL", "Zyphra/Zonos-v0.1-transformer"),
+            voice=os.getenv("ZONOS_VOICE", "thorsten"),
+            speed=config.default_tts_speed,
+            volume=config.default_tts_volume,
+            language=os.getenv("ZONOS_LANG", "de"),
+            sample_rate=int(os.getenv("TTS_OUTPUT_SR", 48000)),
+            model_dir=config.tts_model_dir,
+            engine_params={"speaker_dir": os.getenv("ZONOS_SPEAKER_DIR", "spk_cache")}
+        )
         
         # Bestimme Standard-Engine
         _de=(config.default_tts_engine or 'piper').lower()
@@ -722,9 +830,12 @@ class OptimizedVoiceServer:
         else:
             default_engine=TTSEngineType.PIPER
         
-        success = await self.tts_manager.initialize(piper_config, kokoro_config, None, default_engine=default_engine)
-        if not success:
-            logger.error("TTS-Manager Initialisierung fehlgeschlagen!")
+        logger.info("🎧 Starte TTS-Manager Initialisierung...")
+        success = await self.tts_manager.initialize(piper_config, kokoro_config, zonos_config, default_engine=default_engine)
+        if success:
+            logger.info("✅ TTS-Manager erfolgreich initialisiert")
+        else:
+            logger.error("❌ TTS-Manager Initialisierung fehlgeschlagen!")
 
         # Sicherstellen, dass der Audio-Queue-Prozessor läuft
         if getattr(self.stream_manager, "_queue_task", None) is None:
@@ -748,7 +859,10 @@ class OptimizedVoiceServer:
             except Exception as e:
                 logger.warning(f"Headscale connection failed: {e}")
 
-        logger.info("Voice server initialized successfully")
+        logger.info("🎆 Audio Queue Processor gestartet")
+        
+        # Abschließende Initialisierung
+        logger.info("✨ Voice server initialized successfully")
         
     async def handle_websocket(self, websocket, path=None):
         # --- websockets v11+ compat: 'path' wird nicht mehr übergeben ---
@@ -808,6 +922,7 @@ class OptimizedVoiceServer:
             # Optional: zusätzliche Verbindungsinformationen
             available_engines = await self.tts_manager.get_available_engines()
             current_engine = self.tts_manager.get_current_engine()
+            current_engine_str = current_engine.value if current_engine else None
             await self.connection_manager.send_to_client(client_id, {
                 'type': 'connected',
                 'client_id': client_id,
@@ -820,7 +935,7 @@ class OptimizedVoiceServer:
                 },
                 'tts_info': {
                     'available_engines': available_engines,
-                    'current_engine': current_engine.value if current_engine else None,
+                    'current_engine': current_engine_str,
                     'switching_enabled': config.enable_engine_switching
                 }
             })
@@ -1080,8 +1195,15 @@ class OptimizedVoiceServer:
         current_engine = self.tts_manager.get_current_engine()
         engine_stats = self.tts_manager.get_engine_stats()
         
+        # --- Build Kokoro voice labels for GUI (label -> key) ---
+        import os as _os
+        _kp = _os.getenv("KOKORO_MODEL_PATH", _os.path.join(_os.getenv("TTS_MODEL_DIR", "models"), "kokoro", "kokoro-v1.0.onnx"))
+        _kv = _os.getenv("KOKORO_VOICES_PATH", _os.path.join(_os.getenv("TTS_MODEL_DIR", "models"), "kokoro", "voices-v1.0.bin"))
+        kokoro_voice_labels = _kokoro_voice_labels(_kv, _kp)
+
         await self.connection_manager.send_to_client(client_id, {
             'type': 'tts_info',
+            'kokoro_voice_labels': kokoro_voice_labels,
             'available_engines': available_engines,
             'available_voices': available_voices,
             'current_engine': current_engine.value if current_engine else None,
@@ -1227,36 +1349,80 @@ class OptimizedVoiceServer:
 server = OptimizedVoiceServer()
 
 async def main():
-    """Main server entry point"""
-    # Initialize server
-    await server.initialize()
+    """Main server entry point with improved error handling"""
+    metrics_runner = None
     
-    # Start HTTP Metrics API
     try:
-        metrics_runner = await start_metrics_api(server, port=config.metrics_port)
-        logger.info(f"📊 Metrics API started on port {config.metrics_port}")
+        # Initialize server with detailed logging
+        logger.info("🔧 Starting server initialization...")
+        await server.initialize()
+        logger.info("✅ Server initialization completed")
+        
+        # Start HTTP Metrics API with better error handling
+        logger.info(f"🌐 Starting Metrics API on port {config.metrics_port}...")
+        try:
+            metrics_runner = await start_metrics_api(server, port=config.metrics_port)
+            logger.info(f"✅ Metrics API started successfully on port {config.metrics_port}")
+        except Exception as e:
+            logger.error(f"❌ Failed to start metrics API: {e}")
+            import traceback
+            logger.error(f"Metrics API traceback:\n{traceback.format_exc()}")
+            # Continue without metrics API
+            metrics_runner = None
+        
+        # Start WebSocket server with better error handling
+        logger.info(f"🔗 Starting WebSocket server on {WS_HOST}:{WS_PORT}...")
+        
+        try:
+            async with websockets.serve(
+                server.handle_websocket,
+                WS_HOST, WS_PORT,
+                close_timeout=10,
+                ping_interval=config.ping_interval,
+                ping_timeout=config.ping_timeout
+            ):
+                logger.info("🚀 Optimized Voice Server with TTS switching is running!")
+                logger.info(f"🔗 WebSocket server: ws://{WS_HOST}:{WS_PORT}")
+                if metrics_runner:
+                    logger.info(f"📊 Metrics available at: http://{WS_HOST}:{config.metrics_port}/metrics")
+                    logger.info(f"🏥 Health check at: http://{WS_HOST}:{config.metrics_port}/health")
+                else:
+                    logger.warning("⚠️  Metrics API not available")
+                logger.info("🎙️  TTS Engine switching enabled" if config.enable_engine_switching else "🎙️  TTS Engine switching disabled")
+                logger.info("✨ Server startup completed successfully!")
+                
+                # Run forever
+                await asyncio.Future()
+                
+        except Exception as ws_error:
+            logger.error(f"❌ WebSocket server error: {ws_error}")
+            import traceback
+            logger.error(f"WebSocket traceback:\n{traceback.format_exc()}")
+            raise
+            
     except Exception as e:
-        logger.warning(f"Failed to start metrics API: {e}")
-        metrics_runner = None
-    
-    # Start WebSocket server
-    logger.info(f"Starting optimized WebSocket server with TTS switching on port {config.ws_port}")
-    
-    try:
-        async with websockets.serve(
-            server.handle_websocket,
-            WS_HOST, WS_PORT,
-            close_timeout=10
-        ):
-            logger.info("🚀 Optimized Voice Server with TTS switching is running!")
-            logger.info(f"📊 Metrics available at: http://localhost:{config.metrics_port}/metrics")
-            logger.info(f"🏥 Health check at: http://localhost:{config.metrics_port}/health")
-            logger.info("🎙️  TTS Engine switching enabled" if config.enable_engine_switching else "🎙️  TTS Engine switching disabled")
-            await asyncio.Future()  # Run forever
+        logger.error(f"❌ Server startup failed: {e}")
+        import traceback
+        logger.error(f"Startup traceback:\n{traceback.format_exc()}")
+        raise
+        
     finally:
-        if metrics_runner:
-            await metrics_runner.cleanup()
-        await server.tts_manager.cleanup()
+        # Cleanup
+        logger.info("🧹 Starting cleanup...")
+        try:
+            if metrics_runner:
+                logger.info("Stopping metrics API...")
+                await metrics_runner.cleanup()
+        except Exception as e:
+            logger.error(f"Metrics cleanup error: {e}")
+            
+        try:
+            logger.info("Stopping TTS manager...")
+            await server.tts_manager.cleanup()
+        except Exception as e:
+            logger.error(f"TTS cleanup error: {e}")
+            
+        logger.info("🏁 Cleanup completed")
 
 if __name__ == "__main__":
     try:
