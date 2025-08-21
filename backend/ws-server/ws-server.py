@@ -282,7 +282,14 @@ class AsyncSTTEngine:
             # ready-to-use converted models. This prevents startup failures when
             # a PyTorch model repository is mistakenly used.
             if "model.bin" in str(exc) and not self.model_path:
-                alt = f"guillaumekln/whisper-{self.model_size}"
+                # Extract the base model name even if a namespace like "openai/" is
+                # provided (e.g. "openai/whisper-base" -> "base").  Some Hugging Face
+                # repositories such as "openai/whisper-base" only contain the original
+                # PyTorch weights which are missing the required CTranslate2 files.  In
+                # that case we transparently fall back to the official faster-whisper
+                # repository which hosts ready-to-use converted models.
+                base_name = self.model_size.split("/")[-1].replace("whisper-", "")
+                alt = f"Systran/faster-whisper-{base_name}"
                 logger.warning(
                     f"CT2 model not found for '{target}', trying fallback '{alt}'"
                 )
