@@ -8,6 +8,12 @@ yarn-error.log*
 lerna-debug.log*
 __pycache__/
 
+/voice-assistant-apps/desktop/dist/
+/dist/
+/build/
+/backend/**/__pycache__/
+*.spec
+
 # Runtime data
 pids
 *.pid
@@ -215,6 +221,9 @@ shared/cache/
 
 # Build Outputs
 build/
+!voice-assistant-apps/desktop/build/
+!voice-assistant-apps/desktop/build/icons/
+!voice-assistant-apps/desktop/build/icons/.gitkeep
 dist/
 out/
 

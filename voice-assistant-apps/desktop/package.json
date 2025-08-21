@@ -19,14 +19,18 @@
     "build-mac": "electron-builder --mac",
     "build-linux": "electron-builder --linux",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --publish=never",
     "postinstall": "electron-builder install-app-deps",
     "dist:deb": "electron-builder --linux deb --publish=never",
-    "pack:dir": "electron-builder --dir --publish=never"
+    "pack:dir": "electron-builder --dir --publish=never",
+    "build:backend:linux": "echo \"(run later) pyinstaller backend/ws-server/ws-server.py --name ws-server --onefile --clean --noconfirm && mkdir -p voice-assistant-apps/desktop/resources/bin/linux && cp dist/ws-server voice-assistant-apps/desktop/resources/bin/linux/\"",
+    "build:backend:win": "echo \"(run later) pyinstaller backend/ws-server/ws-server.py --name ws-server --onefile --clean --noconfirm && mkdir -p voice-assistant-apps/desktop/resources/bin/win && copy dist\\\\ws-server.exe voice-assistant-apps\\\\desktop\\\\resources\\\\bin\\\\win\\\\\"",
+    "dist:linux": "electron-builder --linux AppImage,deb",
+    "dist:win": "electron-builder --win nsis",
+    "dist": "electron-builder -mwl"
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^24.13.3",
     "electron-devtools-installer": "^3.2.0"
   },
   "dependencies": {
@@ -36,89 +40,20 @@
     "node-notifier": "^10.0.1"
   },
   "build": {
-    "appId": "com.voiceassistant.desktop",
-    "productName": "KI-Sprachassistent",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "src/**/*",
-      "assets/**/*",
-      "node_modules/**/*",
-      "../shared/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.productivity",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "AudioVideo",
-      "icon": "../../gui/icons",
-      "desktop": {
-        "Name": "KI-Sprachassistent",
-        "Comment": "All-in-one Voice Assistant (Zonos + Faster-Whisper)"
-      }
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    },
+    "appId": "com.example.sprachassistent",
+    "productName": "KI Sprachassistent",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": { "buildResources": "build", "output": "dist" },
+    "files": [ "src/**", "package.json" ],
+    "asar": true,
+    "asarUnpack": [ "resources/**" ],
     "extraResources": [
-      {
-        "from": "../../backend",
-        "to": "app/backend"
-      },
-      {
-        "from": "../../gui",
-        "to": "app/gui"
-      },
-      {
-        "from": "../../models",
-        "to": "app/models"
-      },
-      {
-        "from": "../../spk_cache",
-        "to": "app/spk_cache"
-      },
-      {
-        "from": "../../voice-assistant-apps/shared",
-        "to": "app/voice-assistant-apps/shared"
-      },
-      {
-        "from": "../../config",
-        "to": "app/config"
-      },
-      {
-        "from": "../../.env",
-        "to": "app/.env"
-      }
-    ]
+      { "from": "resources/", "to": ".", "filter": ["**/*"] }
+    ],
+    "linux": { "category": "Utility", "target": ["AppImage","deb"], "icon": "build/icons" },
+    "win":   { "target": ["nsis"], "icon": "build/icons/icon.ico" },
+    "nsis":  { "oneClick": true, "perMachine": false, "allowElevation": true, "deleteAppDataOnUninstall": false },
+    "publish": [{ "provider": "github" }]
   },
   "keywords": [
     "voice",
