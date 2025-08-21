@@ -281,9 +281,7 @@ class VoiceAssistantCore {
           console.warn('Failed to send handshake', e);
         }
 
-        // Optionally send auth capabilities after handshake
-        this.authenticate();
-        this.updateConnectionStatus('connected', '✅ Connected');
+        // Connection established; wait for server confirmation before auth
         this.metrics.reconnections++;
       };
 
@@ -334,6 +332,11 @@ class VoiceAssistantCore {
       vibrate: !!navigator.vibrate,
       serviceWorker: !!navigator.serviceWorker
     };
+  }
+
+  handleConnected(data) {
+    this.updateConnectionStatus('connected', '✅ Connected');
+    this.authenticate();
   }
 
   handleWebSocketMessage(event) {
