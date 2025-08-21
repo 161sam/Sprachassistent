@@ -1,4 +1,5 @@
 from . import BaseSkill
+import os
 
 class GratitudeSkill(BaseSkill):
     intent_name = "gratitude"

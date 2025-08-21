@@ -5,6 +5,7 @@ Ermöglicht einheitliche Schnittstelle für verschiedene TTS-Systeme
 """
 
 from abc import ABC, abstractmethod
+import os
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 import asyncio

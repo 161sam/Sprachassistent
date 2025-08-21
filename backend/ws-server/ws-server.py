@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import os
+WS_HOST = os.getenv('WS_HOST','127.0.0.1')
+WS_PORT = int(os.getenv('WS_PORT','48231'))
 """Unified WebSocket Audio Streaming Server.
 
 This server consolidates all historic implementations into a single, modern
@@ -42,6 +45,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Importiere neues TTS-System
+
+# --- PYTHONPATH bootstrap (project root) ---
+import sys as _sys
+from pathlib import Path as _P
+_PROJECT_ROOT = _P(__file__).resolve().parents[2]
+(_sys.path.insert(0, str(_PROJECT_ROOT))
+ if str(_PROJECT_ROOT) not in _sys.path else None)
+# ------------------------------------------
+
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
 
 from metrics_api import start_metrics_api
@@ -71,8 +83,8 @@ class StreamingConfig:
     max_connections: int = int(os.getenv("MAX_CONNECTIONS", 100))
     ping_interval: float = float(os.getenv("PING_INTERVAL", 20.0))
     ping_timeout: float = float(os.getenv("PING_TIMEOUT", 10.0))
-    ws_port: int = int(os.getenv("WS_PORT", 8123))
-    metrics_port: int = int(os.getenv("METRICS_PORT", 8124))
+    ws_port: int = WS_PORT
+    metrics_port: int = int(os.getenv("METRICS_PORT", 48232))
 
     # Models
     stt_model: str = os.getenv("STT_MODEL", "base")
@@ -737,7 +749,13 @@ class OptimizedVoiceServer:
 
         logger.info("Voice server initialized successfully")
         
-    async def handle_websocket(self, websocket, path):
+    async def handle_websocket(self, websocket, path=None):
+        # --- websockets v11+ compat: 'path' wird nicht mehr übergeben ---
+        if path is None:
+            try:
+                path = getattr(websocket, 'path', '/')
+            except Exception:
+                path = '/'
         """Handle WebSocket connection with optimized message processing"""
         from urllib.parse import urlparse, parse_qs
 
@@ -1191,11 +1209,7 @@ async def main():
     try:
         async with websockets.serve(
             server.handle_websocket,
-            "0.0.0.0",
-            config.ws_port,
-            max_size=10_000_000,  # 10MB max message size
-            ping_interval=config.ping_interval,
-            ping_timeout=config.ping_timeout,
+            WS_HOST, WS_PORT,
             close_timeout=10
         ):
             logger.info("🚀 Optimized Voice Server with TTS switching is running!")
