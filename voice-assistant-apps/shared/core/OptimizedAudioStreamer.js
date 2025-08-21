@@ -141,7 +141,7 @@ class OptimizedAudioStreamer {
                 this.websocket = new WebSocket(wsUrl);
 
                 // Expect handshake: send {op:"hello", version, stream_id, device}
-                this.websocket.onopen = () => {
+                const handleOpen = () => {
                     try {
                         this.metrics.connection.connected = true;
                         this.metrics.connection.reconnectAttempts = 0;
@@ -170,6 +170,13 @@ class OptimizedAudioStreamer {
                     }
                     resolve();
                 };
+
+                this.websocket.onopen = handleOpen;
+                // In very fast connections the `open` event may fire before the
+                // handler is attached. Handle that case explicitly.
+                if (this.websocket.readyState === WebSocket.OPEN) {
+                    handleOpen();
+                }
 
                 this.websocket.onmessage = (event) => {
                     this.handleWebSocketMessage(event);
