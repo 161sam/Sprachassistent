@@ -9,8 +9,8 @@
   <title>KI-Sprachassistent</title>
   
   <!-- PWA Manifest -->
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   
   <style>
     :root {
@@ -959,7 +959,7 @@
   <div class="notification-container" id="notificationContainer"></div>
 
   <!-- Load optimized components -->
-  <script src="/voice-assistant-apps/shared/core/OptimizedAudioStreamer.js"></script>
+  <script src="../voice-assistant-apps/shared/core/OptimizedAudioStreamer.js"></script>
   
   <script>
     // Enhanced Voice Assistant with Mobile-First optimizations and performance monitoring
@@ -977,7 +977,7 @@
       try {
         // Initialize enhanced voice assistant with optimized settings
         voiceAssistant = new EnhancedVoiceAssistantCore({
-          wsUrl: 'ws://raspi4.local:8123',
+          wsUrl: (localStorage.getItem("wsUrl") || `ws://127.0.0.1:48231/?token=${localStorage.getItem("wsToken")||"devsecret"}`),
           chunkSize: 1024,           // Optimized chunk size
           chunkIntervalMs: 50,       // 50ms intervals for low latency
           adaptiveQuality: true,     // Automatic quality adaptation
@@ -1463,7 +1463,7 @@
     // Service worker registration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('sw.js')
           .then(registration => {
             console.log('SW registered: ', registration);
           })

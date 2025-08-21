@@ -1,3 +1,27 @@
+// --- DEV token bootstrap + WS token appender ---
+try {
+  // 1) Token vorbesetzen, falls leer
+  if (typeof localStorage !== 'undefined' && !localStorage.getItem('wsToken')) {
+    localStorage.setItem('wsToken', 'devsecret');
+  }
+
+  // 2) WebSocket monkey-patch: token immer anhängen
+  (function() {
+    const _WS = window.WebSocket;
+    window.WebSocket = function(url, protocols) {
+      try {
+        const t = (typeof localStorage!=='undefined' && localStorage.getItem('wsToken')) || '';
+        if (t && typeof url === 'string' && url.indexOf('token=') === -1) {
+          url += (url.indexOf('?')>-1 ? '&' : '?') + 'token=' + encodeURIComponent(t);
+        }
+      } catch(e) {}
+      return new _WS(url, protocols);
+    };
+    window.WebSocket.prototype = _WS.prototype;
+  })();
+} catch(e) {}
+// --- /DEV token bootstrap ---
+
 /**
  * Enhanced Voice Assistant GUI with Optimized Audio Streaming
  * Features:
@@ -604,17 +628,18 @@ class VoiceAssistantGUI {
     getWebSocketURL() {
         const hostname = window.location.hostname;
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+       const token = localStorage.getItem('wsToken') || 'devsecret';
         
         // Try different possible URLs
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
-            return 'ws://localhost:8123';
+            return `ws://localhost:48231/?token=${token}`;
         }
         
         // For Raspberry Pi setups
         const possibleHosts = [
             `${protocol}//${hostname}:8123`,
-            `ws://raspi4.local:8123`,
-            `ws://raspi4.headscale:8123`,
+            `ws://raspi4.local:48231/?token=${token}`,
+            `ws://raspi4.headscale:48231/?token=${token}`,
             `ws://${hostname}:8123`
         ];
         

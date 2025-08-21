@@ -7,14 +7,14 @@
 const CACHE_NAME = 'voice-assistant-v2.1.0';
 const urlsToCache = [
     '/',
-    '/index.html',
-    '/styles.css',
-    '/app.js',
+    './index.html',
+    './styles.css',
+    './app.js',
     '/voice-assistant-apps/shared/core/VoiceAssistantCore.js',
-    '/voice-assistant-apps/shared/core/OptimizedAudioStreamer.js',
-    '/voice-assistant-apps/shared/workers/audio-streaming-worklet.js',
-    '/audio-worklet-processor.js',
-    '/manifest.json'
+    '../voice-assistant-apps/shared/core/OptimizedAudioStreamer.js',
+    '../voice-assistant-apps/shared/workers/audio-streaming-worklet.js',
+    './audio-worklet-processor.js',
+    './manifest.json'
 ];
 
 // Install event - cache resources
@@ -96,7 +96,7 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
     event.waitUntil(
-        clients.openWindow('/')
+        clients.openWindow('./')
     );
 });
 

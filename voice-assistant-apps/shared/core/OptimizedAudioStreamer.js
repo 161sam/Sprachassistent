@@ -48,6 +48,8 @@ class OptimizedAudioStreamer {
         this.mediaStream = null;
         this.audioWorklet = null;
         this.websocket = null;
+        this._currentStreamId = null;
+        this.currentStreamId = null;
         
         // Performance metrics
         this.metrics = {
@@ -115,14 +117,22 @@ class OptimizedAudioStreamer {
     async connect(wsUrl) {
         return new Promise((resolve, reject) => {
             try {
-                this.websocket = new WebSocket(wsUrl);
+                try {
+  const _t = (typeof localStorage!=='undefined' && localStorage.getItem('wsToken')) || '';
+  if (_t && typeof wsUrl==='string' && wsUrl.indexOf('token=') === -1) {
+    wsUrl += (wsUrl.indexOf('?')>-1 ? '&' : '?') + 'token=' + encodeURIComponent(_t);
+  }
+} catch(_) {}
+console.log("🔌 Connecting to", wsUrl);
+this.websocket = new WebSocket(wsUrl);
                 
                 this.websocket.onopen = () => {
                     this.metrics.connection.connected = true;
                     this.metrics.connection.reconnectAttempts = 0;
 
                     this.startPingMonitoring();
-                    
+                    // Request new audio stream
+                    try { this.websocket.send(JSON.stringify({ type: 'start_audio_stream' })); } catch (e) { console.warn('Failed to request audio stream', e); }
                     if (this.onConnected) this.onConnected();
                     console.log('🔗 WebSocket connected to', wsUrl);
                     resolve();
@@ -186,16 +196,14 @@ class OptimizedAudioStreamer {
                 // Calculate latency
                 const latency = Date.now() - data.client_timestamp;
                 this.updateLatencyMetrics(latency);
-                
-                // Adapt quality based on latency
-                if (this.config.adaptiveQuality) {
-                    this.adaptQualityBasedOnLatency(latency);
-                }
+                if (this.config.adaptiveQuality) this.adaptQualityBasedOnLatency(latency);
+            } else if (data.type === 'audio_stream_started') {
+                this.currentStreamId = data.stream_id;
+            } else if (data.type === 'audio_stream_ended') {
+                this.currentStreamId = null;
             } else if (data.type === 'response' || data.type === 'audio_response') {
                 if (this.onResponse) this.onResponse(data);
-            }
-            
-        } catch (error) {
+            }} catch (error) {
             console.error('Error parsing WebSocket message:', error);
         }
     }
@@ -268,7 +276,10 @@ class OptimizedAudioStreamer {
             
             // Create audio processing pipeline
             await this.setupAudioProcessing();
-            
+            // Stream beim Server anmelden
+            if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+                this.websocket.send(JSON.stringify({ type: 'start_audio_stream', timestamp: Date.now() }));
+            }
             this.isStreaming = true;
             console.log('🎤 Audio streaming started');
             
@@ -322,13 +333,16 @@ class OptimizedAudioStreamer {
             this.metrics.audio.droppedChunks++;
             return;
         }
-        
+        if (!this.currentStreamId) {
+            // noch kein stream_id erhalten -> warten/droppen
+            this.metrics.audio.droppedChunks++;
+            return;
+        }
         try {
             // Encode as base64 for transmission
             const base64Audio = this.arrayBufferToBase64(audioData);
             
-            const message = {
-                type: 'audio_chunk',
+            const message = { type: 'audio_chunk', stream_id: this.currentStreamId,
                 chunk: base64Audio,
                 sequence: this.metrics.audio.chunksSent,
                 timestamp: Date.now(),
@@ -376,8 +390,7 @@ class OptimizedAudioStreamer {
         // Send end stream message
         if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
             this.websocket.send(JSON.stringify({
-                type: 'end_audio_stream',
-                timestamp: Date.now()
+                type: 'end_audio_stream', stream_id: this._currentStreamId, timestamp: Date.now()
             }));
         }
         
@@ -441,7 +454,7 @@ class OptimizedAudioStreamer {
 class EnhancedVoiceAssistant {
     constructor(config = {}) {
         this.config = {
-            wsUrl: 'ws://raspi4.local:8123',
+            wsUrl: 'ws://127.0.0.1:48231',
             chunkSize: 1024,
             chunkIntervalMs: 50,
             adaptiveQuality: true,

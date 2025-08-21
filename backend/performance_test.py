@@ -5,6 +5,7 @@ Tests Audio-Latenz, Concurrent Connections und System Performance
 """
 
 import asyncio
+import os
 import websockets
 import json
 import time
