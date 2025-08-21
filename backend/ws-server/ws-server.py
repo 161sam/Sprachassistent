@@ -915,7 +915,21 @@ class OptimizedVoiceServer:
             return
 
         # --- Token extraction -------------------------------------------------
-        query = parse_qs(urlparse(path).query)
+        # websockets>=15 no longer passes the request path (including the query
+        # string) as the ``path`` argument.  Instead the information is exposed
+        # via ``websocket.request.path``.  To remain compatible with older
+        # versions we try a number of attributes in order of preference.
+        raw_path = path or '/'
+        try:
+            request = getattr(websocket, 'request', None)
+            if request and getattr(request, 'path', None):
+                raw_path = request.path
+            else:
+                raw_path = getattr(websocket, 'path', raw_path)
+        except Exception:
+            raw_path = getattr(websocket, 'path', raw_path)
+
+        query = parse_qs(urlparse(raw_path).query)
         token = query.get('token', [None])[0]
         if not token:
             auth = websocket.request_headers.get('Authorization') if hasattr(websocket, 'request_headers') else None
@@ -924,7 +938,7 @@ class OptimizedVoiceServer:
         if not token and getattr(websocket, 'subprotocol', None):
             token = websocket.subprotocol
 
-        logger.info("WS connect path=%s token=%s", path, token)
+        logger.info("WS connect path=%s token=%s", raw_path, token)
 
         if not verify_token(token):
             await websocket.close(code=4401, reason="unauthorized")
