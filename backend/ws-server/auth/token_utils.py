@@ -119,6 +119,11 @@ def verify_token(token: Optional[str]) -> bool:
         return True
 
     if not token:
+        # Allow empty tokens when plain-token auth is enabled.  This is
+        # useful in development environments where the desktop client may
+        # not send a token before the local storage is initialised.
+        if os.getenv('JWT_ALLOW_PLAIN', '0') == '1':
+            return True
         return False
 
     t = token.strip()
