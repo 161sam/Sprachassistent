@@ -483,14 +483,22 @@
       color: var(--text-primary);
     }
 
+    .settings-input {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 0.5rem;
+      color: var(--text-primary);
+      min-width: 100px;
+    }
+
     .container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 6rem 2rem 2rem;
-      min-height: 100vh;
+      padding: 4rem 2rem 2rem;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       gap: 2rem;
     }
 
@@ -525,6 +533,7 @@
       display: flex;
       flex-direction: column;
       gap: 2rem;
+      flex: 1;
     }
 
     .main-card:hover {
@@ -536,13 +545,7 @@
     .input-section {
       display: flex;
       gap: 1rem;
-      order: 2;
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      width: calc(100% - 4rem);
-      max-width: 600px;
+      width: 100%;
     }
 
     .text-input {
@@ -596,7 +599,6 @@
 
     /* Voice Controls */
     .voice-controls {
-      order: 4;
       display: flex;
       justify-content: center;
       margin-top: 1rem;
@@ -662,12 +664,11 @@
       display: flex;
       justify-content: center;
       margin-bottom: 1rem;
-      order: 3;
     }
 
     .avatar {
-      width: 120px;
-      height: 120px;
+      width: 240px;
+      height: 240px;
       border-radius: 50%;
       background: var(--glass-bg);
       backdrop-filter: blur(20px);
@@ -675,12 +676,12 @@
       position: relative;
       overflow: hidden;
       transition: all 0.3s ease;
-      box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 0 60px rgba(99, 102, 241, 0.3);
     }
 
     .avatar.active {
       border-color: var(--primary-color);
-      box-shadow: 0 0 50px rgba(99, 102, 241, 0.6);
+      box-shadow: 0 0 100px rgba(99, 102, 241, 0.6);
       transform: scale(1.05);
     }
 
@@ -700,6 +701,8 @@
       transform: translate(-50%, -50%);
       border-radius: 50%;
       animation: avatarNebel 4s ease-in-out infinite;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 60%, transparent 100%);
+      filter: blur(8px);
     }
 
     .avatar-nebel-layer:nth-child(1) {
@@ -746,8 +749,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 30px;
-      height: 30px;
+      width: 60px;
+      height: 60px;
       background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
       border-radius: 50%;
       box-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
@@ -795,12 +798,12 @@
       border: 1px solid var(--glass-border);
       border-radius: 20px;
       padding: 1.5rem;
-      min-height: 200px;
-      order: 4;
+      flex: 1;
       position: relative;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
+      overflow-y: auto;
     }
 
     .response-content {
@@ -824,8 +827,8 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 120px;
-      height: 120px;
+      width: 240px;
+      height: 240px;
       display: none;
     }
 
@@ -840,12 +843,13 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: radial-gradient(circle, 
-        rgba(99, 102, 241, 0.8) 0%, 
-        rgba(99, 102, 241, 0.4) 30%, 
-        rgba(99, 102, 241, 0.1) 60%, 
+      background: radial-gradient(circle,
+        rgba(99, 102, 241, 0.8) 0%,
+        rgba(99, 102, 241, 0.4) 30%,
+        rgba(99, 102, 241, 0.1) 60%,
         transparent 100%);
       animation: nebelWaver 3s ease-in-out infinite;
+      filter: blur(4px);
     }
 
     .nebel-circle:nth-child(1) {
@@ -897,68 +901,6 @@
     }
 
     /* Status Bar */
-    .status-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
-      padding: 1rem 1.5rem;
-      order: 1;
-    }
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
-    }
-
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--warning-color);
-    }
-
-    .status-dot.connected {
-      background: var(--secondary-color);
-      animation: glow 2s infinite;
-    }
-
-    .status-dot.error {
-      background: var(--danger-color);
-    }
-
-    @keyframes glow {
-      0%, 100% { box-shadow: 0 0 5px var(--secondary-color); }
-      50% { box-shadow: 0 0 20px var(--secondary-color); }
-    }
-
-    .controls-grid {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .control-btn {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      padding: 0.75rem;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0.9rem;
-      backdrop-filter: blur(10px);
-    }
-
-    .control-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-      transform: translateY(-1px);
-    }
 
     /* Push Notifications */
     .notification-container {
@@ -1252,7 +1194,28 @@
         <div class="settings-panel" id="panel-audio">
           <div class="settings-section">
             <div class="settings-section-title">🎤 Audio-Einstellungen</div>
-            
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">STT-Modell</div>
+                <div class="settings-item-desc">Auswahl des Spracherkennungsmodells</div>
+              </div>
+              <select class="settings-select" id="sttModel" onchange="updateSttModel(this.value)">
+                <option value="Faster-Whisper">Faster-Whisper</option>
+              </select>
+            </div>
+
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">TTS-Engine</div>
+                <div class="settings-item-desc">Sprachsynthese-System</div>
+              </div>
+              <select class="settings-select" id="ttsEngine" onchange="updateTtsEngine(this.value)">
+                <option value="Zonos">Zonos</option>
+                <option value="Piper">Piper</option>
+                <option value="Kokoro">Kokoro</option>
+              </select>
+            </div>
+
             <div class="settings-item">
               <div class="settings-item-info">
                 <div class="settings-item-label">Auto-Aufnahme stoppen</div>
@@ -1323,7 +1286,30 @@
         <div class="settings-panel" id="panel-connection">
           <div class="settings-section">
             <div class="settings-section-title">🌐 Verbindungseinstellungen</div>
-            
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">WebSocket Host</div>
+                <div class="settings-item-desc">Adresse des Sprachassistenten</div>
+              </div>
+              <input type="text" class="settings-input" id="wsHost" onchange="updateWsHost(this.value)" />
+            </div>
+
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">WebSocket Port</div>
+                <div class="settings-item-desc">Port des Sprachassistenten</div>
+              </div>
+              <input type="number" class="settings-input" id="wsPort" onchange="updateWsPort(this.value)" />
+            </div>
+
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">Token</div>
+                <div class="settings-item-desc">Authentifizierungsschlüssel</div>
+              </div>
+              <input type="text" class="settings-input" id="authToken" onchange="updateAuthToken(this.value)" />
+            </div>
+
             <div class="settings-item">
               <div class="settings-item-info">
                 <div class="settings-item-label">Auto-Reconnect</div>
@@ -1382,18 +1368,7 @@
     </div>
 
     <div class="main-card">
-      <!-- Status Bar (Order 1) -->
-      <div class="status-bar">
-        <div class="status-indicator">
-          <div class="status-dot" id="statusDot"></div>
-          <span id="statusText">Verbindung wird hergestellt...</span>
-        </div>
-        <div class="controls-grid">
-          <button class="control-btn" onclick="clearResponse()">🗑️ Löschen</button>
-        </div>
-      </div>
-
-      <!-- Text Input Section (Order 2) -->
+      <!-- Text Input -->
       <div class="input-section">
         <input
           type="text"
@@ -1410,7 +1385,7 @@
         </button>
       </div>
 
-      <!-- Avatar Section (Order 3) -->
+      <!-- Avatar -->
       <div class="avatar-container">
         <div class="avatar" id="avatar">
           <div class="avatar-nebel">
@@ -1422,7 +1397,7 @@
         </div>
       </div>
 
-      <!-- Response Section (Order 4) -->
+      <!-- Response -->
       <div class="response-section">
         <div class="response-content" id="response">
           <div class="response-empty">Ihre Antwort erscheint hier...</div>
@@ -1436,7 +1411,7 @@
         </div>
       </div>
 
-      <!-- Voice Controls (Order 4) -->
+      <!-- Voice Controls -->
       <div class="voice-controls">
         <div class="recording-indicator" id="recordingIndicator">
           <div class="recording-dot"></div>
@@ -1460,7 +1435,7 @@
       animationSpeed: 1.0,
       nebelColors: {
         primary: '#6366f1',
-        secondary: '#10b981', 
+        secondary: '#10b981',
         accent: '#f59e0b'
       },
       autoStopTime: 30000,
@@ -1471,7 +1446,12 @@
       glassOpacity: 0.05,
       autoReconnect: true,
       connectionTimeout: 3000,
-      debugMode: false
+      debugMode: false,
+      sttModel: localStorage.getItem('sttModel') || 'Faster-Whisper',
+      ttsEngine: localStorage.getItem('ttsEngine') || 'Zonos',
+      wsHost: localStorage.getItem('wsHost') || '127.0.0.1',
+      wsPort: parseInt(localStorage.getItem('wsPort') || '48231'),
+      authToken: localStorage.getItem('wsToken') || 'devsecret'
     };
 
     // Settings Modal Functions
@@ -1518,7 +1498,12 @@
       document.getElementById('autoReconnect').classList.toggle('active', settings.autoReconnect);
       document.getElementById('connectionTimeout').value = settings.connectionTimeout;
       document.getElementById('debugMode').classList.toggle('active', settings.debugMode);
-      
+      document.getElementById('sttModel').value = settings.sttModel;
+      document.getElementById('ttsEngine').value = settings.ttsEngine;
+      document.getElementById('wsHost').value = settings.wsHost;
+      document.getElementById('wsPort').value = settings.wsPort;
+      document.getElementById('authToken').value = settings.authToken;
+
       // Update color selections
       updateColorSelections();
     }
@@ -1566,6 +1551,31 @@
       }
     }
 
+    function updateWsHost(value) {
+      settings.wsHost = value;
+      localStorage.setItem('wsHost', value);
+    }
+
+    function updateWsPort(value) {
+      settings.wsPort = parseInt(value) || 0;
+      localStorage.setItem('wsPort', settings.wsPort);
+    }
+
+    function updateAuthToken(value) {
+      settings.authToken = value;
+      localStorage.setItem('wsToken', value);
+    }
+
+    function updateSttModel(value) {
+      settings.sttModel = value;
+      localStorage.setItem('sttModel', value);
+    }
+
+    function updateTtsEngine(value) {
+      settings.ttsEngine = value;
+      localStorage.setItem('ttsEngine', value);
+    }
+
     function setNebelColor(type, color) {
       settings.nebelColors[type] = color;
       updateColorSelections();
@@ -1610,7 +1620,7 @@
           animationSpeed: 1.0,
           nebelColors: {
             primary: '#6366f1',
-            secondary: '#10b981', 
+            secondary: '#10b981',
             accent: '#f59e0b'
           },
           autoStopTime: 30000,
@@ -1621,9 +1631,20 @@
           glassOpacity: 0.05,
           autoReconnect: true,
           connectionTimeout: 3000,
-          debugMode: false
+          debugMode: false,
+          sttModel: 'Faster-Whisper',
+          ttsEngine: 'Zonos',
+          wsHost: '127.0.0.1',
+          wsPort: 48231,
+          authToken: 'devsecret'
         };
-        
+
+        localStorage.setItem('sttModel', settings.sttModel);
+        localStorage.setItem('ttsEngine', settings.ttsEngine);
+        localStorage.setItem('wsHost', settings.wsHost);
+        localStorage.setItem('wsPort', settings.wsPort);
+        localStorage.setItem('wsToken', settings.authToken);
+
         loadSettingsUI();
         applySettings();
         showNotification('success', 'Einstellungen zurückgesetzt', 'Alle Werte wurden auf Standard zurückgesetzt');
@@ -1806,9 +1827,12 @@
     function updateStatus(type, message) {
       const statusDot = document.getElementById('statusDot');
       const statusText = document.getElementById('statusText');
-      
-      statusDot.className = `status-dot ${type}`;
-      statusText.textContent = message;
+      if (statusDot && statusText) {
+        statusDot.className = `status-dot ${type}`;
+        statusText.textContent = message;
+      } else {
+        console.log(`Status: ${type} - ${message}`);
+      }
     }
 
     function closeNotification(button) {
