@@ -107,23 +107,23 @@ try:
 except Exception:
     pyjwt = None
 
-def verify_token(token: str) -> bool:
+def verify_token(token: Optional[str]) -> bool:
     """
     Nicht-rekursive Token-Prüfung:
       - JWT_BYPASS=1  -> immer True (nur DEV!)
       - JWT_ALLOW_PLAIN=1: Token == JWT_SECRET erlaubt (z.B. "devsecret")
       - sonst: HS256-JWT gegen JWT_SECRET, falls PyJWT verfügbar
     """
+    # DEV-Bypass ohne Token-Prüfung erlauben
+    if os.getenv('JWT_BYPASS', '0') == '1':
+        return True
+
     if not token:
         return False
 
     t = token.strip()
     if t.lower().startswith('bearer '):
         t = t[7:].strip()
-
-    # DEV-Bypass
-    if os.getenv('JWT_BYPASS', '0') == '1':
-        return True
 
     secret = os.getenv('JWT_SECRET', 'devsecret')
 

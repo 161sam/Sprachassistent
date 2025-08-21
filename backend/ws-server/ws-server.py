@@ -26,6 +26,7 @@ Features integrated from previous versions:
 
 import asyncio
 import websockets
+from websockets.server import WebSocketServerProtocol
 import json
 import base64
 import time
@@ -581,12 +582,12 @@ class ConnectionManager:
     """Manages WebSocket connections with optimized handling"""
     
     def __init__(self, stream_manager: AudioStreamManager, tts_manager: TTSManager):
-        self.active_connections: Dict[str, websockets.WebSocketServerProtocol] = {}
+        self.active_connections: Dict[str, WebSocketServerProtocol] = {}
         self.connection_info: Dict[str, Dict] = {}
         self.stream_manager = stream_manager
         self.tts_manager = tts_manager
         
-    async def register(self, websocket: websockets.WebSocketServerProtocol) -> str:
+    async def register(self, websocket: WebSocketServerProtocol) -> str:
         """Register new WebSocket connection"""
         client_id = uuid.uuid4().hex
         
