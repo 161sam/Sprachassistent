@@ -18,7 +18,16 @@ const projectRoot = app.isPackaged
 function resolveBackendBinary(projectRoot) {
   const isDev = !app.isPackaged;
   if (isDev) {
-    return { cmd: process.env.PYTHON || 'python', args: [path.join(projectRoot, 'backend', 'ws-server', 'ws-server.py')], mode: 'script' };
+    // Prefer explicit PYTHON env but fall back to platform defaults.
+    // On Linux/macOS use `python3` to avoid missing `python` shim.
+    // On Windows keep `python` as the typical command.
+    const pythonCmd = process.env.PYTHON
+      || (process.platform === 'win32' ? 'python' : 'python3');
+    return {
+      cmd: pythonCmd,
+      args: [path.join(projectRoot, 'backend', 'ws-server', 'ws-server.py')],
+      mode: 'script'
+    };
   }
   const base = process.resourcesPath;
   const bin = process.platform === 'win32'
@@ -195,6 +204,11 @@ function startBackend() {
       stdio: 'inherit'
     });
     backendProcess.on('exit', (code) => console.log('[desktop] Backend exited', code));
+    // Handle spawn errors (e.g. missing Python binary) to avoid crashing
+    backendProcess.on('error', (err) => {
+      log.error('Backend spawn error:', err);
+      dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
+    });
   } catch (err) {
     log.error('Failed to start backend:', err);
     dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
