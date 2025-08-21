@@ -765,19 +765,48 @@ class OptimizedVoiceServer:
             await websocket.close(code=4401, reason="unauthorized")
             return
 
+        # --- Token extraction -------------------------------------------------
         query = parse_qs(urlparse(path).query)
         token = query.get('token', [None])[0]
+        if not token:
+            auth = websocket.request_headers.get('Authorization') if hasattr(websocket, 'request_headers') else None
+            if auth and auth.lower().startswith('bearer '):
+                token = auth[7:].strip()
+        if not token and getattr(websocket, 'subprotocol', None):
+            token = websocket.subprotocol
+
+        logger.info("WS connect path=%s token=%s", path, token)
+
         if not verify_token(token):
             await websocket.close(code=4401, reason="unauthorized")
             return
 
         client_id = await self.connection_manager.register(websocket)
-        
+
         try:
-            # Send welcome message with TTS info
+            # ---- Handshake ---------------------------------------------------
+            # Erwartet erste Nachricht: {op:"hello", version, stream_id, device}
+            raw = await asyncio.wait_for(websocket.recv(), timeout=5)
+            try:
+                hello = json.loads(raw)
+            except Exception:
+                logger.warning("Invalid handshake JSON from %s: %s", client_ip, raw)
+                await websocket.close(code=4400, reason="bad handshake")
+                return
+            if hello.get('op') != 'hello':
+                logger.warning("Unexpected handshake op=%s", hello.get('op'))
+                await websocket.close(code=4400, reason="bad handshake")
+                return
+
+            await self.connection_manager.send_to_client(client_id, {
+                'op': 'ready',
+                'client_id': client_id,
+                'server_time': time.time()
+            })
+
+            # Optional: zusätzliche Verbindungsinformationen
             available_engines = await self.tts_manager.get_available_engines()
             current_engine = self.tts_manager.get_current_engine()
-            
             await self.connection_manager.send_to_client(client_id, {
                 'type': 'connected',
                 'client_id': client_id,
@@ -794,7 +823,7 @@ class OptimizedVoiceServer:
                     'switching_enabled': config.enable_engine_switching
                 }
             })
-            
+
             # Message handling loop
             async for message in websocket:
                 try:
@@ -819,10 +848,16 @@ class OptimizedVoiceServer:
                     })
                     break
 
+        except asyncio.TimeoutError:
+            logger.warning("Handshake timeout for %s", client_id)
+            try:
+                await websocket.close(code=4408, reason="handshake timeout")
+            except Exception:
+                pass
         except websockets.exceptions.ConnectionClosed as e:
             logger.info(f"Client {client_id} connection closed: {e.code} {e.reason}")
         except Exception:
-            logging.exception(f"WebSocket error for {client_id}")
+            logger.exception("WS session error")
             try:
                 await websocket.close(code=1011, reason="server error")
             except Exception:
