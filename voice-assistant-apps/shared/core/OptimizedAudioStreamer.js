@@ -142,32 +142,32 @@ class OptimizedAudioStreamer {
 
                 // Expect handshake: send {op:"hello", version, stream_id, device}
                 this.websocket.onopen = () => {
-                    this.metrics.connection.connected = true;
-                    this.metrics.connection.reconnectAttempts = 0;
+                    try {
+                        this.metrics.connection.connected = true;
+                        this.metrics.connection.reconnectAttempts = 0;
 
-                    // Generate a unique stream identifier.  Some environments
-                    // (notably older Electron builds) may not implement
-                    // `crypto.randomUUID`, so fall back to a Math.random based
-                    // id to ensure the handshake packet is always sent.
-                    let streamId;
-                    try {
-                        streamId = globalThis.crypto?.randomUUID?.();
-                    } catch (_) {}
-                    if (!streamId) {
-                        streamId = Math.random().toString(36).slice(2);
-                    }
-                    this.currentStreamId = streamId;
-                    try {
+                        // Generate a unique stream identifier.  Some environments
+                        // (notably older Electron builds) may not implement
+                        // `crypto.randomUUID`, so fall back to a Math.random based
+                        // id to ensure the handshake packet is always sent.
+                        let streamId;
+                        try {
+                            streamId = globalThis.crypto?.randomUUID?.();
+                        } catch (_) {}
+                        if (!streamId) {
+                            streamId = Math.random().toString(36).slice(2);
+                        }
+                        this.currentStreamId = streamId;
                         this.websocket.send(JSON.stringify({
                             op: 'hello',
                             version: 1,
                             stream_id: streamId,
                             device: 'web'
                         }));
+                        console.log('🔗 WebSocket connected to', wsUrl);
                     } catch (e) {
-                        console.warn('Failed to send handshake', e);
+                        console.warn('Handshake setup failed', e);
                     }
-                    console.log('🔗 WebSocket connected to', wsUrl);
                     resolve();
                 };
 

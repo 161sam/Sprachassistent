@@ -265,24 +265,24 @@ class VoiceAssistantCore {
       this.ws.binaryType = 'arraybuffer';
 
       this.ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-
-        // Send initial handshake expected by the server
-        const streamId = (globalThis.crypto?.randomUUID?.())
-          || Math.random().toString(36).slice(2);
         try {
+          console.log('✅ WebSocket connected');
+
+          // Send initial handshake expected by the server
+          const streamId = (globalThis.crypto?.randomUUID?.())
+            || Math.random().toString(36).slice(2);
           this.ws.send(JSON.stringify({
             op: 'hello',
             version: 1,
             stream_id: streamId,
             device: this.platform
           }));
-        } catch (e) {
-          console.warn('Failed to send handshake', e);
-        }
 
-        // Connection established; wait for server confirmation before auth
-        this.metrics.reconnections++;
+          // Reset reconnection attempts after a successful connection
+          this.metrics.reconnections = 0;
+        } catch (e) {
+          console.warn('Failed to complete WebSocket handshake', e);
+        }
       };
 
       this.ws.onmessage = (event) => {
@@ -320,6 +320,20 @@ class VoiceAssistantCore {
       platform: this.platform,
       capabilities: this.getClientCapabilities()
     });
+  }
+
+  scheduleReconnect() {
+    if (this.metrics.reconnections >= this.settings.maxRetries) {
+      console.warn('Max reconnect attempts reached');
+      return;
+    }
+    this.metrics.reconnections++;
+    const delay = Math.min(
+      this.settings.connectionTimeout * Math.pow(2, this.metrics.reconnections - 1),
+      30000
+    );
+    console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.metrics.reconnections}/${this.settings.maxRetries})`);
+    setTimeout(() => this.initializeWebSocket(), delay);
   }
 
   getClientCapabilities() {
