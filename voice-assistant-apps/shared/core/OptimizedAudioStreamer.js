@@ -131,7 +131,17 @@ this.websocket = new WebSocket(wsUrl);
                     this.metrics.connection.connected = true;
                     this.metrics.connection.reconnectAttempts = 0;
 
-                    const streamId = crypto.randomUUID();
+                    // Generate a unique stream identifier.  Some environments
+                    // (notably older Electron builds) may not implement
+                    // `crypto.randomUUID`, so fall back to a Math.random based
+                    // id to ensure the handshake packet is always sent.
+                    let streamId;
+                    try {
+                        streamId = globalThis.crypto?.randomUUID?.();
+                    } catch (_) {}
+                    if (!streamId) {
+                        streamId = Math.random().toString(36).slice(2);
+                    }
                     this.currentStreamId = streamId;
                     try {
                         this.websocket.send(JSON.stringify({
