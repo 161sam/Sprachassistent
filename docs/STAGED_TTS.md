@@ -123,41 +123,41 @@ Via WebSocket-Message:
 class StagedTTSPlayer {
   constructor() {
     this.sequences = new Map();
-    this.audioContext = new AudioContext();
+    this.crossfadeMs = 100;
   }
   
   handleTTSChunk(message) {
     const { sequence_id, index, total, audio } = message;
-    
+
     if (!this.sequences.has(sequence_id)) {
-      this.sequences.set(sequence_id, {
-        chunks: [],
-        total: total,
-        received: 0
-      });
+      this.sequences.set(sequence_id, { chunks: [], index: 0, ended: false });
     }
-    
-    const sequence = this.sequences.get(sequence_id);
-    sequence.chunks[index] = audio;
-    sequence.received++;
-    
-    // Sofort abspielen wenn es der erste Chunk ist
-    if (index === 0 && audio) {
-      this.playAudio(audio);
+
+    const seq = this.sequences.get(sequence_id);
+    const el = new Audio(audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}`);
+    el.preload = 'auto';
+    seq.chunks[index] = el;
+
+    if (index === seq.index) {
+      this.playNextChunks(sequence_id);
     }
-    
-    // Weitere Chunks in der Reihenfolge abspielen
-    this.playNextChunks(sequence_id);
   }
-  
-  handleSequenceEnd(message) {
-    const { sequence_id } = message;
-    // Cleanup
-    this.sequences.delete(sequence_id);
+
+  handleSequenceEnd({ sequence_id }) {
+    const seq = this.sequences.get(sequence_id);
+    if (seq) seq.ended = true;
   }
-  
-  playAudio(base64Audio) {
-    // Audio-Implementierung mit Crossfade
+
+  playAudio(audioEl, prev) {
+    // Simple crossfade
+    const duration = this.crossfadeMs / 1000;
+    audioEl.volume = 0;
+    audioEl.play().then(() => {
+      this.fade(prev, audioEl, duration);
+    });
+  }
+
+  fade(prev, next, duration) {
     // ...
   }
 }
@@ -181,10 +181,19 @@ class StagedTTSPlayer {
       <input type="range" min="50" max="200" value="120" id="max-intro-length">
     </label>
     
-    <label>Chunk Timeout (s): 
+    <label>Chunk Timeout (s):
       <input type="range" min="5" max="30" value="10" id="chunk-timeout">
     </label>
-    
+    <label>Fast-Start:
+      <input type="checkbox" id="fast-start">
+    </label>
+    <label>Chunk Playback:
+      <input type="checkbox" id="chunk-playback">
+    </label>
+    <label>Crossfade (ms):
+      <input type="range" min="80" max="120" value="100" id="crossfade-ms">
+    </label>
+
     <button onclick="clearTTSCache()">Cache leeren</button>
   </div>
 </div>

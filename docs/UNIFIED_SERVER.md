@@ -7,6 +7,15 @@ from the project root:
 python -m ws_server.cli
 ```
 
+## Quickstart
+
+```bash
+pip install -r requirements.txt
+python -m ws_server.cli
+# in another terminal
+cd voice-assistant-apps/desktop && npm install && npm start
+```
+
 Use `--validate-models` to list detected voices and their aliases without
 starting the server:
 

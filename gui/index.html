@@ -1377,9 +1377,23 @@
             </div>
             <div class="settings-row">
               <label for="stagedTtsTimeout">Chunk-Timeout (s):</label>
-              <input type="range" id="stagedTtsTimeout" min="5" max="30" step="1" value="10" 
+              <input type="range" id="stagedTtsTimeout" min="5" max="30" step="1" value="10"
                      onchange="updateSetting('stagedTtsTimeout', this.value)">
               <span class="range-value" id="stagedTtsTimeoutValue">10s</span>
+            </div>
+            <div class="settings-row">
+              <label for="stagedTtsFastStart">Fast-Start (Piper Intro):</label>
+              <input type="checkbox" id="stagedTtsFastStart" onchange="updateSetting('stagedTtsFastStart', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="stagedTtsChunkPlayback">Chunk-Playback:</label>
+              <input type="checkbox" id="stagedTtsChunkPlayback" onchange="updateSetting('stagedTtsChunkPlayback', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="stagedTtsCrossfadeMs">Crossfade (ms):</label>
+              <input type="range" id="stagedTtsCrossfadeMs" min="80" max="120" step="10" value="100"
+                     onchange="updateSetting('stagedTtsCrossfadeMs', this.value)">
+              <span class="range-value" id="stagedTtsCrossfadeMsValue">100ms</span>
             </div>
           </div>
         </div>
@@ -1994,6 +2008,9 @@
         stagedTtsEnabled: localStorage.getItem('va.settings.stagedTtsEnabled') !== 'false',
         stagedTtsIntroLength: parseInt(localStorage.getItem('va.settings.stagedTtsIntroLength') || '120'),
         stagedTtsTimeout: parseInt(localStorage.getItem('va.settings.stagedTtsTimeout') || '10'),
+        stagedTtsFastStart: localStorage.getItem('va.settings.stagedTtsFastStart') !== 'false',
+        stagedTtsChunkPlayback: localStorage.getItem('va.settings.stagedTtsChunkPlayback') !== 'false',
+        stagedTtsCrossfadeMs: parseInt(localStorage.getItem('va.settings.stagedTtsCrossfadeMs') || '100'),
         
         // LLM Settings
         llmModel: localStorage.getItem('va.settings.llmModel') || '',
@@ -2035,6 +2052,11 @@
           }
         }
       });
+
+      if (window.voiceAssistantGUI) {
+        Object.assign(voiceAssistantGUI.settings, settings);
+        voiceAssistantGUI.applySettings();
+      }
     }
 
     function updateSetting(key, value) {
@@ -2048,6 +2070,11 @@
       
       // Apply live updates
       applySettingLive(key, value);
+
+      if (window.voiceAssistantGUI) {
+        voiceAssistantGUI.settings[key] = value;
+        voiceAssistantGUI.applySettings();
+      }
       
       // Debounced save to backend
       clearTimeout(settingsUpdateTimeout);
@@ -2063,6 +2090,8 @@
           valueElement.textContent = `${value}s`;
         } else if (key.includes('Speed') || key.includes('Volume') || key.includes('Size') || key.includes('Intensity')) {
           valueElement.textContent = `${value}x`;
+        } else if (key.includes('Crossfade')) {
+          valueElement.textContent = `${value}ms`;
         } else {
           valueElement.textContent = value;
         }

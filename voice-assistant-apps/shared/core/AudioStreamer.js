@@ -785,9 +785,9 @@ class VoiceAssistant {
         this.streamer = new AudioStreamer(this.config);
         this.isRecording = false;
         this.platform = this.detectPlatform();
-        this.ttsQueue = [];
+        this.ttsSequences = new Map();
         this.currentTtsAudio = null;
-        this.ttsSequenceEnded = false;
+        this.currentSequenceId = null;
         
         // UI elements (will be set externally)
         this.ui = {
@@ -855,8 +855,8 @@ class VoiceAssistant {
             this.handleTtsChunk(data);
         };
 
-        this.streamer.onTtsSequenceEnd = () => {
-            this.handleTtsSequenceEnd();
+        this.streamer.onTtsSequenceEnd = (data) => {
+            this.handleTtsSequenceEnd(data);
         };
 
         this.streamer.onVadStateChange = (vadInfo) => {
@@ -944,51 +944,83 @@ class VoiceAssistant {
             return;
         }
 
-        const src = data.audio.startsWith('data:') ? data.audio : `data:audio/wav;base64,${data.audio}`;
-        this.ttsQueue.push({ src, engine: data.engine });
+        const id = data.sequence_id || 'default';
 
-        if (!this.currentTtsAudio) {
-            if (this.config.quickstartPiper || data.engine !== 'piper') {
-                this.playNextTtsChunk();
-            }
+        if (!this.ttsSequences.has(id)) {
+            this.ttsSequences.set(id, { chunks: [], index: 0, ended: false, currentAudio: null });
+        }
+
+        const seq = this.ttsSequences.get(id);
+        const src = data.audio.startsWith('data:') ? data.audio : `data:audio/wav;base64,${data.audio}`;
+        const audio = new Audio(src);
+        audio.preload = 'auto';
+        seq.chunks[data.index] = audio;
+
+        if (!this.currentSequenceId) this.currentSequenceId = id;
+
+        if (
+            id === this.currentSequenceId &&
+            !seq.currentAudio &&
+            data.index === seq.index &&
+            (this.config.quickstartPiper || data.engine !== 'piper')
+        ) {
+            this.playNextTtsChunk();
+        }
+
+        if (this.ui.statusElement && typeof data.index === 'number' && typeof data.total === 'number') {
+            this.updateStatus('playing', `🔊 ${data.index + 1}/${data.total}`);
         }
     }
 
-    handleTtsSequenceEnd() {
-        this.ttsSequenceEnded = true;
-        if (!this.currentTtsAudio) {
+    handleTtsSequenceEnd(data) {
+        const id = data.sequence_id || this.currentSequenceId;
+        const seq = this.ttsSequences.get(id);
+        if (!seq) return;
+        seq.ended = true;
+        if (id === this.currentSequenceId && !seq.currentAudio) {
             this.playNextTtsChunk();
         }
     }
 
     playNextTtsChunk() {
-        if (this.ttsQueue.length === 0) {
-            this.currentTtsAudio = null;
-            if (this.ttsSequenceEnded) {
-                this.ttsSequenceEnded = false;
-            }
+        if (!this.currentSequenceId) {
+            const first = this.ttsSequences.keys().next();
+            if (first.done) return;
+            this.currentSequenceId = first.value;
+        }
+
+        const seq = this.ttsSequences.get(this.currentSequenceId);
+        if (!seq) {
+            this.currentSequenceId = null;
             return;
         }
 
-        const { src } = this.ttsQueue.shift();
-        const next = new Audio(src);
+        const next = seq.chunks[seq.index];
+        if (!next) return;
+
+        seq.index++;
         next.volume = 0;
 
         next.addEventListener('loadedmetadata', () => {
-            if (this.ttsQueue.length > 0) {
-                const wait = Math.max((next.duration * 1000) - this.config.crossfadeDurationMs, 0);
-                setTimeout(() => this.playNextTtsChunk(), wait);
-            } else if (this.ttsSequenceEnded) {
-                next.addEventListener('ended', () => {
-                    this.currentTtsAudio = null;
-                    this.ttsSequenceEnded = false;
-                });
+            const upcoming = seq.chunks[seq.index];
+            if (upcoming) upcoming.load();
+            const wait = Math.max((next.duration * 1000) - this.config.crossfadeDurationMs, 0);
+            setTimeout(() => this.playNextTtsChunk(), wait);
+        });
+
+        next.addEventListener('ended', () => {
+            seq.currentAudio = null;
+            if (seq.ended && seq.index >= seq.chunks.length) {
+                this.ttsSequences.delete(this.currentSequenceId);
+                this.currentSequenceId = null;
+                this.playNextTtsChunk();
             }
         });
 
         next.play().then(() => {
             this.crossfadeAudios(this.currentTtsAudio, next);
             this.currentTtsAudio = next;
+            seq.currentAudio = next;
         }).catch(err => {
             console.warn('TTS chunk playback failed:', err);
         });

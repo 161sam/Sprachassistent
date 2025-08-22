@@ -1,5 +1,10 @@
 # Upgrade Notes
 
+## Unified server entrypoint
+- Start the backend via `python -m ws_server.cli`.
+- Legacy scripts under `backend/ws-server/` have been removed; update any
+  custom wrappers to point to the new entrypoint.
+
 ## LLM Model Listings
 - WebSocket messages `get_llm_models` and `switch_llm_model` now expose
   separate lists for available and loaded models.
