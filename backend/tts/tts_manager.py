@@ -35,7 +35,7 @@ except Exception as e:
 
 # Optional Zonos import
 try:
-    from .engine_zonos import ZonosTTSEngine
+    ZonosTTSEngine = None  # lazy
     logger.info("✅ Zonos TTS Engine import successful")
 except ImportError as e:
     logger.warning("ZonosTTSEngine nicht verfügbar")
@@ -379,3 +379,11 @@ class DummyTTSManager:
         
     async def cleanup(self):
         logger.info("Dummy TTS cleanup")
+
+
+def _lazy_import_zonos():
+    global ZonosTTSEngine
+    if ZonosTTSEngine is None:
+        from .engine_zonos import ZonosTTSEngine as _Z
+        ZonosTTSEngine = _Z
+    return ZonosTTSEngine

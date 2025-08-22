@@ -1052,8 +1052,18 @@ class VoiceServer:
         logger.info("🎆 Audio Queue Processor gestartet")
 
         if self.llm_enabled:
-            info = await self.llm.list_models()
-            self.llm_models = info.get('available', [])
+            import logging
+            try:
+                # Discovery optional; LMClient hat self.llm.base bereits gesetzt.
+                info = await self.llm.list_models()
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    "LLM discovery failed: %s — continuing without LLM list. Set LLM_BASE_URL or config.llm_api_base.", e
+                )
+                info = {"available": [], "data": [], "loaded": []}
+
+            # Normalisieren: unterstütze sowohl {"available": [...]} als auch {"data": [...]}
+            self.llm_models = info.get('available', []) or info.get('data', [])
             chosen = None
             pref = config.llm_default_model
             if pref != "auto" and pref in self.llm_models:
@@ -1064,7 +1074,8 @@ class VoiceServer:
             if chosen:
                 logger.info(f"LLM enabled. Using model: {chosen}")
             else:
-                logger.warning("LLM enabled but no loaded models found at LLM_API_BASE; will fallback to skills/legacy responses.")
+                logger.warning("LLM enabled but no loaded models found; will fallback to skills/legacy responses.")
+
 
         # Abschließende Initialisierung
         logger.info("✨ Voice server initialized successfully")
@@ -1627,8 +1638,16 @@ class VoiceServer:
     async def _handle_get_llm_models(self, client_id: str, data: Dict):
         """Send available LLM models to the client."""
         if self.llm_enabled:
-            info = await self.llm.list_models()
-            self.llm_models = info.get('available', [])
+            import logging
+            try:
+                # LLM Discovery (optional); nutze ENV-URL falls gesetzt
+                base = os.getenv("LLM_BASE_URL", "http://127.0.0.1:1234")
+                info = await self.llm.list_models(base_url=base) if hasattr(self.llm, "list_models") else {"data":[]}
+                self.llm_models = info.get("available", []) or info.get("data", [])
+            except Exception as e:
+                logging.getLogger(__name__).warning("LLM discovery failed: %s — continuing without LLM list. Set LLM_BASE_URL if needed.", e)
+                self.llm_models = []
+
             loaded = info.get('loaded', [])
         else:
             self.llm_models = []
