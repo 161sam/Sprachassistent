@@ -235,6 +235,7 @@ class StagedTTSProcessor:
             audio_b64 = base64.b64encode(chunk.audio_data).decode("utf-8")
         if chunk.success and chunk.audio_data:
             collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
+            collector.audio_out_bytes_total.inc(len(chunk.audio_data))
 
         return {
             "type": "tts_chunk",
