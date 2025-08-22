@@ -7,7 +7,7 @@ focused commit.
 - [x] Sprint 2 — Single entrypoint & import path sanitation
 - [x] Sprint 3 — Modular slicing of the monolith
 - [x] Sprint 4 — Config consolidation & naming hygiene
-- [ ] Sprint 5 — TTS single source of truth & lazy loading
+- [x] Sprint 5 — TTS single source of truth & lazy loading
 - [ ] Sprint 6 — STT in-memory & streaming-friendly
 - [ ] Sprint 7 — Binary ingress + JSON compatibility
 - [ ] Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
