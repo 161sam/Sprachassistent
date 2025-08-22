@@ -56,6 +56,7 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
 from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
+from ws_server.tts.voice_validation import validate_voice_assets
 from ws_server.tts.staged_tts import StagedTTSProcessor, _limit_and_chunk
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
@@ -872,6 +873,9 @@ class VoiceServer:
         try:
             self.tts_manager = TTSManager()
             logger.info("✅ TTSManager created successfully")
+            canonical_voice = os.getenv("TTS_VOICE", "de-thorsten-low")
+            for msg in validate_voice_assets(canonical_voice):
+                logger.info(msg)
         except Exception as e:
             logger.error(f"❌ TTSManager creation failed: {e}")
             # Create dummy TTS manager for testing
@@ -1420,7 +1424,8 @@ class VoiceServer:
         sequence_id = None
         try:
             # Process with staged TTS
-            chunks = await self.staged_tts.process_staged_tts(response_text)
+            canonical_voice = os.getenv("TTS_VOICE", "de-thorsten-low")
+            chunks = await self.staged_tts.process_staged_tts(response_text, canonical_voice)
 
             if not chunks:
                 logger.warning("Staged TTS erzeugte keine Chunks")

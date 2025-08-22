@@ -39,8 +39,8 @@ Client applications (Electron Desktop, Android Cordova, Web GUI) connect to the 
 2. **Configuration:**
 
    * Copy `.env.example` → `.env`
-   * Important variables: `WS_HOST`, `WS_PORT`, `STT_MODEL`, `STT_DEVICE`, `TTS_ENGINE`
-   * Default values provided in `.env.defaults`
+   * Important variables: `WS_HOST`, `WS_PORT`, `STT_MODEL`, `STT_DEVICE`, `TTS_ENGINE`, `TTS_VOICE`
+   * Default values provided in `.env.defaults` (see `docs/TTS-VOICE-ALIASES.md` for voice mapping)
 
 3. **Run Backend:**
 

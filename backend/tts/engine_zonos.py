@@ -123,7 +123,7 @@ class ZonosTTSEngine(BaseTTSEngine):
     async def synthesize(
         self,
         text: str,
-        voice: Optional[str] = None,
+        voice_id: Optional[str] = None,
         speed: Optional[float] = None,
         volume: Optional[float] = None,
         language: Optional[str] = None,
@@ -134,7 +134,7 @@ class ZonosTTSEngine(BaseTTSEngine):
             return TTSResult(success=False, audio_data=None, processing_time_ms=0.0, error_message="Zonos nicht initialisiert", engine_used="zonos")
 
         try:
-            voice = voice or self._active_voice
+            voice = voice_id or self._active_voice
             lang = _normalize_lang(language or self._active_lang or 'de')
 
             speaker_embed = None
@@ -189,7 +189,7 @@ class ZonosTTSEngine(BaseTTSEngine):
 
     async def test_synthesis(self, text: str = "Test der Sprachsynthese") -> TTSResult:
         """Kompatibel zum TTSManager.selftest"""
-        return await self.synthesize(text, voice=self._active_voice, language=self._active_lang)
+        return await self.synthesize(text, voice_id=self._active_voice, language=self._active_lang)
     
 
     def get_engine_info(self) -> dict:

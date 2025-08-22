@@ -13,7 +13,6 @@ import wave
 from typing import Optional, Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor
 from piper import PiperVoice, SynthesisConfig
-from .voice_aliases import resolve_voice_alias
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSInitializationError
 
@@ -38,7 +37,7 @@ class PiperTTSEngine(BaseTTSEngine):
             "de-eva_k-medium",
             "de-ramona-low",
             "de-karlsson-low",
-            "en-amy-low"
+            "en-amy-low",
         ]
 
         self.supported_languages = ["de", "de-DE", "en", "en-US"]
@@ -58,8 +57,7 @@ class PiperTTSEngine(BaseTTSEngine):
         }
 
     def supports_voice(self, voice: str) -> bool:  # type: ignore[override]
-        canonical = resolve_voice_alias(voice)
-        return voice in self.supported_voices or canonical in self.supported_voices
+        return voice in self.supported_voices
 
     def _list_available_models(self, bases: List[str]) -> List[str]:
         models = set()
@@ -81,7 +79,7 @@ class PiperTTSEngine(BaseTTSEngine):
         import logging
         log = logging.getLogger("backend.tts.piper_tts_engine")
         # Stimmenname aus Instanz, ENV oder Default ziehen
-        voice = resolve_voice_alias(getattr(self, "voice", None) or os.getenv("TTS_VOICE") or "de_DE-thorsten-low")
+        voice = getattr(self, "voice", None) or os.getenv("TTS_VOICE") or "de-thorsten-low"
         # Alias-Varianten testen
         cand_names = list(dict.fromkeys([
             voice,
@@ -123,7 +121,6 @@ class PiperTTSEngine(BaseTTSEngine):
         base = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
         voice = (os.getenv("TTS_VOICE") or "").strip()
         def _resolve_local_files(v):
-            v = resolve_voice_alias(v)
             names = [v, v.replace("de_DE-", "de-"), v.replace("de-", "de_DE-")]
             for name in names:
                 onnx  = os.path.join(base, "piper", f"{name}.onnx")
@@ -158,7 +155,7 @@ class PiperTTSEngine(BaseTTSEngine):
             self.is_initialized = False
             return False
             
-    async def synthesize(self, text: str, voice: Optional[str] = None, **kwargs) -> TTSResult:
+    async def synthesize(self, text: str, voice: Optional[str] = None, model_path: Optional[str] = None, **kwargs) -> TTSResult:
         """Synthesiere Text mit Piper TTS"""
         start_time = time.time()
         
@@ -182,7 +179,7 @@ class PiperTTSEngine(BaseTTSEngine):
             target_voice = self.config.voice
 
         try:
-            audio_data, sr = await self._synthesize_with_piper(text, target_voice, **kwargs)
+            audio_data, sr = await self._synthesize_with_piper(text, target_voice, model_path=model_path, **kwargs)
 
             processing_time = (time.time() - start_time) * 1000
 
@@ -207,7 +204,7 @@ class PiperTTSEngine(BaseTTSEngine):
                 engine_used="Piper"
             )
             
-    async def _synthesize_with_piper(self, text: str, voice: str, **kwargs) -> tuple[Optional[bytes], int]:
+    async def _synthesize_with_piper(self, text: str, voice: str, model_path: Optional[str] = None, **kwargs) -> tuple[Optional[bytes], int]:
         """Interne Synthese mit Piper"""
         loop = asyncio.get_event_loop()
 
@@ -216,17 +213,19 @@ class PiperTTSEngine(BaseTTSEngine):
             self._piper_synthesis_sync,
             text,
             voice,
-            kwargs
+            kwargs,
+            model_path,
         )
 
-    def _piper_synthesis_sync(self, text: str, voice: str, options: Dict) -> tuple[Optional[bytes], int]:
+    def _piper_synthesis_sync(self, text: str, voice: str, options: Dict, model_path: Optional[str] = None) -> tuple[Optional[bytes], int]:
         """Synchrone Piper-Synthese im Thread Pool"""
         try:
-            voice_obj = self.voice_cache.get(voice)
+            voice_obj = None if model_path else self.voice_cache.get(voice)
             if voice_obj is None:
-                model_path = self._get_model_path(voice)
-                voice_obj = PiperVoice.load(model_path)
-                self.voice_cache[voice] = voice_obj
+                mp = model_path or self._get_model_path(voice)
+                voice_obj = PiperVoice.load(mp)
+                if model_path is None:
+                    self.voice_cache[voice] = voice_obj
 
             speed = options.get('speed', self.config.speed)
             volume = options.get('volume', self.config.volume)
@@ -249,8 +248,6 @@ class PiperTTSEngine(BaseTTSEngine):
         """Bestimme Modell-Pfad für Stimme"""
         if self.config.model_path and os.path.exists(self.config.model_path):
             return self.config.model_path
-
-        voice = resolve_voice_alias(voice)
 
         # Standard-Pfade prüfen
         model_filename = self.voice_model_mapping.get(voice, f"{voice}.onnx")

@@ -119,7 +119,7 @@ class KokoroTTSEngine(BaseTTSEngine):
             logger.error(f"Fehler beim Laden des Kokoro-Modells: {e}")
             raise TTSInitializationError(f"Kokoro-Modell konnte nicht geladen werden: {e}")
             
-    async def synthesize(self, text: str, voice: Optional[str] = None, **kwargs) -> TTSResult:
+    async def synthesize(self, text: str, voice_id: Optional[str] = None, **kwargs) -> TTSResult:
         """Synthesiere Text mit Kokoro TTS"""
         start_time = time.time()
         
@@ -137,7 +137,7 @@ class KokoroTTSEngine(BaseTTSEngine):
             await self.initialize()
             
         # Stimme bestimmen
-        target_voice = voice or self.config.voice
+        target_voice = voice_id or self.config.voice
         if not self.supports_voice(target_voice):
             # Fallback auf Standard-Stimme für Sprache
             lang = self.config.language.split('-')[0]
