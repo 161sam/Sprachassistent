@@ -13,7 +13,7 @@ class EngineVoice:
 VOICE_ALIASES: Dict[str, Dict[str, EngineVoice]] = {
     "de-thorsten-low": {
         "piper": EngineVoice(
-            model_path="models/piper/de_DE-thorsten-low.onnx",
+            model_path="models/piper/de-thorsten-low.onnx",
             language="de",
             sample_rate=22050,
         ),
