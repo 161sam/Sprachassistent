@@ -116,6 +116,8 @@ class AudioStreamer {
         this.onMetricsUpdate = null;
         this.onInterimTranscript = null;  // NEW: For partial STT results
         this.onVadStateChange = null;     // NEW: For VAD feedback
+        this.onTtsChunk = null;           // NEW: Handle staged TTS chunks
+        this.onTtsSequenceEnd = null;     // NEW: Handle end of TTS sequence
         
         this.init();
     }
@@ -342,6 +344,10 @@ class AudioStreamer {
                 if (this.onInterimTranscript) this.onInterimTranscript(data);
             } else if (data.type === 'response' || data.type === 'audio_response') {
                 if (this.onResponse) this.onResponse(data);
+            } else if (data.type === 'tts_chunk') {
+                if (this.onTtsChunk) this.onTtsChunk(data);
+            } else if (data.type === 'tts_sequence_end') {
+                if (this.onTtsSequenceEnd) this.onTtsSequenceEnd(data);
             }
         } catch (error) {
             console.error('Error parsing WebSocket message:', error);
@@ -764,18 +770,24 @@ class VoiceAssistant {
             adaptiveQuality: true,
             enableNotifications: true,
             enableHaptics: 'vibrate' in navigator,
-            
+
             // Enhanced features
             useBinaryFrames: true,
             vadEnabled: true,
             enableInterimTranscripts: false,
-            
+            quickstartPiper: true,
+            chunkedPlayback: true,
+            crossfadeDurationMs: 100,
+
             ...config
         };
-        
+
         this.streamer = new AudioStreamer(this.config);
         this.isRecording = false;
         this.platform = this.detectPlatform();
+        this.ttsQueue = [];
+        this.currentTtsAudio = null;
+        this.ttsSequenceEnded = false;
         
         // UI elements (will be set externally)
         this.ui = {
@@ -831,14 +843,22 @@ class VoiceAssistant {
         this.streamer.onMetricsUpdate = (metrics) => {
             this.updateMetricsDisplay(metrics);
         };
-        
+
         // NEW: Enhanced event handlers
         this.streamer.onInterimTranscript = (data) => {
             if (this.config.enableInterimTranscripts) {
                 this.showInterimTranscript(data.transcript);
             }
         };
-        
+
+        this.streamer.onTtsChunk = (data) => {
+            this.handleTtsChunk(data);
+        };
+
+        this.streamer.onTtsSequenceEnd = () => {
+            this.handleTtsSequenceEnd();
+        };
+
         this.streamer.onVadStateChange = (vadInfo) => {
             this.handleVadStateChange(vadInfo);
         };
@@ -903,15 +923,99 @@ class VoiceAssistant {
     
     handleResponse(data) {
         this.updateStatus('connected', '✅ Bereit');
-        
+
         if (this.ui.responseElement) {
             this.displayResponse(data.content || data.transcription);
         }
-        
+
         // Play TTS audio if available or cached
         if (data.audio || this.ttsCache.has(data.content)) {
             this.playTTSAudio(data.content, data.audio);
         }
+    }
+
+    handleTtsChunk(data) {
+        if (data.text) {
+            this.displayResponse(data.text);
+        }
+
+        if (!this.config.chunkedPlayback) {
+            this.playTTSAudio(data.text || '', data.audio);
+            return;
+        }
+
+        const src = data.audio.startsWith('data:') ? data.audio : `data:audio/wav;base64,${data.audio}`;
+        this.ttsQueue.push({ src, engine: data.engine });
+
+        if (!this.currentTtsAudio) {
+            if (this.config.quickstartPiper || data.engine !== 'piper') {
+                this.playNextTtsChunk();
+            }
+        }
+    }
+
+    handleTtsSequenceEnd() {
+        this.ttsSequenceEnded = true;
+        if (!this.currentTtsAudio) {
+            this.playNextTtsChunk();
+        }
+    }
+
+    playNextTtsChunk() {
+        if (this.ttsQueue.length === 0) {
+            this.currentTtsAudio = null;
+            if (this.ttsSequenceEnded) {
+                this.ttsSequenceEnded = false;
+            }
+            return;
+        }
+
+        const { src } = this.ttsQueue.shift();
+        const next = new Audio(src);
+        next.volume = 0;
+
+        next.addEventListener('loadedmetadata', () => {
+            if (this.ttsQueue.length > 0) {
+                const wait = Math.max((next.duration * 1000) - this.config.crossfadeDurationMs, 0);
+                setTimeout(() => this.playNextTtsChunk(), wait);
+            } else if (this.ttsSequenceEnded) {
+                next.addEventListener('ended', () => {
+                    this.currentTtsAudio = null;
+                    this.ttsSequenceEnded = false;
+                });
+            }
+        });
+
+        next.play().then(() => {
+            this.crossfadeAudios(this.currentTtsAudio, next);
+            this.currentTtsAudio = next;
+        }).catch(err => {
+            console.warn('TTS chunk playback failed:', err);
+        });
+    }
+
+    crossfadeAudios(prev, next) {
+        const duration = this.config.crossfadeDurationMs;
+        const steps = 10;
+        const stepTime = duration / steps;
+        let step = 0;
+        if (prev) prev.volume = 1;
+        next.volume = 0;
+
+        const interval = setInterval(() => {
+            step++;
+            const t = step / steps;
+            if (prev) prev.volume = 1 - t;
+            next.volume = t;
+            if (step >= steps) {
+                clearInterval(interval);
+                if (prev) prev.pause();
+            }
+        }, stepTime);
+    }
+
+    updatePlaybackSettings(settings) {
+        this.config = { ...this.config, ...settings };
     }
     
     // NEW: Enhanced methods
