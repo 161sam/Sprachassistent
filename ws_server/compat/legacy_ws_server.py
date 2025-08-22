@@ -15,9 +15,8 @@ have been moved to ``archive/`` (`ws-server-pre-tts.py`,
 Features integrated from previous versions:
 
 * Environment based configuration
-* STT audio pre-processing (``numpy``/``soundfile``)
+* STT audio pre-processing (in-memory ``numpy`` pipeline)
 * Intent routing with optional Flowise/n8n calls (``aiohttp``)
-* Optional debug file saving (``aiofiles``)
 * Metrics API und TTS-Engine-Switching
 
 # Hinweis: Der TTS-Wechsel wird vom ``TTSManager`` verwaltet und
@@ -40,13 +39,11 @@ import uuid
 import numpy as np
 import os
 import logging
-from datetime import datetime
 from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import aiohttp
-import aiofiles
 from faster_whisper import WhisperModel
 from pathlib import Path
 from dotenv import load_dotenv
@@ -66,6 +63,7 @@ from audio.vad import VoiceActivityDetector, VADConfig
 
 from ws_server.auth.token import verify_token
 from ws_server.metrics.collector import collector
+from ws_server.stt import pcm16_bytes_to_float32
 
 # Load environment variables from optional defaults then override with .env
 load_dotenv('.env.defaults', override=False)
@@ -240,9 +238,6 @@ class StreamingConfig:
     )
     intent_model: str = os.getenv("INTENT_MODEL", "models/intent_classifier.bin")
 
-    # Debugging
-    save_debug_audio: bool = os.getenv("SAVE_DEBUG_AUDIO", "false").lower() == "true"
-    
     # Staged TTS Configuration
     staged_tts_enabled: bool = os.getenv("STAGED_TTS_ENABLED", "true").lower() == "true"
     staged_tts_max_response_length: int = int(os.getenv("STAGED_TTS_MAX_RESPONSE_LENGTH", "500"))
@@ -402,9 +397,14 @@ class AsyncSTTEngine:
 
     def _preprocess_audio(self, audio_bytes: bytes) -> np.ndarray:
         """Convert raw PCM16 bytes to normalized float32 array."""
-        audio_np = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32)
-        audio_np /= 32768.0
-        return audio_np
+        return pcm16_bytes_to_float32(audio_bytes)
+
+    async def process_binary_audio(self, audio_data: bytes, **_kwargs) -> str:
+        """Transcribe raw PCM16 bytes directly.
+
+        TODO: Stream chunk-wise without buffering entire audio.
+        """
+        return await self.transcribe_audio(audio_data)
 
     def _transcribe_sync(self, audio_array: np.ndarray) -> str:
         """Synchronous transcription in worker thread."""
@@ -664,18 +664,6 @@ class AudioStreamManager:
             if len(self.stats['tts_latency_ms']) > 100:
                 self.stats['tts_latency_ms'].pop(0)
 
-            # Optional debug: save audio files asynchronously
-            if config.save_debug_audio:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                try:
-                    async with aiofiles.open(f"debug_in_{timestamp}.wav", "wb") as f_in:
-                        await f_in.write(audio_data)
-                    if tts_result.success and tts_result.audio_data:
-                        async with aiofiles.open(f"debug_out_{timestamp}.wav", "wb") as f_out:
-                            await f_out.write(tts_result.audio_data)
-                except Exception as dbg_err:
-                    logger.debug(f"Failed to write debug audio: {dbg_err}")
-            
             processing_time = time.time() - start_time
             logger.info(f"Processed stream {stream_id} in {processing_time:.2f}s: '{transcription[:50]}...'")
             
