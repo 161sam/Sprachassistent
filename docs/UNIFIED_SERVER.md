@@ -23,6 +23,12 @@ include:
 | `TTS_VOICE` | Default voice identifier |
 | `JWT_SECRET` | Shared secret for token verification |
 
+### STT
+
+Incoming PCM16 audio is converted directly into NumPy arrays in memory.
+No temporäre WAV-Dateien oder Subprozesse werden genutzt.
+Streaming-Unterstützung folgt.
+
 ## Protocol
 
 Clients connect via WebSocket.  A `hello` message is exchanged during the
