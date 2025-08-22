@@ -4,7 +4,7 @@ Tracking checklist for the refactor project.  Each sprint corresponds to a
 focused commit.
 
 - [x] Sprint 1 — Duplicate detection & quarantine
-- [ ] Sprint 2 — Single entrypoint & import path sanitation
+- [x] Sprint 2 — Single entrypoint & import path sanitation
 - [ ] Sprint 3 — Modular slicing of the monolith
 - [ ] Sprint 4 — Config consolidation & naming hygiene
 - [ ] Sprint 5 — TTS single source of truth & lazy loading
