@@ -8,6 +8,7 @@ from ws_server.transport.server import VoiceServer
 from ws_server.metrics.collector import collector
 from ws_server.metrics.http_api import start_http_server
 from backend.tts.model_validation import list_voices_with_aliases, validate_models
+from ws_server.core.config import load_env
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -32,12 +33,14 @@ async def main() -> None:
                 print(voice)
         return
 
+    load_env()
+
     server = VoiceServer()
     await server.initialize()
 
-    host = os.getenv("WS_HOST", "127.0.0.1")
-    port = int(os.getenv("WS_PORT", "48231"))
-    metrics_port = int(os.getenv("METRICS_PORT", "48232"))
+    host = os.getenv("WS_HOST")
+    port = int(os.getenv("WS_PORT"))
+    metrics_port = int(os.getenv("METRICS_PORT"))
 
     collector.start()
     await start_http_server(metrics_port)

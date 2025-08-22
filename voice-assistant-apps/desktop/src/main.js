@@ -86,8 +86,6 @@ function loadEnv() {
   const rootEnv = path.join(projectRoot, '.env');
   const localEnv = path.join(__dirname, '../.env');
   const envPath = fs.existsSync(rootEnv) ? rootEnv : localEnv;
-  const defaultsPath = path.join(path.dirname(envPath), '.env.defaults');
-  if (fs.existsSync(defaultsPath)) dotenv.config({ path: defaultsPath });
   dotenv.config({ path: envPath });
   log.info(`Loaded env from ${envPath}`);
 }

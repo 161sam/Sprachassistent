@@ -4,23 +4,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+from ws_server.core.config import load_env as _load_env
+
 
 class BaseTest:
     """Base test class providing environment loading utilities."""
 
     @staticmethod
     def load_env(profile: Optional[str] = None) -> None:
-        """Load environment variables from .env files.
+        """Load environment variables from ``.env`` files.
 
         Parameters
         ----------
-        profile: optional str
-            Name of the profile to load, e.g. ``all-in-one-pi``.
+        profile:
+            Optional profile name, e.g. ``all-in-one-pi``.
         """
-        env_file = Path(".env.defaults")
-        if profile:
-            candidate = Path(f".env.{profile}")
-            if candidate.exists():
-                env_file = candidate
-        load_dotenv(env_file, override=True)
+
+        env_file = Path(f".env.{profile}") if profile else Path(".env")
+        _load_env(env_file if env_file.exists() else None)

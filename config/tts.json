@@ -1,26 +1,3 @@
 {
-  "default_engine": "zonos",
-  "engines": {
-    "zonos": {
-      "type": "zonos",
-      "model": "Zyphra/Zonos-v0.1-transformer",
-      "language": "de",
-      "params": {
-        "emotion": "neutral",
-        "speed": 1.0
-      }
-    },
-    "piper": {
-      "type": "piper",
-      "voice": "de-thorsten-low",
-      "model_path": "/home/saschi/Sprachassistent/models/piper/de_DE-thorsten-low.onnx",
-      "config_path": "/home/saschi/Sprachassistent/models/piper/de_DE-thorsten-low.onnx.json"
-    },
-    "kokoro": {
-      "type": "kokoro",
-      "model_path": "/home/saschi/Sprachassistent/models/kokoro/kokoro-v1.0.onnx",
-      "voices_path": "/home/saschi/Sprachassistent/models/kokoro/voices-v1.0.bin",
-      "voice": "en_US-Bella"
-    }
-  }
+  "engines": {}
 }
