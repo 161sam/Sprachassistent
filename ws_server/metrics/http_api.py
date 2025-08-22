@@ -9,11 +9,11 @@ and ``/health`` reports basic service status.
 from __future__ import annotations
 
 import logging
-import os
 from aiohttp import web
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .collector import collector
+from ws_server.core.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ async def start_http_server(port: int | None = None) -> web.AppRunner:
     shut down the service again during tests.
     """
 
-    host = os.getenv("WS_HOST", "127.0.0.1")
-    port = port or int(os.getenv("METRICS_PORT", "48232"))
+    host = config.ws_host
+    port = port or config.metrics_port
 
     app = create_app()
     runner = web.AppRunner(app)
