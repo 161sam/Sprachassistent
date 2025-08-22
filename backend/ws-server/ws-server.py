@@ -58,6 +58,9 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
+from staged_tts import StagedTTSProcessor
+from staged_tts.staged_processor import StagedTTSConfig
+from audio.vad import VoiceActivityDetector, VADConfig, create_vad_processor
 
 from auth.token_utils import verify_token
 
@@ -256,6 +259,23 @@ class StreamingConfig:
 
     # Debugging
     save_debug_audio: bool = os.getenv("SAVE_DEBUG_AUDIO", "false").lower() == "true"
+    
+    # Staged TTS Configuration
+    staged_tts_enabled: bool = os.getenv("STAGED_TTS_ENABLED", "true").lower() == "true"
+    staged_tts_max_response_length: int = int(os.getenv("STAGED_TTS_MAX_RESPONSE_LENGTH", "500"))
+    staged_tts_max_intro_length: int = int(os.getenv("STAGED_TTS_MAX_INTRO_LENGTH", "120"))
+    staged_tts_chunk_timeout: int = int(os.getenv("STAGED_TTS_CHUNK_TIMEOUT", "10"))
+    staged_tts_max_chunks: int = int(os.getenv("STAGED_TTS_MAX_CHUNKS", "3"))
+    staged_tts_enable_caching: bool = os.getenv("STAGED_TTS_ENABLE_CACHING", "true").lower() == "true"
+    
+    # VAD Configuration
+    vad_enabled: bool = os.getenv("VAD_ENABLED", "false").lower() == "true"
+    vad_silence_duration_ms: int = int(os.getenv("VAD_SILENCE_DURATION_MS", "1500"))
+    vad_energy_threshold: float = float(os.getenv("VAD_ENERGY_THRESHOLD", "0.01"))
+    vad_min_speech_duration_ms: int = int(os.getenv("VAD_MIN_SPEECH_DURATION_MS", "500"))
+    
+    # Binary Audio Support
+    enable_binary_audio: bool = os.getenv("ENABLE_BINARY_AUDIO", "false").lower() == "true"
 
 config = StreamingConfig()
 
@@ -426,6 +446,10 @@ class AudioStreamManager:
         self.active_streams: Dict[str, Dict] = {}
         self.processing_queue = asyncio.Queue(maxsize=1000)
         self.response_callbacks: Dict[str, callable] = {}
+        
+        # VAD support
+        self.vad_processors: Dict[str, VoiceActivityDetector] = {}
+        self.vad_enabled = config.vad_enabled
 
         # Skills und Intent-Klassifizierer laden
         skills_path = Path(__file__).parent / "skills"
@@ -457,16 +481,31 @@ class AudioStreamManager:
             'tts_engine': None,  # Client-spezifische TTS-Engine
             'tts_voice': None,   # Client-spezifische Stimme
             'tts_speed': None,
-            'tts_volume': None
+            'tts_volume': None,
+            'vad_enabled': False,  # Per-stream VAD setting
+            'vad_auto_stop_triggered': False
         }
+        
+        # Initialize VAD processor if enabled
+        if self.vad_enabled:
+            vad_config = VADConfig(
+                sample_rate=config.sample_rate,
+                silence_duration_ms=config.vad_silence_duration_ms,
+                energy_threshold=config.vad_energy_threshold,
+                min_speech_duration_ms=config.vad_min_speech_duration_ms
+            )
+            self.vad_processors[stream_id] = VoiceActivityDetector(vad_config)
+            self.active_streams[stream_id]['vad_enabled'] = True
+            logger.debug(f"VAD processor initialized for stream {stream_id}")
         
         self.response_callbacks[stream_id] = response_callback
         logger.debug(f"Started audio stream {stream_id} for client {client_id}")
         
         return stream_id
         
-    async def add_audio_chunk(self, stream_id: str, chunk_data: bytes, sequence: int) -> bool:
-        """Add audio chunk to stream buffer"""
+    async def add_audio_chunk(self, stream_id: str, chunk_data: bytes, sequence: int, 
+                            is_binary: bool = False) -> bool:
+        """Add audio chunk to stream buffer with VAD processing"""
         if stream_id not in self.active_streams:
             return False
             
@@ -476,10 +515,41 @@ class AudioStreamManager:
         if not stream['is_active']:
             return False
             
+        # Check if VAD auto-stop was already triggered
+        if stream.get('vad_auto_stop_triggered', False):
+            logger.debug(f"Stream {stream_id} auto-stopped by VAD")
+            return False
+            
         # Check duration limit
         if time.time() - stream['start_time'] > config.max_audio_duration:
             logger.warning(f"Stream {stream_id} exceeded max duration")
             return False
+        
+        # VAD processing if enabled for this stream
+        if stream.get('vad_enabled', False) and stream_id in self.vad_processors:
+            try:
+                # Convert audio data to numpy array for VAD processing
+                if is_binary:
+                    # Binary PCM16 data
+                    audio_np = np.frombuffer(chunk_data, dtype=np.int16).astype(np.float32) / 32768.0
+                else:
+                    # JSON base64 data (already converted to bytes)
+                    audio_np = np.frombuffer(chunk_data, dtype=np.int16).astype(np.float32) / 32768.0
+                
+                # Process through VAD
+                vad_processor = self.vad_processors[stream_id]
+                should_continue = vad_processor.process_frame(audio_np)
+                
+                if not should_continue:
+                    logger.info(f"VAD triggered auto-stop for stream {stream_id}")
+                    stream['vad_auto_stop_triggered'] = True
+                    # Trigger finalization
+                    asyncio.create_task(self.finalize_stream(stream_id))
+                    return False
+                    
+            except Exception as e:
+                logger.error(f"VAD processing error for stream {stream_id}: {e}")
+                # Continue without VAD on error
             
         # Create optimized chunk
         chunk = AudioChunk(
@@ -650,6 +720,8 @@ class AudioStreamManager:
                 del self.active_streams[stream_id]
             if stream_id in self.response_callbacks:
                 del self.response_callbacks[stream_id]
+            if stream_id in self.vad_processors:
+                del self.vad_processors[stream_id]
                 
     async def _generate_response(self, transcription: str, client_id: str) -> str:
         """Generate response using Skills, ML classification and external routing."""
@@ -852,6 +924,18 @@ class VoiceServer:
                     return {}
             self.tts_manager = DummyTTSManager()
             logger.warning("⚠️  Using dummy TTS manager - TTS features disabled")
+        
+        # Initialize Staged TTS Processor
+        staged_tts_config = StagedTTSConfig(
+            enabled=config.staged_tts_enabled,
+            max_response_length=config.staged_tts_max_response_length,
+            max_intro_length=config.staged_tts_max_intro_length,
+            chunk_timeout_seconds=config.staged_tts_chunk_timeout,
+            max_chunks=config.staged_tts_max_chunks,
+            enable_caching=config.staged_tts_enable_caching
+        )
+        self.staged_tts = StagedTTSProcessor(self.tts_manager, staged_tts_config)
+        logger.info(f"🎭 Staged TTS: {'enabled' if config.staged_tts_enabled else 'disabled'}")
         
         self.stream_manager = AudioStreamManager(self.stt_engine, self.tts_manager)
         # self.stream_manager.stats wird weiter unten gesetzt, nachdem self.stats existiert
@@ -1186,6 +1270,16 @@ class VoiceServer:
             await self._handle_get_llm_models(client_id, data)
         elif message_type == 'switch_llm_model':
             await self._handle_switch_llm_model(client_id, data)
+        elif message_type == 'staged_tts_control':
+            await self._handle_staged_tts_control(client_id, data)
+        elif message_type == 'get_stt_models':
+            await self._handle_get_stt_models(client_id, data)
+        elif message_type == 'switch_stt_model':
+            await self._handle_switch_stt_model(client_id, data)
+        elif message_type == 'set_audio_opts':
+            await self._handle_set_audio_opts(client_id, data)
+        elif message_type == 'set_llm_opts':
+            await self._handle_set_llm_opts(client_id, data)
         elif message_type == 'ping':
             await self._handle_ping(client_id, data)
         else:
@@ -1235,30 +1329,40 @@ class VoiceServer:
         self.stats['audio_streams'] += 1
         
     async def _handle_audio_chunk(self, client_id: str, data: Dict):
-        """Handle incoming audio chunk"""
+        """Handle incoming audio chunk (JSON base64 or binary)"""
         stream_id = data.get('stream_id')
         chunk_b64 = data.get('chunk')
         sequence = data.get('sequence', 0)
+        is_binary = data.get('is_binary', False)
         
         if not stream_id or not chunk_b64:
             return
             
         try:
             # Decode audio chunk
-            chunk_data = base64.b64decode(chunk_b64)
+            if is_binary:
+                # For binary frames, chunk_b64 should already be bytes
+                chunk_data = chunk_b64 if isinstance(chunk_b64, bytes) else base64.b64decode(chunk_b64)
+            else:
+                # Traditional base64 JSON format
+                chunk_data = base64.b64decode(chunk_b64)
             
-            # Add to stream buffer
-            success = await self.stream_manager.add_audio_chunk(stream_id, chunk_data, sequence)
+            # Add to stream buffer with VAD processing
+            success = await self.stream_manager.add_audio_chunk(stream_id, chunk_data, sequence, is_binary)
             
             if not success:
                 await self.connection_manager.send_to_client(client_id, {
                     'type': 'audio_stream_error',
                     'stream_id': stream_id,
-                    'message': 'Failed to add audio chunk'
+                    'message': 'Failed to add audio chunk or VAD auto-stop triggered'
                 })
                 
         except Exception as e:
             logger.error(f"Error handling audio chunk: {e}")
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Audio chunk processing failed: {str(e)}'
+            })
             
     async def _handle_end_audio_stream(self, client_id: str, data: Dict):
         """End audio stream and trigger processing"""
@@ -1306,27 +1410,84 @@ class VoiceServer:
             elif t == 'zonos':
                 target_engine = TTSEngineType.ZONOS
 
-        tts_kwargs = {}
-        if tts_speed is not None:
-            tts_kwargs['speed'] = tts_speed
-        if tts_volume is not None:
-            tts_kwargs['volume'] = tts_volume
-        tts_result = await self.tts_manager.synthesize(
-            response_text,
-            engine=target_engine,
-            voice=tts_voice,
-            **tts_kwargs
-        )
-        
-        await self._send_text_response(client_id, {
-            'input_text': text,
-            'response_text': response_text,
-            'audio_data': tts_result.audio_data if tts_result.success else None,
-            'tts_engine_used': tts_result.engine_used,
-            'tts_voice_used': tts_result.voice_used,
-            'tts_success': tts_result.success,
-            'tts_error': tts_result.error_message if not tts_result.success else None
-        })
+        # Use Staged TTS if enabled, otherwise fallback to single synthesis
+        if self.staged_tts.config.enabled and target_engine is None:
+            await self._handle_staged_tts_response(client_id, text, response_text)
+        else:
+            # Traditional single TTS synthesis
+            tts_kwargs = {}
+            if tts_speed is not None:
+                tts_kwargs['speed'] = tts_speed
+            if tts_volume is not None:
+                tts_kwargs['volume'] = tts_volume
+            tts_result = await self.tts_manager.synthesize(
+                response_text,
+                engine=target_engine,
+                voice=tts_voice,
+                **tts_kwargs
+            )
+            
+            await self._send_text_response(client_id, {
+                'input_text': text,
+                'response_text': response_text,
+                'audio_data': tts_result.audio_data if tts_result.success else None,
+                'tts_engine_used': tts_result.engine_used,
+                'tts_voice_used': tts_result.voice_used,
+                'tts_success': tts_result.success,
+                'tts_error': tts_result.error_message if not tts_result.success else None
+            })
+    
+    async def _handle_staged_tts_response(self, client_id: str, input_text: str, response_text: str):
+        """Handle staged TTS response with Piper intro + Zonos main content"""
+        try:
+            # Process with staged TTS
+            chunks = await self.staged_tts.process_staged_tts(response_text)
+            
+            if not chunks:
+                # Fallback to single TTS if staging fails
+                logger.warning("Staged TTS failed, falling back to single synthesis")
+                await self._fallback_single_tts(client_id, input_text, response_text)
+                return
+            
+            # Send chunks in sequence
+            sequence_id = chunks[0].sequence_id if chunks else None
+            
+            for chunk in chunks:
+                chunk_message = self.staged_tts.create_chunk_message(chunk)
+                await self.connection_manager.send_to_client(client_id, chunk_message)
+                logger.debug(f"Sent {chunk.engine} chunk {chunk.index}/{chunk.total}")
+            
+            # Send sequence end message
+            if sequence_id:
+                end_message = self.staged_tts.create_sequence_end_message(sequence_id)
+                await self.connection_manager.send_to_client(client_id, end_message)
+                logger.debug(f"Sent sequence end for {sequence_id}")
+                
+        except Exception as e:
+            logger.error(f"Staged TTS error: {e}")
+            await self._fallback_single_tts(client_id, input_text, response_text)
+    
+    async def _fallback_single_tts(self, client_id: str, input_text: str, response_text: str):
+        """Fallback to single TTS synthesis when staged TTS fails"""
+        try:
+            tts_result = await self.tts_manager.synthesize(response_text)
+            await self._send_text_response(client_id, {
+                'input_text': input_text,
+                'response_text': response_text,
+                'audio_data': tts_result.audio_data if tts_result.success else None,
+                'tts_engine_used': tts_result.engine_used,
+                'tts_voice_used': getattr(tts_result, 'voice_used', 'default'),
+                'tts_success': tts_result.success,
+                'tts_error': tts_result.error_message if not tts_result.success else None
+            })
+        except Exception as e:
+            logger.error(f"Fallback TTS error: {e}")
+            # Send error response
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': 'TTS synthesis failed',
+                'timestamp': time.time()
+            })
         
     async def _handle_switch_tts_engine(self, client_id: str, data: Dict):
         """Handle TTS engine switch request"""
@@ -1507,6 +1668,249 @@ class VoiceServer:
             'client_timestamp': data.get('timestamp'),
             'current_tts_engine': current_engine.value if current_engine else None
         })
+    
+    async def _handle_get_stt_models(self, client_id: str, data: Dict):
+        """Handle STT models discovery request"""
+        try:
+            # Available STT models based on hardware capabilities
+            available_models = ["tiny", "base", "small", "medium", "large-v2"]
+            
+            # Detect hardware capabilities
+            device_info = {
+                "device": config.stt_device,
+                "precision": config.stt_precision
+            }
+            
+            # GPU detection for recommendations
+            gpu_available = False
+            try:
+                import torch
+                gpu_available = torch.cuda.is_available()
+            except ImportError:
+                pass
+            
+            # Hardware-optimized recommendations
+            if gpu_available:
+                recommended = "base" if config.stt_device == "cuda" else "small"
+                fast_models = ["tiny", "base", "small"]
+                quality_models = ["small", "medium", "large-v2"]
+            else:
+                recommended = "tiny"
+                fast_models = ["tiny", "base"]
+                quality_models = ["base", "small"]
+            
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'stt_models',
+                'available': available_models,
+                'current': config.stt_model,
+                'recommended': recommended,
+                'device_info': device_info,
+                'gpu_available': gpu_available,
+                'categories': {
+                    'fast': fast_models,
+                    'quality': quality_models,
+                    'gpu_optimized': quality_models if gpu_available else []
+                },
+                'timestamp': time.time()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error getting STT models: {e}")
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Failed to get STT models: {str(e)}',
+                'timestamp': time.time()
+            })
+    
+    async def _handle_switch_stt_model(self, client_id: str, data: Dict):
+        """Handle STT model switch request"""
+        model = data.get('model')
+        
+        if not model:
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': 'No model specified for STT switch'
+            })
+            return
+        
+        try:
+            # Note: Hot-swapping STT models requires reinitialization
+            # For now, we'll update the config and notify about restart requirement
+            old_model = config.stt_model
+            config.stt_model = model
+            
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'stt_model_switch_scheduled',
+                'old_model': old_model,
+                'new_model': model,
+                'requires_restart': True,
+                'message': f'STT model switched to {model}. Restart required for full effect.',
+                'timestamp': time.time()
+            })
+            
+            # TODO: Implement hot model swapping if needed
+            # This would require rebuilding the STT engine
+            
+        except Exception as e:
+            logger.error(f"Error switching STT model: {e}")
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Failed to switch STT model: {str(e)}'
+            })
+    
+    async def _handle_set_audio_opts(self, client_id: str, data: Dict):
+        """Handle audio options update"""
+        try:
+            # Extract audio options
+            options = {}
+            
+            if 'noiseSuppression' in data:
+                options['noiseSuppression'] = bool(data['noiseSuppression'])
+            if 'echoCancellation' in data:
+                options['echoCancellation'] = bool(data['echoCancellation'])
+            if 'vadEnabled' in data:
+                options['vadEnabled'] = bool(data['vadEnabled'])
+                # Update global VAD setting
+                config.vad_enabled = options['vadEnabled']
+            if 'autoStopSec' in data:
+                options['autoStopSec'] = float(data['autoStopSec'])
+                # Update VAD silence duration
+                config.vad_silence_duration_ms = int(options['autoStopSec'] * 1000)
+            
+            # Store client-specific audio options
+            if client_id in self.connection_manager.connection_info:
+                if 'audio_options' not in self.connection_manager.connection_info[client_id]:
+                    self.connection_manager.connection_info[client_id]['audio_options'] = {}
+                self.connection_manager.connection_info[client_id]['audio_options'].update(options)
+            
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'audio_opts_updated',
+                'options': options,
+                'message': 'Audio options updated. Changes will apply to new recordings.',
+                'timestamp': time.time()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error setting audio options: {e}")
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Failed to set audio options: {str(e)}'
+            })
+    
+    async def _handle_set_llm_opts(self, client_id: str, data: Dict):
+        """Handle LLM options update"""
+        try:
+            # Extract and validate LLM options
+            if 'temperature' in data:
+                temp = float(data['temperature'])
+                if 0.0 <= temp <= 2.0:
+                    self.llm_temperature = temp
+                    
+            if 'maxTokens' in data:
+                tokens = int(data['maxTokens'])
+                if 1 <= tokens <= 4096:
+                    self.llm_max_tokens = tokens
+                    
+            if 'contextTurns' in data:
+                turns = int(data['contextTurns'])
+                if 1 <= turns <= 20:
+                    self.llm_max_turns = turns
+            
+            # Clear chat history for this client to apply new context settings
+            if client_id in self.chat_histories:
+                # Keep system message if it exists
+                hist = self.chat_histories[client_id]
+                system_msg = hist[0] if hist and hist[0].get('role') == 'system' else None
+                self.chat_histories[client_id] = [system_msg] if system_msg else []
+            
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'llm_opts_updated',
+                'temperature': self.llm_temperature,
+                'maxTokens': self.llm_max_tokens,
+                'contextTurns': self.llm_max_turns,
+                'message': 'LLM options updated',
+                'timestamp': time.time()
+            })
+            
+        except Exception as e:
+            logger.error(f"Error setting LLM options: {e}")
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Failed to set LLM options: {str(e)}'
+            })
+    
+    async def _handle_staged_tts_control(self, client_id: str, data: Dict):
+        """Handle staged TTS control commands"""
+        action = data.get('action', '')
+        
+        if action == 'toggle':
+            # Toggle staged TTS on/off
+            self.staged_tts.config.enabled = not self.staged_tts.config.enabled
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'staged_tts_status',
+                'enabled': self.staged_tts.config.enabled,
+                'message': f"Staged TTS {'enabled' if self.staged_tts.config.enabled else 'disabled'}",
+                'timestamp': time.time()
+            })
+            
+        elif action == 'clear_cache':
+            # Clear TTS cache
+            self.staged_tts.clear_cache()
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'staged_tts_cache',
+                'message': 'Cache cleared',
+                'timestamp': time.time()
+            })
+            
+        elif action == 'get_stats':
+            # Get staged TTS statistics
+            cache_stats = self.staged_tts.get_cache_stats()
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'staged_tts_stats',
+                'enabled': self.staged_tts.config.enabled,
+                'config': {
+                    'max_response_length': self.staged_tts.config.max_response_length,
+                    'max_intro_length': self.staged_tts.config.max_intro_length,
+                    'chunk_timeout_seconds': self.staged_tts.config.chunk_timeout_seconds,
+                    'max_chunks': self.staged_tts.config.max_chunks,
+                    'enable_caching': self.staged_tts.config.enable_caching
+                },
+                'cache_stats': cache_stats,
+                'timestamp': time.time()
+            })
+            
+        elif action == 'configure':
+            # Update configuration
+            config_updates = data.get('config', {})
+            if 'max_response_length' in config_updates:
+                self.staged_tts.config.max_response_length = int(config_updates['max_response_length'])
+            if 'max_intro_length' in config_updates:
+                self.staged_tts.config.max_intro_length = int(config_updates['max_intro_length'])
+            if 'chunk_timeout_seconds' in config_updates:
+                self.staged_tts.config.chunk_timeout_seconds = int(config_updates['chunk_timeout_seconds'])
+            if 'max_chunks' in config_updates:
+                self.staged_tts.config.max_chunks = int(config_updates['max_chunks'])
+            if 'enable_caching' in config_updates:
+                self.staged_tts.config.enable_caching = bool(config_updates['enable_caching'])
+                
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'staged_tts_config_updated',
+                'config': {
+                    'max_response_length': self.staged_tts.config.max_response_length,
+                    'max_intro_length': self.staged_tts.config.max_intro_length,
+                    'chunk_timeout_seconds': self.staged_tts.config.chunk_timeout_seconds,
+                    'max_chunks': self.staged_tts.config.max_chunks,
+                    'enable_caching': self.staged_tts.config.enable_caching
+                },
+                'timestamp': time.time()
+            })
+        
+        else:
+            await self.connection_manager.send_to_client(client_id, {
+                'type': 'error',
+                'message': f'Unknown staged TTS action: {action}',
+                'timestamp': time.time()
+            })
         
     async def _send_audio_response(self, client_id: str, response_data: Dict):
         """Send response from audio processing"""

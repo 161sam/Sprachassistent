@@ -813,6 +813,369 @@ window.switchTab = (tabName) => {
     if (panel) panel.classList.add('active');
 };
 
+// Enhanced Settings Integration
+function sendSettingToBackend(key, value) {
+  if (!voiceAssistantGUI || !voiceAssistantGUI.voiceAssistant || !voiceAssistantGUI.voiceAssistant.ws || voiceAssistantGUI.voiceAssistant.ws.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  
+  const ws = voiceAssistantGUI.voiceAssistant.ws;
+  const message = { timestamp: Date.now() };
+  
+  if (key.startsWith('stt')) {
+    if (key === 'sttModel') {
+      message.type = 'switch_stt_model';
+      message.model = value;
+    } else {
+      message.type = 'set_audio_opts';
+      message[key.replace('stt', '').toLowerCase()] = value;
+    }
+  } else if (key.startsWith('tts')) {
+    if (key === 'ttsEngine') {
+      message.type = 'switch_tts_engine';
+      message.engine = value;
+    } else if (key === 'ttsVoice') {
+      message.type = 'set_tts_voice';
+      message.voice = value;
+    }
+  } else if (key.startsWith('llm')) {
+    if (key === 'llmModel') {
+      message.type = 'switch_llm_model';
+      message.model = value;
+    } else {
+      message.type = 'set_llm_opts';
+      if (key === 'llmTemperature') message.temperature = value;
+      else if (key === 'llmMaxTokens') message.maxTokens = value;
+      else if (key === 'llmContextTurns') message.contextTurns = value;
+    }
+  } else if (key.startsWith('stagedTts')) {
+    message.type = 'staged_tts_control';
+    message.action = 'configure';
+    message.config = {};
+    if (key === 'stagedTtsEnabled') message.config.enabled = value;
+    else if (key === 'stagedTtsIntroLength') message.config.max_intro_length = value;
+    else if (key === 'stagedTtsTimeout') message.config.chunk_timeout_seconds = value;
+  } else if (key === 'vadEnabled' || key === 'autoStopTime' || key === 'noiseSuppression' || key === 'echoCancellation') {
+    message.type = 'set_audio_opts';
+    if (key === 'vadEnabled') message.vadEnabled = value;
+    else if (key === 'autoStopTime') message.autoStopSec = value;
+    else if (key === 'noiseSuppression') message.noiseSuppression = value;
+    else if (key === 'echoCancellation') message.echoCancellation = value;
+  }
+  
+  if (message.type) {
+    ws.send(JSON.stringify(message));
+  }
+}
+
+// Enhanced WebSocket message handling for settings
+function handleSettingsWebSocketMessage(data) {
+  switch (data.type) {
+    case 'stt_models':
+      handleSttModelsResponse(data);
+      break;
+    case 'stt_model_switch_scheduled':
+      voiceAssistantGUI?.showNotification?.('info', 'STT-Modell', data.message);
+      break;
+    case 'tts_info':
+      handleTtsInfoResponse(data);
+      break;
+    case 'tts_engine_switched':
+      voiceAssistantGUI?.showNotification?.('success', 'TTS-Engine', `Gewechselt zu ${data.engine}`);
+      break;
+    case 'tts_voice_changed':
+      voiceAssistantGUI?.showNotification?.('success', 'TTS-Stimme', `Stimme geändert zu ${data.voice}`);
+      break;
+    case 'llm_models':
+      handleLlmModelsResponse(data);
+      break;
+    case 'llm_model_switched':
+      if (data.ok) {
+        voiceAssistantGUI?.showNotification?.('success', 'LLM-Modell', `Gewechselt zu ${data.current}`);
+      } else {
+        voiceAssistantGUI?.showNotification?.('error', 'LLM-Modell', 'Wechsel fehlgeschlagen');
+      }
+      break;
+    case 'audio_opts_updated':
+      voiceAssistantGUI?.showNotification?.('success', 'Audio-Optionen', data.message);
+      break;
+    case 'llm_opts_updated':
+      voiceAssistantGUI?.showNotification?.('success', 'LLM-Optionen', data.message);
+      break;
+    case 'staged_tts_status':
+      voiceAssistantGUI?.showNotification?.('info', 'Staged TTS', data.message);
+      break;
+    case 'staged_tts_cache':
+      voiceAssistantGUI?.showNotification?.('success', 'Staged TTS', data.message);
+      break;
+    case 'staged_tts_stats':
+      handleStagedTtsStatsResponse(data);
+      break;
+  }
+}
+
+function handleSttModelsResponse(data) {
+  const select = document.getElementById('sttModel');
+  const hint = document.getElementById('sttModelHint');
+  
+  if (select) {
+    select.innerHTML = '';
+    data.available.forEach(model => {
+      const option = document.createElement('option');
+      option.value = model;
+      option.textContent = model.charAt(0).toUpperCase() + model.slice(1);
+      if (model === data.current) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+  }
+  
+  if (hint) {
+    const deviceText = data.gpu_available ? 'GPU verfügbar' : 'Nur CPU';
+    hint.textContent = `Empfohlen: ${data.recommended} (${deviceText})`;
+  }
+  
+  // Update GPU checkbox
+  const gpuCheckbox = document.getElementById('sttUseGpu');
+  if (gpuCheckbox) {
+    gpuCheckbox.disabled = !data.gpu_available;
+    if (!data.gpu_available) {
+      gpuCheckbox.checked = false;
+    }
+  }
+}
+
+function handleTtsInfoResponse(data) {
+  const engineSelect = document.getElementById('ttsEngine');
+  const voiceSelect = document.getElementById('ttsVoice');
+  
+  if (engineSelect && data.available_engines) {
+    engineSelect.innerHTML = '';
+    data.available_engines.forEach(engine => {
+      const option = document.createElement('option');
+      option.value = engine.toLowerCase();
+      option.textContent = engine;
+      if (engine.toLowerCase() === data.current_engine?.toLowerCase()) {
+        option.selected = true;
+      }
+      engineSelect.appendChild(option);
+    });
+  }
+  
+  if (voiceSelect && data.available_voices) {
+    const currentEngine = data.current_engine?.toLowerCase() || 'zonos';
+    const voices = data.available_voices[currentEngine] || [];
+    
+    voiceSelect.innerHTML = '';
+    voices.forEach(voice => {
+      const option = document.createElement('option');
+      option.value = voice;
+      option.textContent = voice;
+      voiceSelect.appendChild(option);
+    });
+    
+    // Handle Kokoro voices with labels
+    if (currentEngine === 'kokoro' && data.kokoro_voice_labels) {
+      voiceSelect.innerHTML = '';
+      data.kokoro_voice_labels.forEach(voice => {
+        const option = document.createElement('option');
+        option.value = voice.key;
+        option.textContent = voice.label;
+        voiceSelect.appendChild(option);
+      });
+    }
+  }
+}
+
+function handleLlmModelsResponse(data) {
+  const select = document.getElementById('llmModel');
+  if (!select) return;
+  
+  select.innerHTML = '';
+  if (Array.isArray(data.available)) {
+    data.available.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      select.appendChild(opt);
+    });
+  }
+  
+  select.value = data.current || data.available?.[0] || '';
+  if (data.available.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '(kein Modell)';
+    select.appendChild(opt);
+    select.value = '';
+  }
+  select.disabled = data.available.length <= 1;
+}
+
+function handleStagedTtsStatsResponse(data) {
+  if (data.config) {
+    const elements = {
+      'stagedTtsEnabled': data.enabled,
+      'stagedTtsIntroLength': data.config.max_intro_length,
+      'stagedTtsTimeout': data.config.chunk_timeout_seconds
+    };
+    
+    Object.entries(elements).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element) {
+        if (element.type === 'checkbox') {
+          element.checked = value;
+        } else {
+          element.value = value;
+          window.updateRangeValue?.(id, value);
+        }
+      }
+    });
+  }
+}
+
+// Setup enhanced WebSocket handlers when VoiceAssistant is initialized
+function setupEnhancedSettingsIntegration() {
+  if (voiceAssistantGUI?.voiceAssistant?.ws) {
+    voiceAssistantGUI.voiceAssistant.ws.addEventListener('message', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleSettingsWebSocketMessage(data);
+      } catch (e) {
+        console.error('Settings WebSocket message error:', e);
+      }
+    });
+  }
+}
+
+// Enhanced settings functions for HTML handlers
+window.updateSetting = function(key, value) {
+  // Store in localStorage with namespace
+  localStorage.setItem(`va.settings.${key}`, value);
+  
+  // Update range value displays
+  const element = document.getElementById(key);
+  if (element && element.type === 'range') {
+    window.updateRangeValue?.(key, value);
+  }
+  
+  // Apply live updates
+  window.applySettingLive?.(key, value);
+  
+  // Send to backend
+  sendSettingToBackend(key, value);
+};
+
+window.switchSettingsTab = function(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.tab === tabName) {
+      btn.classList.add('active');
+    }
+  });
+  
+  // Update tab panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+  });
+  const targetPanel = document.getElementById(tabName + 'Tab');
+  if (targetPanel) {
+    targetPanel.classList.add('active');
+  }
+};
+
+window.refreshLlmModels = function() {
+  if (voiceAssistantGUI?.voiceAssistant?.ws && voiceAssistantGUI.voiceAssistant.ws.readyState === WebSocket.OPEN) {
+    voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ type: 'get_llm_models' }));
+    voiceAssistantGUI?.showNotification?.('info', 'LLM-Modelle', 'Aktualisiere verfügbare Modelle...');
+  }
+};
+
+window.testConnection = function() {
+  const statusEl = document.getElementById('connectionStatus');
+  if (statusEl) {
+    statusEl.textContent = 'Teste...';
+    statusEl.className = 'connection-status';
+  }
+  
+  if (voiceAssistantGUI?.voiceAssistant?.ws && voiceAssistantGUI.voiceAssistant.ws.readyState === WebSocket.OPEN) {
+    voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+    setTimeout(() => {
+      if (statusEl) {
+        statusEl.textContent = '✅ Verbunden';
+        statusEl.className = 'connection-status success';
+      }
+    }, 500);
+  } else {
+    if (statusEl) {
+      statusEl.textContent = '❌ Nicht verbunden';
+      statusEl.className = 'connection-status error';
+    }
+  }
+};
+
+window.clearStagedTtsCache = function() {
+  if (voiceAssistantGUI?.voiceAssistant?.ws && voiceAssistantGUI.voiceAssistant.ws.readyState === WebSocket.OPEN) {
+    voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ 
+      type: 'staged_tts_control', 
+      action: 'clear_cache' 
+    }));
+  }
+};
+
+window.resetAllSettings = function() {
+  if (confirm('Alle Einstellungen zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('va.settings.')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    voiceAssistantGUI?.loadSettingsUI?.();
+    voiceAssistantGUI?.showNotification?.('success', 'Einstellungen zurückgesetzt', 'Alle Einstellungen wurden auf Standardwerte zurückgesetzt');
+  }
+};
+
+window.saveAllSettings = function() {
+  voiceAssistantGUI?.showNotification?.('success', 'Einstellungen gespeichert', 'Alle Änderungen wurden übernommen');
+  window.closeSettingsModal?.();
+};
+
+window.showSystemInfo = function() {
+  const info = `
+Platform: ${navigator.platform}
+User Agent: ${navigator.userAgent.substring(0, 50)}...
+Screen: ${screen.width}x${screen.height}
+Viewport: ${window.innerWidth}x${window.innerHeight}
+Connection: ${voiceAssistantGUI?.voiceAssistant?.ws?.readyState === WebSocket.OPEN ? 'Verbunden' : 'Nicht verbunden'}
+`;
+  voiceAssistantGUI?.showNotification?.('info', '📊 System-Information', info, 8000);
+};
+
+// Setup enhanced integration after DOM content loaded
+document.addEventListener('DOMContentLoaded', () => {
+  // Wait for voiceAssistantGUI to be initialized
+  setTimeout(() => {
+    setupEnhancedSettingsIntegration();
+    
+    // Request initial data when settings modal first opens
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          if (voiceAssistantGUI?.voiceAssistant?.ws && voiceAssistantGUI.voiceAssistant.ws.readyState === WebSocket.OPEN) {
+            voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ type: 'get_stt_models' }));
+            voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ type: 'get_tts_info' }));
+            voiceAssistantGUI.voiceAssistant.ws.send(JSON.stringify({ type: 'get_llm_models' }));
+          }
+        }, 100);
+      });
+    }
+  }, 2000);
+});
+
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = VoiceAssistantGUI;

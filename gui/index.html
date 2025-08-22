@@ -240,7 +240,7 @@
 
     /* Statusleiste entfernt */
 
-    /* Avatar Section */
+    /* Avatar Section - Enhanced with larger pulse effect */
     .avatar-section {
       display: flex;
       justify-content: center;
@@ -259,12 +259,16 @@
       position: relative;
       overflow: hidden;
       transition: all 0.5s var(--animation-easing);
-      box-shadow: 0 0 80px rgba(99, 102, 241, 0.3);
+      box-shadow: 
+        0 0 80px rgba(99, 102, 241, 0.3),
+        0 0 160px rgba(99, 102, 241, 0.1); /* Enhanced glow with soft outer blur */
       will-change: transform;
     }
 
     .avatar.active {
-      box-shadow: 0 0 100px rgba(99, 102, 241, 0.5);
+      box-shadow: 
+        0 0 120px rgba(99, 102, 241, 0.5),
+        0 0 240px rgba(99, 102, 241, 0.2); /* Doubled glow radius with soft blur */
       transform: scale(1.05);
     }
 
@@ -275,11 +279,15 @@
     @keyframes recordingPulse {
       0%, 100% { 
         transform: scale(1.05);
-        box-shadow: 0 0 60px rgba(239, 68, 68, 0.4);
+        box-shadow: 
+          0 0 80px rgba(239, 68, 68, 0.4),
+          0 0 160px rgba(239, 68, 68, 0.2); /* Enhanced recording glow */
       }
       50% { 
-        transform: scale(1.1);
-        box-shadow: 0 0 80px rgba(239, 68, 68, 0.6);
+        transform: scale(1.15); /* Increased pulse amplitude */
+        box-shadow: 
+          0 0 120px rgba(239, 68, 68, 0.6),
+          0 0 240px rgba(239, 68, 68, 0.3); /* Enhanced recording glow */
       }
     }
 
@@ -371,7 +379,7 @@
       }
     }
 
-    /* Response Section */
+    /* Response Section - Enhanced Height */
     .response-section {
       background: var(--glass-bg);
       backdrop-filter: blur(20px);
@@ -379,7 +387,8 @@
       border-radius: 24px;
       padding: var(--spacing-xl);
       flex: 1;
-      min-height: 0;
+      min-height: 300px; /* Increased minimum height */
+      max-height: 60vh; /* Responsive maximum height */
       position: relative;
       display: flex;
       flex-direction: column;
@@ -401,6 +410,26 @@
       height: 100%;
       overflow-y: auto;
       padding: var(--spacing-md);
+      /* Enhanced scrollbar styling */
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary-color) transparent;
+    }
+
+    .response-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .response-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .response-content::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 3px;
+    }
+
+    .response-content::-webkit-scrollbar-thumb:hover {
+      background: var(--primary-hover);
     }
 
     .response-empty {
@@ -627,29 +656,165 @@
       100% { opacity: 0; }
     }
 
-    /* Settings Modal */
+    /* Enhanced Settings Modal Styles */
     .settings-modal {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
+      z-index: 200;
       display: none;
       align-items: center;
       justify-content: center;
-      z-index: 200;
+      animation: fadeIn 0.3s ease;
     }
 
-    .settings-modal.open { display: flex; }
+    .settings-modal.open {
+      display: flex;
+    }
 
-    .settings-dialog {
+    .settings-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .settings-container {
+      position: relative;
       background: var(--bg-secondary);
-      padding: var(--spacing-xl);
-      border-radius: 16px;
-      width: 400px;
-      max-width: 90%;
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      backdrop-filter: blur(20px);
+      animation: slideUp 0.4s var(--bounce-easing);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+    }
+
+    .settings-header h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
       color: var(--text-primary);
+    }
+
+    .settings-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--animation-speed) var(--animation-easing);
+    }
+
+    .settings-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    /* Tab Navigation */
+    .settings-tabs {
+      display: flex;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--glass-border);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .settings-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      padding: var(--spacing-md) var(--spacing-lg);
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all var(--animation-speed) var(--animation-easing);
+      white-space: nowrap;
+      min-width: 140px;
+    }
+
+    .tab-button:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .tab-button.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    /* Tab Content */
+    .settings-content {
+      height: 400px;
+      overflow-y: auto;
+      padding: var(--spacing-lg);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .settings-section {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .settings-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-md);
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: var(--spacing-sm);
     }
 
     .settings-row {
@@ -657,45 +822,194 @@
       align-items: center;
       gap: var(--spacing-md);
       margin-bottom: var(--spacing-md);
+      padding: var(--spacing-sm) 0;
     }
 
     .settings-row label {
-      flex: 0 0 160px;
-      text-align: right;
+      flex: 0 0 200px;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
     }
 
     .settings-row input,
     .settings-row select {
       flex: 1;
-      padding: 0.5rem;
-      border-radius: 8px;
+      max-width: 200px;
+      padding: var(--spacing-sm);
       border: 1px solid var(--glass-border);
+      border-radius: 8px;
       background: var(--bg-tertiary);
       color: var(--text-primary);
-      max-width: 200px;
+      font-size: 0.9rem;
+      transition: all var(--animation-speed) var(--animation-easing);
     }
 
-    .settings-actions {
+    .settings-row input:focus,
+    .settings-row select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .settings-row input[type="checkbox"] {
+      flex: 0 0 auto;
+      max-width: none;
+      width: 20px;
+      height: 20px;
+      accent-color: var(--primary-color);
+    }
+
+    .settings-row input[type="range"] {
+      flex: 1;
+      max-width: 150px;
+    }
+
+    .range-value {
+      flex: 0 0 60px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 500;
       text-align: right;
-      margin-top: var(--spacing-lg);
     }
 
-    .settings-actions button {
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      margin-left: var(--spacing-sm);
+    .setting-hint {
+      flex: 1;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
     }
 
-    .settings-actions .btn-primary {
-      background: var(--primary-color);
-      color: #fff;
-    }
-
-    .settings-actions .btn-secondary {
+    .settings-action-btn {
       background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: var(--spacing-sm) var(--spacing-md);
       color: var(--text-primary);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--animation-speed) var(--animation-easing);
+    }
+
+    .settings-action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--primary-color);
+    }
+
+    .connection-status {
+      font-size: 0.85rem;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-radius: 6px;
+      font-weight: 500;
+    }
+
+    .connection-status.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success-color);
+    }
+
+    .connection-status.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger-color);
+    }
+
+    /* Performance Stats */
+    .performance-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-md);
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-sm);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .stat-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Settings Footer */
+    .settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-md);
+      padding: var(--spacing-lg);
+      border-top: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--animation-speed) var(--animation-easing);
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .settings-container {
+        width: 95%;
+        max-height: 90vh;
+      }
+      
+      .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+      }
+      
+      .settings-row label {
+        flex: none;
+      }
+      
+      .settings-row input,
+      .settings-row select {
+        width: 100%;
+        max-width: none;
+      }
+      
+      .tab-button {
+        min-width: 100px;
+        font-size: 0.8rem;
+        padding: var(--spacing-sm);
+      }
     }
 
     /* Notification System */
@@ -946,44 +1260,281 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
+  <!-- Enhanced Settings Modal with Tabs -->
   <div class="settings-modal" id="settingsModal">
-    <div class="settings-dialog">
-      <h2>Einstellungen</h2>
-      <div class="settings-row">
-        <label for="sttModel">STT-Modell</label>
-        <select id="sttModel">
-          <option value="Faster-Whisper">Faster-Whisper</option>
-          <option value="Whisper">Whisper</option>
-        </select>
+    <div class="settings-backdrop" onclick="closeSettingsModal()"></div>
+    <div class="settings-container">
+      <div class="settings-header">
+        <h2>⚙️ Einstellungen</h2>
+        <button class="settings-close" onclick="closeSettingsModal()" title="Schließen">×</button>
       </div>
-      <div class="settings-row">
-        <label for="ttsEngine">TTS-Engine</label>
-        <select id="ttsEngine">
-          <option value="Zonos">Zonos</option>
-          <option value="Piper">Piper</option>
-          <option value="Kokoro">Kokoro</option>
-        </select>
+      
+      <!-- Tab Navigation -->
+      <div class="settings-tabs">
+        <button class="tab-button active" data-tab="audio" onclick="switchSettingsTab('audio')">
+          🎧 Audio (STT/TTS)
+        </button>
+        <button class="tab-button" data-tab="llm" onclick="switchSettingsTab('llm')">
+          🤖 LLM
+        </button>
+        <button class="tab-button" data-tab="connection" onclick="switchSettingsTab('connection')">
+          🌐 Verbindung
+        </button>
+        <button class="tab-button" data-tab="appearance" onclick="switchSettingsTab('appearance')">
+          🎨 Darstellung
+        </button>
+        <button class="tab-button" data-tab="advanced" onclick="switchSettingsTab('advanced')">
+          ⚡ Erweitert
+        </button>
       </div>
-      <div class="settings-row">
-        <label for="llmModel">LLM-Modell</label>
-        <select id="llmModel"></select>
+      
+      <!-- Tab Content -->
+      <div class="settings-content">
+        
+        <!-- Audio Settings Tab -->
+        <div class="tab-panel active" id="audioTab">
+          <div class="settings-section">
+            <h3>🎤 Spracheingabe (STT)</h3>
+            <div class="settings-row">
+              <label for="sttModel">STT-Modell:</label>
+              <select id="sttModel" onchange="updateSetting('sttModel', this.value)">
+                <option value="tiny">Tiny (schnell, weniger genau)</option>
+                <option value="base">Base (empfohlen)</option>
+                <option value="small">Small (langsamer, genauer)</option>
+                <option value="medium">Medium (nur GPU)</option>
+                <option value="large-v2">Large-v2 (nur GPU)</option>
+              </select>
+              <span class="setting-hint" id="sttModelHint">Empfehlung wird geladen...</span>
+            </div>
+            <div class="settings-row">
+              <label for="sttUseGpu">GPU verwenden:</label>
+              <input type="checkbox" id="sttUseGpu" onchange="updateSetting('sttUseGpu', this.checked)">
+              <span class="setting-hint">Nur verfügbar wenn CUDA installiert</span>
+            </div>
+            <div class="settings-row">
+              <label for="noiseSuppression">Rauschunterdrückung:</label>
+              <input type="checkbox" id="noiseSuppression" onchange="updateSetting('noiseSuppression', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="echoCancellation">Echounterdrückung:</label>
+              <input type="checkbox" id="echoCancellation" onchange="updateSetting('echoCancellation', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="vadEnabled">VAD Auto-Stop:</label>
+              <input type="checkbox" id="vadEnabled" onchange="updateSetting('vadEnabled', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="autoStopTime">Auto-Stop Zeit (s):</label>
+              <input type="range" id="autoStopTime" min="0.5" max="5" step="0.1" value="2" 
+                     onchange="updateSetting('autoStopTime', this.value)">
+              <span class="range-value" id="autoStopTimeValue">2.0s</span>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h3>🎧 Sprachausgabe (TTS)</h3>
+            <div class="settings-row">
+              <label for="ttsEngine">TTS-Engine:</label>
+              <select id="ttsEngine" onchange="updateSetting('ttsEngine', this.value)">
+                <option value="zonos">Zonos (beste Qualität)</option>
+                <option value="piper">Piper (schnell)</option>
+                <option value="kokoro">Kokoro (natürlich)</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="ttsVoice">Stimme:</label>
+              <select id="ttsVoice" onchange="updateSetting('ttsVoice', this.value)">
+                <option value="">Wird geladen...</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="ttsSpeed">Geschwindigkeit:</label>
+              <input type="range" id="ttsSpeed" min="0.5" max="2.0" step="0.1" value="1.0" 
+                     onchange="updateSetting('ttsSpeed', this.value)">
+              <span class="range-value" id="ttsSpeedValue">1.0x</span>
+            </div>
+            <div class="settings-row">
+              <label for="ttsVolume">Lautstärke:</label>
+              <input type="range" id="ttsVolume" min="0.1" max="2.0" step="0.1" value="1.0" 
+                     onchange="updateSetting('ttsVolume', this.value)">
+              <span class="range-value" id="ttsVolumeValue">1.0x</span>
+            </div>
+          </div>
+  
+          <!-- Staged TTS Section -->
+          <div class="settings-section">
+            <h3>🎭 Staged TTS</h3>
+            <div class="settings-row">
+              <label for="stagedTtsEnabled">Staged TTS aktivieren:</label>
+              <input type="checkbox" id="stagedTtsEnabled" onchange="updateSetting('stagedTtsEnabled', this.checked)">
+              <span class="setting-hint">Piper Intro + Zonos Hauptinhalt</span>
+            </div>
+            <div class="settings-row">
+              <label for="stagedTtsIntroLength">Intro-Länge (Zeichen):</label>
+              <input type="range" id="stagedTtsIntroLength" min="50" max="200" step="10" value="120" 
+                     onchange="updateSetting('stagedTtsIntroLength', this.value)">
+              <span class="range-value" id="stagedTtsIntroLengthValue">120</span>
+            </div>
+            <div class="settings-row">
+              <label for="stagedTtsTimeout">Chunk-Timeout (s):</label>
+              <input type="range" id="stagedTtsTimeout" min="5" max="30" step="1" value="10" 
+                     onchange="updateSetting('stagedTtsTimeout', this.value)">
+              <span class="range-value" id="stagedTtsTimeoutValue">10s</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- LLM Settings Tab -->
+        <div class="tab-panel" id="llmTab">
+          <div class="settings-section">
+            <h3>🤖 Language Model</h3>
+            <div class="settings-row">
+              <label for="llmModel">Modell:</label>
+              <select id="llmModel" onchange="updateSetting('llmModel', this.value)">
+                <option value="">Wird geladen...</option>
+              </select>
+              <button class="settings-action-btn" onclick="refreshLlmModels()">🔄 Aktualisieren</button>
+            </div>
+            <div class="settings-row">
+              <label for="llmUseGpu">GPU verwenden:</label>
+              <input type="checkbox" id="llmUseGpu" onchange="updateSetting('llmUseGpu', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="llmTemperature">Temperatur:</label>
+              <input type="range" id="llmTemperature" min="0.1" max="2.0" step="0.1" value="0.7" 
+                     onchange="updateSetting('llmTemperature', this.value)">
+              <span class="range-value" id="llmTemperatureValue">0.7</span>
+            </div>
+            <div class="settings-row">
+              <label for="llmMaxTokens">Max Tokens:</label>
+              <input type="range" id="llmMaxTokens" min="50" max="1000" step="50" value="256" 
+                     onchange="updateSetting('llmMaxTokens', this.value)">
+              <span class="range-value" id="llmMaxTokensValue">256</span>
+            </div>
+            <div class="settings-row">
+              <label for="llmContextTurns">Kontext (Turns):</label>
+              <input type="range" id="llmContextTurns" min="1" max="10" step="1" value="5" 
+                     onchange="updateSetting('llmContextTurns', this.value)">
+              <span class="range-value" id="llmContextTurnsValue">5</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Connection Settings Tab -->
+        <div class="tab-panel" id="connectionTab">
+          <div class="settings-section">
+            <h3>🌐 WebSocket Verbindung</h3>
+            <div class="settings-row">
+              <label for="wsHost">Host:</label>
+              <input type="text" id="wsHost" placeholder="127.0.0.1" onchange="updateSetting('wsHost', this.value)">
+            </div>
+            <div class="settings-row">
+              <label for="wsPort">Port:</label>
+              <input type="number" id="wsPort" placeholder="48231" min="1" max="65535" 
+                     onchange="updateSetting('wsPort', this.value)">
+            </div>
+            <div class="settings-row">
+              <label for="wsToken">Token:</label>
+              <input type="text" id="wsToken" placeholder="devsecret" onchange="updateSetting('wsToken', this.value)">
+            </div>
+            <div class="settings-row">
+              <button class="settings-action-btn" onclick="testConnection()">🧪 Verbindung testen</button>
+              <span id="connectionStatus" class="connection-status"></span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Appearance Settings Tab -->
+        <div class="tab-panel" id="appearanceTab">
+          <div class="settings-section">
+            <h3>🎨 Darstellung</h3>
+            <div class="settings-row">
+              <label for="reduceMotion">Animationen reduzieren:</label>
+              <input type="checkbox" id="reduceMotion" onchange="updateSetting('reduceMotion', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="highContrast">Hoher Kontrast:</label>
+              <input type="checkbox" id="highContrast" onchange="updateSetting('highContrast', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="showAvatar">Avatar anzeigen:</label>
+              <input type="checkbox" id="showAvatar" checked onchange="updateSetting('showAvatar', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="showNebula">Nebula-Effekt:</label>
+              <input type="checkbox" id="showNebula" checked onchange="updateSetting('showNebula', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="avatarSize">Avatar-Größe:</label>
+              <input type="range" id="avatarSize" min="0.5" max="1.5" step="0.1" value="1.0" 
+                     onchange="updateSetting('avatarSize', this.value)">
+              <span class="range-value" id="avatarSizeValue">1.0x</span>
+            </div>
+            <div class="settings-row">
+              <label for="nebulaIntensity">Nebula-Intensität:</label>
+              <input type="range" id="nebulaIntensity" min="0.1" max="2.0" step="0.1" value="1.0" 
+                     onchange="updateSetting('nebulaIntensity', this.value)">
+              <span class="range-value" id="nebulaIntensityValue">1.0x</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Advanced Settings Tab -->
+        <div class="tab-panel" id="advancedTab">
+          <div class="settings-section">
+            <h3>⚡ Erweiterte Einstellungen</h3>
+            <div class="settings-row">
+              <label for="binaryAudio">Binary Audio:</label>
+              <input type="checkbox" id="binaryAudio" onchange="updateSetting('binaryAudio', this.checked)">
+              <span class="setting-hint">Experimentell - bessere Performance</span>
+            </div>
+            <div class="settings-row">
+              <label for="debugMode">Debug-Modus:</label>
+              <input type="checkbox" id="debugMode" onchange="updateSetting('debugMode', this.checked)">
+            </div>
+            <div class="settings-row">
+              <label for="performanceMetrics">Performance-Metriken:</label>
+              <input type="checkbox" id="performanceMetrics" onchange="updateSetting('performanceMetrics', this.checked)">
+            </div>
+            <div class="settings-row">
+              <button class="settings-action-btn" onclick="clearStagedTtsCache()">🗑️ Staged TTS Cache leeren</button>
+            </div>
+            <div class="settings-row">
+              <button class="settings-action-btn" onclick="resetAllSettings()">🔄 Alle Einstellungen zurücksetzen</button>
+            </div>
+            <div class="settings-row">
+              <button class="settings-action-btn" onclick="showSystemInfo()">📊 System-Info</button>
+            </div>
+          </div>
+          
+          <div class="settings-section">
+            <h3>📈 Performance Stats</h3>
+            <div id="performanceStats" class="performance-stats">
+              <div class="stat-item">
+                <span class="stat-label">Latenz:</span>
+                <span class="stat-value" id="latencyValue">-- ms</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Audio Chunks:</span>
+                <span class="stat-value" id="audioChunksValue">--</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">TTS Engine:</span>
+                <span class="stat-value" id="currentTtsEngine">--</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Verbindung:</span>
+                <span class="stat-value" id="connectionState">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="settings-row">
-        <label for="wsHost">WS Host</label>
-        <input type="text" id="wsHost" />
-      </div>
-      <div class="settings-row">
-        <label for="wsPort">WS Port</label>
-        <input type="number" id="wsPort" />
-      </div>
-      <div class="settings-row">
-        <label for="wsToken">Token</label>
-        <input type="text" id="wsToken" />
-      </div>
-      <div class="settings-actions">
-        <button class="btn-secondary" onclick="closeSettings()">Abbrechen</button>
-        <button class="btn-primary" onclick="saveSettings()">Speichern</button>
+      
+      <!-- Settings Footer -->
+      <div class="settings-footer">
+        <button class="btn-secondary" onclick="closeSettingsModal()">Abbrechen</button>
+        <button class="btn-primary" onclick="saveAllSettings()">💾 Alle Einstellungen speichern</button>
       </div>
     </div>
   </div>
@@ -1371,53 +1922,316 @@
     }
 
     function showSettings() {
-      const modal = document.getElementById('settingsModal');
-      document.getElementById('wsHost').value = localStorage.getItem('wsHost') || '127.0.0.1';
-      document.getElementById('wsPort').value = localStorage.getItem('wsPort') || '48231';
-      document.getElementById('wsToken').value = localStorage.getItem('wsToken') || '';
-      document.getElementById('sttModel').value = localStorage.getItem('sttModel') || 'Faster-Whisper';
-      document.getElementById('ttsEngine').value = localStorage.getItem('ttsEngine') || 'Zonos';
-      document.getElementById('llmModel').value = localStorage.getItem('llmModel') || '';
-      if (voiceAssistant) {
-        voiceAssistant.sendMessage({ type: 'get_llm_models' });
-      }
-      modal.classList.add('open');
+      openSettingsModal();
     }
 
     function closeSettings() {
-      document.getElementById('settingsModal').classList.remove('open');
+      closeSettingsModal();
     }
 
     function saveSettings() {
-      const host = document.getElementById('wsHost').value.trim();
-      const port = document.getElementById('wsPort').value.trim();
-      const token = document.getElementById('wsToken').value.trim();
-      const stt = document.getElementById('sttModel').value;
-      const tts = document.getElementById('ttsEngine').value;
-      const llm = document.getElementById('llmModel').value;
-
-      localStorage.setItem('wsHost', host);
-      localStorage.setItem('wsPort', port);
-      localStorage.setItem('wsUrl', `ws://${host}:${port}`);
-      if (token) localStorage.setItem('wsToken', token);
-      localStorage.setItem('sttModel', stt);
-      localStorage.setItem('ttsEngine', tts);
-      localStorage.setItem('llmModel', llm);
-
-      if (stt) {
-        voiceAssistant.sendMessage({ type: 'switch_stt_model', model: stt });
-      }
-      if (tts) {
-        voiceAssistant.sendMessage({ type: 'switch_tts_engine', engine: tts });
-      }
-      if (llm) {
-        voiceAssistant.sendMessage({ type: 'switch_llm_model', model: llm });
-      }
-
-      closeSettings();
-      showNotification('success', 'Gespeichert', 'Einstellungen aktualisiert');
-      setTimeout(() => location.reload(), 300);
+      saveAllSettings();
     }
+
+    // Enhanced Settings Modal Management
+    let currentSettingsTab = 'audio';
+    let settingsUpdateTimeout = null;
+
+    // Initialize settings when modal opens
+    function openSettingsModal() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.add('open');
+      
+      // Load current settings
+      loadCurrentSettings();
+      
+      // Request latest model/engine info
+      requestLatestInfo();
+      
+      // Update performance stats
+      updatePerformanceStats();
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.remove('open');
+    }
+
+    function switchSettingsTab(tabName) {
+      // Update tab buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add('active');
+        }
+      });
+      
+      // Update tab panels
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+      });
+      document.getElementById(tabName + 'Tab').classList.add('active');
+      
+      currentSettingsTab = tabName;
+    }
+
+    function loadCurrentSettings() {
+      // Load from localStorage and apply to UI elements
+      const settings = {
+        // Audio Settings
+        sttModel: localStorage.getItem('va.settings.sttModel') || 'base',
+        sttUseGpu: localStorage.getItem('va.settings.sttUseGpu') === 'true',
+        noiseSuppression: localStorage.getItem('va.settings.noiseSuppression') !== 'false',
+        echoCancellation: localStorage.getItem('va.settings.echoCancellation') !== 'false',
+        vadEnabled: localStorage.getItem('va.settings.vadEnabled') === 'true',
+        autoStopTime: parseFloat(localStorage.getItem('va.settings.autoStopTime') || '2.0'),
+        
+        ttsEngine: localStorage.getItem('va.settings.ttsEngine') || 'zonos',
+        ttsVoice: localStorage.getItem('va.settings.ttsVoice') || 'de-thorsten-low',
+        ttsSpeed: parseFloat(localStorage.getItem('va.settings.ttsSpeed') || '1.0'),
+        ttsVolume: parseFloat(localStorage.getItem('va.settings.ttsVolume') || '1.0'),
+        
+        stagedTtsEnabled: localStorage.getItem('va.settings.stagedTtsEnabled') !== 'false',
+        stagedTtsIntroLength: parseInt(localStorage.getItem('va.settings.stagedTtsIntroLength') || '120'),
+        stagedTtsTimeout: parseInt(localStorage.getItem('va.settings.stagedTtsTimeout') || '10'),
+        
+        // LLM Settings
+        llmModel: localStorage.getItem('va.settings.llmModel') || '',
+        llmUseGpu: localStorage.getItem('va.settings.llmUseGpu') === 'true',
+        llmTemperature: parseFloat(localStorage.getItem('va.settings.llmTemperature') || '0.7'),
+        llmMaxTokens: parseInt(localStorage.getItem('va.settings.llmMaxTokens') || '256'),
+        llmContextTurns: parseInt(localStorage.getItem('va.settings.llmContextTurns') || '5'),
+        
+        // Connection Settings
+        wsHost: localStorage.getItem('va.settings.wsHost') || localStorage.getItem('wsHost') || '127.0.0.1',
+        wsPort: localStorage.getItem('va.settings.wsPort') || localStorage.getItem('wsPort') || '48231',
+        wsToken: localStorage.getItem('va.settings.wsToken') || localStorage.getItem('wsToken') || 'devsecret',
+        
+        // Appearance Settings
+        reduceMotion: localStorage.getItem('va.settings.reduceMotion') === 'true',
+        highContrast: localStorage.getItem('va.settings.highContrast') === 'true',
+        showAvatar: localStorage.getItem('va.settings.showAvatar') !== 'false',
+        showNebula: localStorage.getItem('va.settings.showNebula') !== 'false',
+        avatarSize: parseFloat(localStorage.getItem('va.settings.avatarSize') || '1.0'),
+        nebulaIntensity: parseFloat(localStorage.getItem('va.settings.nebulaIntensity') || '1.0'),
+        
+        // Advanced Settings
+        binaryAudio: localStorage.getItem('va.settings.binaryAudio') === 'true',
+        debugMode: localStorage.getItem('va.settings.debugMode') === 'true',
+        performanceMetrics: localStorage.getItem('va.settings.performanceMetrics') === 'true'
+      };
+      
+      // Apply settings to UI elements
+      Object.keys(settings).forEach(key => {
+        const element = document.getElementById(key);
+        if (element) {
+          if (element.type === 'checkbox') {
+            element.checked = settings[key];
+          } else if (element.type === 'range') {
+            element.value = settings[key];
+            updateRangeValue(key, settings[key]);
+          } else {
+            element.value = settings[key];
+          }
+        }
+      });
+    }
+
+    function updateSetting(key, value) {
+      // Store in localStorage with namespace
+      localStorage.setItem(`va.settings.${key}`, value);
+      
+      // Update range value displays
+      if (document.getElementById(key).type === 'range') {
+        updateRangeValue(key, value);
+      }
+      
+      // Apply live updates
+      applySettingLive(key, value);
+      
+      // Debounced save to backend
+      clearTimeout(settingsUpdateTimeout);
+      settingsUpdateTimeout = setTimeout(() => {
+        sendSettingToBackend(key, value);
+      }, 500);
+    }
+
+    function updateRangeValue(key, value) {
+      const valueElement = document.getElementById(key + 'Value');
+      if (valueElement) {
+        if (key.includes('Time') || key.includes('Timeout')) {
+          valueElement.textContent = `${value}s`;
+        } else if (key.includes('Speed') || key.includes('Volume') || key.includes('Size') || key.includes('Intensity')) {
+          valueElement.textContent = `${value}x`;
+        } else {
+          valueElement.textContent = value;
+        }
+      }
+    }
+
+    function applySettingLive(key, value) {
+      // Apply immediate UI changes
+      switch (key) {
+        case 'reduceMotion':
+          document.documentElement.style.setProperty('--animation-speed', value ? '0.01ms' : '0.3s');
+          break;
+        case 'highContrast':
+          document.documentElement.classList.toggle('high-contrast', value);
+          break;
+        case 'showAvatar':
+          const avatar = document.getElementById('avatar');
+          if (avatar) avatar.style.display = value ? 'block' : 'none';
+          break;
+        case 'showNebula':
+          const nebula = document.querySelector('.avatar-nebel');
+          if (nebula) nebula.style.display = value ? 'block' : 'none';
+          break;
+        case 'avatarSize':
+          const avatarEl = document.getElementById('avatar');
+          if (avatarEl) avatarEl.style.transform = `scale(${value})`;
+          break;
+        case 'nebulaIntensity':
+          document.documentElement.style.setProperty('--nebula-opacity', value * 0.5);
+          break;
+        case 'performanceMetrics':
+          const perfDisplay = document.getElementById('performanceDisplay');
+          if (perfDisplay) perfDisplay.style.display = value ? 'block' : 'none';
+          break;
+      }
+    }
+
+    function sendSettingToBackend(key, value) {
+      if (!voiceAssistant || !voiceAssistant.ws || voiceAssistant.ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      
+      // Map frontend settings to backend messages
+      const message = { timestamp: Date.now() };
+      
+      if (key.startsWith('stt')) {
+        message.type = 'set_stt_options';
+        message[key.replace('stt', '').toLowerCase()] = value;
+      } else if (key.startsWith('tts')) {
+        if (key === 'ttsEngine') {
+          message.type = 'switch_tts_engine';
+          message.engine = value;
+        } else if (key === 'ttsVoice') {
+          message.type = 'set_tts_voice';
+          message.voice = value;
+        } else {
+          message.type = 'set_tts_options';
+          message[key.replace('tts', '').toLowerCase()] = value;
+        }
+      } else if (key.startsWith('llm')) {
+        if (key === 'llmModel') {
+          message.type = 'switch_llm_model';
+          message.model = value;
+        } else {
+          message.type = 'set_llm_options';
+          message[key.replace('llm', '').toLowerCase()] = value;
+        }
+      } else if (key.startsWith('stagedTts')) {
+        message.type = 'staged_tts_control';
+        message.action = 'configure';
+        message.config = {};
+        message.config[key.replace('stagedTts', '').toLowerCase()] = value;
+      } else if (key === 'vadEnabled' || key === 'autoStopTime' || key === 'noiseSuppression' || key === 'echoCancellation') {
+        message.type = 'set_audio_opts';
+        message[key] = value;
+      }
+      
+      if (message.type) {
+        voiceAssistant.ws.send(JSON.stringify(message));
+      }
+    }
+
+    function requestLatestInfo() {
+      if (!voiceAssistant || !voiceAssistant.ws || voiceAssistant.ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      
+      // Request current engine/model information
+      voiceAssistant.ws.send(JSON.stringify({ type: 'get_stt_models' }));
+      voiceAssistant.ws.send(JSON.stringify({ type: 'get_tts_info' }));
+      voiceAssistant.ws.send(JSON.stringify({ type: 'get_llm_models' }));
+      voiceAssistant.ws.send(JSON.stringify({ type: 'staged_tts_control', action: 'get_stats' }));
+    }
+
+    function refreshLlmModels() {
+      if (voiceAssistant && voiceAssistant.ws && voiceAssistant.ws.readyState === WebSocket.OPEN) {
+        voiceAssistant.ws.send(JSON.stringify({ type: 'get_llm_models' }));
+        showNotification('info', 'LLM-Modelle', 'Aktualisiere verfügbare Modelle...');
+      }
+    }
+
+    function testConnection() {
+      const statusEl = document.getElementById('connectionStatus');
+      statusEl.textContent = 'Teste...';
+      statusEl.className = 'connection-status';
+      
+      if (voiceAssistant && voiceAssistant.ws && voiceAssistant.ws.readyState === WebSocket.OPEN) {
+        voiceAssistant.ws.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+        setTimeout(() => {
+          statusEl.textContent = '✅ Verbunden';
+          statusEl.className = 'connection-status success';
+        }, 500);
+      } else {
+        statusEl.textContent = '❌ Nicht verbunden';
+        statusEl.className = 'connection-status error';
+      }
+    }
+
+    function clearStagedTtsCache() {
+      if (voiceAssistant && voiceAssistant.ws && voiceAssistant.ws.readyState === WebSocket.OPEN) {
+        voiceAssistant.ws.send(JSON.stringify({ 
+          type: 'staged_tts_control', 
+          action: 'clear_cache' 
+        }));
+        showNotification('success', 'Cache geleert', 'Staged TTS Cache wurde geleert');
+      }
+    }
+
+    function resetAllSettings() {
+      if (confirm('Alle Einstellungen zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+        // Clear all va.settings keys
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('va.settings.')) {
+            localStorage.removeItem(key);
+          }
+        });
+        
+        // Reload settings
+        loadCurrentSettings();
+        showNotification('success', 'Einstellungen zurückgesetzt', 'Alle Einstellungen wurden auf Standardwerte zurückgesetzt');
+      }
+    }
+
+    function saveAllSettings() {
+      showNotification('success', 'Einstellungen gespeichert', 'Alle Änderungen wurden übernommen');
+      closeSettingsModal();
+    }
+
+    function updatePerformanceStats() {
+      if (voiceAssistant && voiceAssistant.getMetrics) {
+        const metrics = voiceAssistant.getMetrics();
+        
+        document.getElementById('latencyValue').textContent = `${metrics.latency.average.toFixed(0)} ms`;
+        document.getElementById('audioChunksValue').textContent = metrics.audio.chunksSent;
+        document.getElementById('connectionState').textContent = metrics.connection.connected ? 'Verbunden' : 'Getrennt';
+      }
+      
+      // Update current TTS engine from settings
+      const currentEngine = localStorage.getItem('va.settings.ttsEngine') || 'zonos';
+      document.getElementById('currentTtsEngine').textContent = currentEngine.charAt(0).toUpperCase() + currentEngine.slice(1);
+    }
+
+    // Update performance stats periodically when modal is open
+    setInterval(() => {
+      const modal = document.getElementById('settingsModal');
+      if (modal && modal.classList.contains('open')) {
+        updatePerformanceStats();
+      }
+    }, 2000);
 
     function populateLlmModels(models, current) {
       const select = document.getElementById('llmModel');

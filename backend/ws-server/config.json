@@ -1,0 +1,9 @@
+{
+  "binary_audio_enabled": true,
+  "vad_enabled": true,
+  "performance_metrics_enabled": true,
+  "protocol_version": "2.0",
+  "backwards_compatibility": true,
+  "migration_completed": true,
+  "migration_date": "2025-08-22"
+}

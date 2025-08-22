@@ -262,9 +262,16 @@ config/local.json
 .env.staging
 
 # LOGS UND MONITORING
-#logs/
-#*.log.*
-#crash-reports/
+logs/
+*.log.*
+crash-reports/
+# --- allowlist for specific logs we want in git ---
+!logs/
+!logs/server.log
+
+!voice-assistant-apps/desktop/logs/
+!voice-assistant-apps/desktop/logs/desktop.log
+
 
 # BACKUP FILES
 *.bak.*
