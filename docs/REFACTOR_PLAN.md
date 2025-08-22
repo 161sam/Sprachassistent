@@ -10,7 +10,7 @@ focused commit.
 - [x] Sprint 5 — TTS single source of truth & lazy loading
 - [x] Sprint 6 — STT in-memory & streaming-friendly
 - [x] Sprint 7 — Binary ingress + JSON compatibility
-- [ ] Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
+- [x] Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
 - [ ] Sprint 9 — Metrics unification
 - [ ] Sprint 10 — Intent routing & skills completion
 - [ ] Sprint 11 — Error handling & client resilience
