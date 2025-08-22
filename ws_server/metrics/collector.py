@@ -44,7 +44,11 @@ class MetricsCollector:
             "System wide CPU utilisation in percent",
             registry=self.registry,
         )
-        # TODO: add gauge for memory utilisation to detect leaks
+        self.memory_rss_bytes = Gauge(
+            "process_resident_memory_bytes",
+            "Resident memory size of the server process in bytes",
+            registry=self.registry,
+        )
 
         # Counters
         self.messages_total = Counter(
@@ -103,6 +107,7 @@ class MetricsCollector:
         )
 
         self._system_task: Optional[asyncio.Task] = None
+        self._process = psutil.Process() if psutil is not None else None
 
     # ------------------------------------------------------------------
     def start(self) -> None:
@@ -117,6 +122,8 @@ class MetricsCollector:
             try:
                 if psutil is not None:  # pragma: no cover - not critical in tests
                     self.cpu_percent.set(psutil.cpu_percent())
+                    if self._process is not None:
+                        self.memory_rss_bytes.set(self._process.memory_info().rss)
             except Exception as exc:  # pragma: no cover - diagnostic only
                 logger.debug("cpu metrics failed: %s", exc)
             await asyncio.sleep(5)
