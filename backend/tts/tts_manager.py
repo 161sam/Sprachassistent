@@ -170,7 +170,7 @@ class TTSManager:
             ev = self._resolve_engine_voice(target_engine, canonical_voice)
             if target_engine == "piper":
                 result = await self.engines[target_engine].synthesize(
-                    text, model_path=ev.model_path, **kwargs
+                    text, voice=canonical_voice, model_path=ev.model_path, **kwargs
                 )
             elif target_engine == "zonos":
                 result = await self.engines[target_engine].synthesize(
