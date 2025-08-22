@@ -17,12 +17,45 @@ try:  # pragma: no-cover - optional dependency
 except Exception:  # pragma: no cover - psutil may not be installed in tests
     psutil = None  # type: ignore
 
-from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-)
+try:  # pragma: no cover - optional dependency
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+    )
+except Exception:  # pragma: no cover - provide no-op stand-ins
+    class _Value:
+        def __init__(self) -> None:
+            self._val = 0
+
+        def set(self, value, *_args, **_kwargs):  # pragma: no cover - stub
+            self._val = value
+
+        def get(self):  # pragma: no cover - stub
+            return self._val
+
+    class _DummyMetric:
+        def __init__(self, *args, **kwargs):
+            self._value = _Value()
+
+        def labels(self, *args, **kwargs):  # pragma: no cover - stub
+            return self
+
+        def inc(self, amount: float = 1, *args, **kwargs):  # type: ignore[no-redef]
+            self._value._val += amount
+
+        def dec(self, amount: float = 1, *args, **kwargs):  # type: ignore[no-redef]
+            self._value._val -= amount
+
+        def observe(self, *args, **kwargs):  # type: ignore[no-redef]
+            pass
+
+    class _DummyRegistry:
+        pass
+
+    CollectorRegistry = _DummyRegistry  # type: ignore
+    Counter = Gauge = Histogram = _DummyMetric  # type: ignore
 
 logger = logging.getLogger(__name__)
 

@@ -58,13 +58,13 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 (_sys.path.insert(0, str(_PROJECT_ROOT))
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
-from backend.tts import TTSManager, TTSEngineType, TTSConfig
+from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.staged_tts import StagedTTSProcessor
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
 from audio.vad import VoiceActivityDetector, VADConfig
 
-from auth.token_utils import verify_token
+from ws_server.auth.token import verify_token
 from ws_server.metrics.collector import collector
 
 # Load environment variables from optional defaults then override with .env
@@ -78,30 +78,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Safe imports with fallbacks
-try:
-    from intent_classifier import IntentClassifier
-except ImportError as e:
-    logger.warning(f"Intent classifier not available: {e}")
-    class IntentClassifier:
-        def __init__(self, *args, **kwargs):
-            pass
-        def classify(self, text):
-            return type('obj', (object,), {'intent': 'unknown', 'confidence': 0.0})
-
-try:
-    from skills import load_all_skills
-except ImportError as e:
-    logger.warning(f"Skills module not available: {e}")
-    def load_all_skills(*args, **kwargs):
-        return []
-
-try:
-    from metrics_api import start_metrics_api
-except ImportError as e:
-    logger.error(f"Metrics API not available: {e}")
-    async def start_metrics_api(*args, **kwargs):
-        raise ImportError("Metrics API module not available")
+# Safe imports with fallbacks removed; modules now live in ws_server.routing
+from ws_server.routing.intent_router import IntentClassifier
+from ws_server.routing.skills import load_all_skills
+from ws_server.metrics.http_api import start_http_server as start_metrics_api
 
 # --- Helpers: Zonos-Language-Normalization & Kokoro-Voice listing ---
 def _normalize_zonos_lang():

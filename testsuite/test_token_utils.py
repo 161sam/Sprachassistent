@@ -1,14 +1,4 @@
-import os
-import importlib.util
-from pathlib import Path
-
-spec = importlib.util.spec_from_file_location(
-    'token_utils',
-    Path(__file__).resolve().parents[1] / 'archive/legacy_ws_server/auth/token_utils.py'
-)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-verify_token = module.verify_token
+from ws_server.auth.token import verify_token
 
 
 def test_verify_token_plain(monkeypatch):

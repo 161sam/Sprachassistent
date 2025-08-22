@@ -6,7 +6,11 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from dotenv import load_dotenv
+try:  # pragma: no cover - optional dependency
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover
+    def load_dotenv(*_args, **_kwargs):
+        return False
 
 logger = logging.getLogger(__name__)
 
