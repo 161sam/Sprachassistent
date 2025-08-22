@@ -68,6 +68,24 @@ class MetricsCollector:
             "Number of TTS cache misses",
             registry=self.registry,
         )
+        self.tts_chunk_emitted_total = Counter(
+            "tts_chunk_emitted_total",
+            "Number of emitted TTS chunks",
+            ["engine"],
+            registry=self.registry,
+        )
+        self.tts_sequence_timeout_total = Counter(
+            "tts_sequence_timeout_total",
+            "Number of TTS chunk timeouts",
+            ["engine"],
+            registry=self.registry,
+        )
+        self.tts_engine_unavailable_total = Counter(
+            "tts_engine_unavailable_total",
+            "Number of times a TTS engine was unavailable",
+            ["engine"],
+            registry=self.registry,
+        )
 
         # Histograms for latency measurements
         self.stt_latency = Histogram(
