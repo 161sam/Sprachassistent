@@ -88,12 +88,15 @@ class PiperTTSEngine(BaseTTSEngine):
         ]))
         # Mögliche Basisverzeichnisse (in Reihenfolge) sammeln
         bases = []
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         for envk in ("TTS_MODEL_DIR", "MODELS_DIR"):
             v = os.getenv(envk)
             if v:
+                if not os.path.isabs(v):
+                    v = os.path.join(project_root, v)
                 bases.append(v)
         # Fallback: <repo>/models
-        bases.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"))
+        bases.append(os.path.join(project_root, "models"))
         tried = []
         for b in bases:
             for name in cand_names:
@@ -122,7 +125,11 @@ class PiperTTSEngine(BaseTTSEngine):
         import os
         import logging
         logger = logging.getLogger("backend.tts.piper_tts_engine")
-        base = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
+        env_base = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
+        if not os.path.isabs(env_base):
+            base = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), env_base)
+        else:
+            base = env_base
         voice = (os.getenv("TTS_VOICE") or "").strip()
         def _resolve_local_files(v):
             names = [v, v.replace("de_DE-", "de-"), v.replace("de-", "de_DE-")]
