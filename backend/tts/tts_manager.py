@@ -6,41 +6,23 @@ Ermöglicht dynamischen Wechsel zwischen Piper und Kokoro TTS
 
 import asyncio
 import logging
-from typing import Dict, Optional, List, Any
+from importlib import import_module
+from typing import Any, Dict, List, Optional
 from enum import Enum
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
-from .piper_tts_engine import PiperTTSEngine
 from .voice_aliases import resolve_voice_alias
 from ws_server.core.config import get_tts_engine_default
 
 logger = logging.getLogger(__name__)
 
-# Optional imports
-# Use Zonos as default engine to match current project preference.
 TTS_ENGINE = get_tts_engine_default()
-KokoroTTSEngine = None  # Initialize as None
 
-try:
-    from .kokoro_tts_engine import KokoroTTSEngine
-    logger.info("✅ Kokoro TTS Engine import successful")
-except ImportError:
-    logger.warning("KokoroTTSEngine nicht verfügbar")
-    logger.info("💡 To enable Kokoro: pip install kokoro-onnx")
-    KokoroTTSEngine = None
-except Exception as e:
-    logger.warning(f"Kokoro TTS Engine import failed: {e}")
-    KokoroTTSEngine = None
-
-# Optional Zonos import
-_ZONOS_IMPORT_ERROR = None
-try:
-    from .engine_zonos import ZonosTTSEngine  # type: ignore
-    logger.info("✅ Zonos TTS Engine import successful")
-except Exception as e:  # broad: package might be missing
-    ZonosTTSEngine = None
-    _ZONOS_IMPORT_ERROR = e
-    logger.warning(f"ZonosTTSEngine nicht verfügbar: {e}")
+ENGINE_IMPORTS: Dict[str, tuple[str, str]] = {
+    "piper": ("backend.tts.piper_tts_engine", "PiperTTSEngine"),
+    "kokoro": ("backend.tts.kokoro_tts_engine", "KokoroTTSEngine"),
+    "zonos": ("backend.tts.engine_zonos", "ZonosTTSEngine"),
+}
 
 class TTSEngineType(Enum):
     """Verfügbare TTS-Engine-Typen"""
@@ -49,131 +31,100 @@ class TTSEngineType(Enum):
     ZONOS = "zonos"
 
 class TTSManager:
-    """
-    TTS Manager für Multi-Engine-Support
-    Ermöglicht dynamisches Switching zwischen verschiedenen TTS-Engines
-    """
-    
+    """Manager für Multi-Engine-Support."""
+
     def __init__(self):
         logger.info("Initialisiere TTS-Manager...")
-        
         self.engines: Dict[str, BaseTTSEngine] = {}
-        self.default_engine = None
+        self.default_engine: Optional[str] = None
         self.config = TTSConfig()
-        
-        # Engine-Verfügbarkeit prüfen
-        self.available_engines = {
-            "piper": PiperTTSEngine,
-            "kokoro": KokoroTTSEngine,
-            "zonos": ZonosTTSEngine
-        }
-
         self.unavailable_engines: Dict[str, str] = {}
-        if ZonosTTSEngine is None and _ZONOS_IMPORT_ERROR is not None:
-            self.unavailable_engines["zonos"] = str(_ZONOS_IMPORT_ERROR)
-        
-        # Nur verfügbare Engines behalten
-        self.available_engines = {
-            name: engine_class 
-            for name, engine_class in self.available_engines.items() 
-            if engine_class is not None
-        }
-        
-        logger.info(f"Verfügbare TTS-Engines: {list(self.available_engines.keys())}")
-        
-    async def initialize(self, piper_config: TTSConfig = None, kokoro_config: TTSConfig = None, 
-                         zonos_config: TTSConfig = None, default_engine: TTSEngineType = None) -> bool:
-        """Initialisiere TTS-Engines mit spezifischen Konfigurationen"""
-        success_count = 0
-        
-        # Standard-Engine bestimmen
-        target_engine_name = None
-        if default_engine:
-            target_engine_name = default_engine.value
-        else:
-            target_engine_name = TTS_ENGINE
+        self._loaded_classes: Dict[str, type] = {}
+        logger.info(f"Geplante TTS-Engines: {list(ENGINE_IMPORTS.keys())}")
 
-        if target_engine_name == "zonos" and "zonos" not in self.available_engines:
-            logger.warning("Zonos Engine nicht verfügbar, fallback auf Piper")
-            target_engine_name = "piper"
-            
-        # Engine-Konfigurationen zuordnen
-        engine_configs = {}
-        if piper_config and "piper" in self.available_engines:
+    def _load_engine_class(self, engine_name: str):
+        """Lazy-Import einer Engineklasse."""
+        if engine_name in self._loaded_classes:
+            return self._loaded_classes[engine_name]
+        module_name, class_name = ENGINE_IMPORTS.get(engine_name, (None, None))
+        if not module_name:
+            return None
+        try:  # pragma: no cover - Fehlerfall wird getestet
+            module = import_module(module_name)
+            cls = getattr(module, class_name)
+            self._loaded_classes[engine_name] = cls
+            return cls
+        except Exception as e:  # pragma: no cover
+            self.unavailable_engines[engine_name] = str(e)
+            logger.warning(f"{engine_name.title()} TTS Engine nicht verfügbar: {e}")
+            return None
+        
+    async def initialize(
+        self,
+        piper_config: TTSConfig | None = None,
+        kokoro_config: TTSConfig | None = None,
+        zonos_config: TTSConfig | None = None,
+        default_engine: TTSEngineType | None = None,
+    ) -> bool:
+        """Initialisiere TTS-Engines mit spezifischen Konfigurationen."""
+        success_count = 0
+
+        target_engine_name = default_engine.value if default_engine else TTS_ENGINE
+
+        engine_configs: Dict[str, TTSConfig] = {}
+        if piper_config:
             engine_configs["piper"] = piper_config
-        if kokoro_config and "kokoro" in self.available_engines:
+        if kokoro_config:
             engine_configs["kokoro"] = kokoro_config
-        if zonos_config and "zonos" in self.available_engines:
+        if zonos_config:
             engine_configs["zonos"] = zonos_config
-            
-        # Priorisiere die Standard-Engine
-        engine_priority = []
+
+        if "piper" not in engine_configs:
+            engine_configs["piper"] = TTSConfig(engine_type="piper", voice="default", language="de")
+
+        engine_priority: List[str] = []
         if target_engine_name in engine_configs:
             engine_priority.append(target_engine_name)
-        for engine_name in engine_configs.keys():
-            if engine_name not in engine_priority:
-                engine_priority.append(engine_name)
-                
-        # Fallback-Konfigurationen für nicht bereitgestellte Engines
-        for engine_name in self.available_engines.keys():
-            if engine_name not in engine_configs:
-                logger.info(f"Erstelle Fallback-Konfiguration für {engine_name}")
-                fallback_config = TTSConfig(
-                    engine_type=engine_name,
-                    model_path="",
-                    voice="default",
-                    speed=1.0,
-                    volume=1.0,
-                    language="de",
-                    sample_rate=22050
-                )
-                engine_configs[engine_name] = fallback_config
-                if engine_name not in engine_priority:
-                    engine_priority.append(engine_name)
-                
-        # Engines initialisieren
-        for engine_name in engine_priority:
-            if engine_name not in self.available_engines:
-                continue
-                
-            try:
-                logger.info(f"Initialisiere {engine_name.title()} TTS Engine...")
-                
-                engine_class = self.available_engines[engine_name]
-                engine_config = engine_configs[engine_name]
-                engine = engine_class(engine_config)
-                
-                # Engine initialisieren mit Timeout
-                try:
-                    init_result = await asyncio.wait_for(engine.initialize(), timeout=30.0)
-                    if init_result:
-                        self.engines[engine_name] = engine
-                        success_count += 1
-                        logger.info(f"✅ {engine_name.title()} TTS erfolgreich initialisiert")
+        for name in engine_configs.keys():
+            if name not in engine_priority:
+                engine_priority.append(name)
 
-                        # Erste erfolgreiche Engine als Standard setzen
-                        if self.default_engine is None:
-                            self.default_engine = engine_name
-                            logger.info(f"🎯 Standard-Engine: {engine_name}")
-                    else:
-                        logger.warning(f"❌ {engine_name.title()} TTS Initialisierung fehlgeschlagen")
-                        self.unavailable_engines[engine_name] = "init failed"
-                except asyncio.TimeoutError:
-                    logger.error(f"⏰ {engine_name.title()} TTS Initialisierung timeout (30s) - überspringe...")
-                    self.unavailable_engines[engine_name] = "timeout"
-                    continue
-                    
-            except Exception as e:
+        for engine_name in engine_priority:
+            engine_class = self._load_engine_class(engine_name)
+            if engine_class is None:
+                continue
+            engine = engine_class(engine_configs[engine_name])
+            try:
+                init_result = await asyncio.wait_for(engine.initialize(), timeout=30.0)
+                if init_result:
+                    self.engines[engine_name] = engine
+                    success_count += 1
+                    logger.info(f"✅ {engine_name.title()} TTS erfolgreich initialisiert")
+                    if self.default_engine is None:
+                        self.default_engine = engine_name
+                        logger.info(f"🎯 Standard-Engine: {engine_name}")
+                else:
+                    logger.warning(f"❌ {engine_name.title()} TTS Initialisierung fehlgeschlagen")
+                    self.unavailable_engines[engine_name] = "init failed"
+            except asyncio.TimeoutError:
+                logger.error(
+                    f"⏰ {engine_name.title()} TTS Initialisierung timeout (30s) - überspringe..."
+                )
+                self.unavailable_engines[engine_name] = "timeout"
+            except Exception as e:  # pragma: no cover
                 logger.error(f"❌ {engine_name.title()} TTS Fehler: {e}")
                 self.unavailable_engines[engine_name] = str(e)
-                continue
-        
+
+        if target_engine_name == "zonos" and "zonos" not in self.engines and "piper" in self.engines:
+            logger.warning("Zonos Engine nicht verfügbar, fallback auf Piper")
+            self.default_engine = "piper"
+
         if success_count > 0:
             logger.info(f"✅ TTS-Manager initialisiert mit {success_count} Engine(s)")
             return True
-        else:
-            logger.error("❌ Keine TTS-Engine verfügbar!")
-            return False
+
+        logger.error("❌ Keine TTS-Engine verfügbar!")
+        return False
     
     async def synthesize(self, text: str, engine: str = None, voice: str = None, **kwargs) -> TTSResult:
         """Synthesiere Text mit gewünschter Engine"""
@@ -389,11 +340,3 @@ class DummyTTSManager:
         
     async def cleanup(self):
         logger.info("Dummy TTS cleanup")
-
-
-def _lazy_import_zonos():
-    global ZonosTTSEngine
-    if ZonosTTSEngine is None:
-        from .engine_zonos import ZonosTTSEngine as _Z
-        ZonosTTSEngine = _Z
-    return ZonosTTSEngine
