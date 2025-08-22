@@ -104,7 +104,11 @@ class PiperTTSEngine(BaseTTSEngine):
                     log.info(f"Piper: benutze lokales Modell: {onnx}")
                     self.model_path = onnx
                     self.config_path = js
+                    # Ensure config uses resolved model
+                    self.config.model_path = onnx
+                    self.config.voice = name
                     self.voice_ready = True
+                    self.is_initialized = True
                     # Früh raus – Rest der Init überspringen
                     return True
         log.warning("Piper: kein lokales Modell gefunden; geprüft:")
@@ -134,7 +138,10 @@ class PiperTTSEngine(BaseTTSEngine):
                 logger.info(f"Piper: benutze lokales Modell: {onnx}")
                 self.model_path = onnx
                 self.config_path = js
+                self.config.model_path = onnx
+                self.config.voice = voice
                 self.voice_ready = True
+                self.is_initialized = True
                 return True
         # --- END local model fallback ---
         """Initialisiere Piper TTS Engine"""
