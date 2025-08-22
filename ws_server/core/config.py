@@ -42,9 +42,9 @@ DEFAULT_ENV: dict[str, str] = {
     "LLM_MAX_TURNS": "5",
     "LLM_TIMEOUT_SECONDS": "20",
     "LLM_SYSTEM_PROMPT": (
-        "You are a friendly voice assistant. Reply in short, natural sentences that "
-        "sound like speech. Avoid lists or Markdown formatting. If something is "
-        "unclear, ask a brief follow-up question."
+        "You are a friendly voice assistant. Answer in short, punctuated sentences "
+        "and keep responses under 500 characters. Avoid lists or Markdown formatting. "
+        "If something is unclear, ask a brief follow-up question."
     ),
 }
 
