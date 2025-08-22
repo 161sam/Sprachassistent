@@ -6,7 +6,7 @@ Implementiert das zweistufige TTS-System:
 - Stage B: Zonos (GPU, hochwertiger Hauptinhalt)
 """
 
-from .chunking import limit_and_chunk
+from .chunking import _limit_and_chunk
 from .staged_processor import StagedTTSProcessor
 
-__all__ = ['limit_and_chunk', 'StagedTTSProcessor']
+__all__ = ['_limit_and_chunk', 'StagedTTSProcessor']
