@@ -58,7 +58,7 @@ class StagedTTSProcessor:
         self._cache: "OrderedDict[str, bytes]" = OrderedDict()
 
         
-    async def process_staged_tts(self, text: str) -> List[TTSChunk]:
+    async def process_staged_tts(self, text: str, canonical_voice: str) -> List[TTSChunk]:
         """
         Verarbeite Text mit Staged TTS Approach.
         
@@ -95,21 +95,26 @@ class StagedTTSProcessor:
                     engine="piper",
                     sequence_id=sequence_id,
                     index=0,
-                    total=1 + len(main_chunks)
+                    total=1 + len(main_chunks),
+                    voice=canonical_voice,
                 )
             )
             tasks.append(intro_task)
         
         # Stage B: Zonos Hauptinhalt (parallel verarbeiten)
-        if "zonos" in getattr(self.tts_manager, "engines", {}):
-            for i, chunk_text in enumerate(main_chunks[:self.config.max_chunks - 1]):
+        if (
+            "zonos" in getattr(self.tts_manager, "engines", {})
+            and self.tts_manager.engine_allowed_for_voice("zonos", canonical_voice)
+        ):
+            for i, chunk_text in enumerate(main_chunks[: self.config.max_chunks - 1]):
                 zonos_task = asyncio.create_task(
                     self._synthesize_chunk(
                         text=chunk_text,
                         engine="zonos",
                         sequence_id=sequence_id,
                         index=i + 1,
-                        total=1 + len(main_chunks)
+                        total=1 + len(main_chunks),
+                        voice=canonical_voice,
                     )
                 )
                 tasks.append(zonos_task)
@@ -125,8 +130,8 @@ class StagedTTSProcessor:
 
         return valid_chunks
     
-    async def _synthesize_chunk(self, text: str, engine: str, sequence_id: str, 
-                               index: int, total: int) -> TTSChunk:
+    async def _synthesize_chunk(self, text: str, engine: str, sequence_id: str,
+                               index: int, total: int, voice: str) -> TTSChunk:
         """
         Synthetisiere einen einzelnen Text-Chunk.
         
@@ -161,8 +166,8 @@ class StagedTTSProcessor:
             start_time = time.time()
             try:
                 result = await asyncio.wait_for(
-                    self.tts_manager.synthesize(text, engine=engine),
-                    timeout=self.config.chunk_timeout_seconds
+                    self.tts_manager.synthesize(text, engine=engine, voice=voice),
+                    timeout=self.config.chunk_timeout_seconds,
                 )
             except asyncio.TimeoutError:
                 logger.warning(f"{engine.capitalize()} TTS Timeout für chunk {index}")

@@ -6,12 +6,14 @@ Ermöglicht dynamischen Wechsel zwischen Piper und Kokoro TTS
 
 import asyncio
 import logging
+import os
+import audioop
 from importlib import import_module
 from typing import Any, Dict, List, Optional
 from enum import Enum
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
-from .voice_aliases import resolve_voice_alias
+from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
 from ws_server.core.config import get_tts_engine_default
 
 logger = logging.getLogger(__name__)
@@ -126,10 +128,36 @@ class TTSManager:
         logger.error("❌ Keine TTS-Engine verfügbar!")
         return False
     
+    def _resolve_engine_voice(self, engine: str, canonical_voice: str) -> EngineVoice:
+        mapping = VOICE_ALIASES.get(canonical_voice, {})
+        ev = mapping.get(engine)
+        if not ev or (not ev.voice_id and not ev.model_path):
+            raise ValueError(f"Voice '{canonical_voice}' not defined for engine '{engine}'")
+        return ev
+
+    def engine_allowed_for_voice(self, engine: str, canonical_voice: str) -> bool:
+        mapping = VOICE_ALIASES.get(canonical_voice, {})
+        ev = mapping.get(engine)
+        return bool(ev and (ev.voice_id or ev.model_path))
+
+    def _postprocess_audio(self, audio: bytes, sample_rate: int) -> tuple[bytes, int]:
+        target_sr = int(os.getenv("TTS_TARGET_SR", sample_rate) or sample_rate)
+        if target_sr and sample_rate and target_sr != sample_rate:
+            audio, _ = audioop.ratecv(audio, 2, 1, sample_rate, target_sr, None)
+            sample_rate = target_sr
+        if os.getenv("TTS_LOUDNESS_NORMALIZE", "0") == "1":
+            rms = audioop.rms(audio, 2)
+            if rms:
+                target = 20000
+                factor = min(4.0, target / rms)
+                audio = audioop.mul(audio, 2, factor)
+        return audio, sample_rate
+
     async def synthesize(self, text: str, engine: str = None, voice: str = None, **kwargs) -> TTSResult:
         """Synthesiere Text mit gewünschter Engine"""
         target_engine = engine or self.default_engine
-        
+        canonical_voice = voice or os.getenv("TTS_VOICE", "de-thorsten-low")
+
         if not target_engine or target_engine not in self.engines:
             return TTSResult(
                 audio_data=None,
@@ -137,9 +165,29 @@ class TTSManager:
                 error_message=f"Engine '{target_engine}' nicht verfügbar",
                 engine_used=target_engine or "none"
             )
-        
+
         try:
-            return await self.engines[target_engine].synthesize(text, voice, **kwargs)
+            ev = self._resolve_engine_voice(target_engine, canonical_voice)
+            if target_engine == "piper":
+                result = await self.engines[target_engine].synthesize(
+                    text, model_path=ev.model_path, **kwargs
+                )
+            elif target_engine == "zonos":
+                result = await self.engines[target_engine].synthesize(
+                    text, voice_id=ev.voice_id, **kwargs
+                )
+            elif target_engine == "kokoro":
+                result = await self.engines[target_engine].synthesize(
+                    text, voice_id=ev.voice_id, **kwargs
+                )
+            else:
+                raise ValueError(f"Unknown TTS engine: {target_engine}")
+
+            if result.success and result.audio_data:
+                processed, sr = self._postprocess_audio(result.audio_data, result.sample_rate)
+                result.audio_data = processed
+                result.sample_rate = sr
+            return result
         except Exception as e:
             logger.error(f"TTS-Synthese mit {target_engine} fehlgeschlagen: {e}")
             return TTSResult(
@@ -234,12 +282,10 @@ class TTSManager:
             
         try:
             engine_obj = self.engines[target_engine_name]
-            voice = resolve_voice_alias(voice)
             # Setze Voice in der Engine (falls unterstützt)
             if hasattr(engine_obj, 'set_voice'):
                 return await engine_obj.set_voice(voice)
             else:
-                # Fallback: Voice in Config setzen
                 engine_obj.config.voice = voice
                 logger.info(f"Voice '{voice}' für Engine '{target_engine_name}' gesetzt")
                 return True
