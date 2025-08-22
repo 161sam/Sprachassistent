@@ -106,7 +106,8 @@ class BinaryAudioHandler:
             if not frame:
                 await self._send_error(websocket, "Invalid binary frame format")
                 return
-            
+            # TODO: verify PCM parameters like sample rate and channels before forwarding
+
             # Update metrics
             self.metrics['frames_processed'] += 1
             self.metrics['bytes_received'] += frame.frame_size

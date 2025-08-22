@@ -44,6 +44,7 @@ class MetricsCollector:
             "System wide CPU utilisation in percent",
             registry=self.registry,
         )
+        # TODO: add gauge for memory utilisation to detect leaks
 
         # Counters
         self.messages_total = Counter(

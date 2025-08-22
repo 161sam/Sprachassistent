@@ -1,6 +1,8 @@
 from ws_server.core.prompt import get_system_prompt
 from ws_server.tts.staged_tts.chunking import optimize_for_prosody
 
+# TODO: add unit tests for limit_and_chunk and create_intro_chunk utilities
+
 def test_system_prompt_clean_and_short():
     prompt = get_system_prompt()
     assert len(prompt) <= 500

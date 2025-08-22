@@ -7,6 +7,7 @@ LLM_SYSTEM_PROMPT = (
     "sound like speech. Avoid lists or Markdown formatting. If something is "
     "unclear, ask a brief follow-up question."
 )
+# TODO: load default prompt from configuration to allow easy localization
 
 def get_system_prompt(max_length: int = 500) -> str:
     """Return the system prompt limited to ``max_length`` characters."""

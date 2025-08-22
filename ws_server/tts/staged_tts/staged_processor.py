@@ -44,17 +44,18 @@ class StagedTTSConfig:
 class StagedTTSProcessor:
     """
     Hauptklasse für Staged TTS Processing
-    
+
     Implementiert das zweistufige System:
     - Stage A: Piper Intro (CPU, schnell)
     - Stage B: Zonos Hauptinhalt (GPU, hochwertig)
     """
-    
+
     def __init__(self, tts_manager, config: StagedTTSConfig = None):
         self.tts_manager = tts_manager
         self.config = config or StagedTTSConfig()
         # LRU Cache for synthesized audio
         self._cache: "OrderedDict[str, bytes]" = OrderedDict()
+        # TODO: allow configuring crossfade duration between Piper and Zonos stages
         
     async def process_staged_tts(self, text: str) -> List[TTSChunk]:
         """
