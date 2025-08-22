@@ -12,3 +12,4 @@
 | `backend/ws-server/ws-server-minimal.py` | `ws_server/compat/legacy_ws_server.py` |
 | `backend/ws-server/staged_tts/` | `ws_server/tts/staged_tts/` |
 | `backend/ws-server/` | `archive/legacy_ws_server/` |
+| `ws_server/transport/fastapi_adapter.py` | _archived (unused)_ |

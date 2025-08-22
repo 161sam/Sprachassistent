@@ -9,7 +9,6 @@ import tempfile
 import os
 import time
 import logging
-import numpy as np
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from concurrent.futures import ThreadPoolExecutor
 

@@ -5,9 +5,7 @@ Performance Monitor für WebSocket-Server
 """
 
 import psutil
-import os
 import asyncio
-import json
 import time
 from datetime import datetime
 from typing import Dict, List

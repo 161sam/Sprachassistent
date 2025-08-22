@@ -4,7 +4,7 @@ import io
 import os
 import time
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any
 
 import numpy as np
 import torch
@@ -29,11 +29,18 @@ SUPPORTED_LANGS = {
     'en','de','fr','es','it','pt','pl','ja','ko','zh','nl','sv','no','da','fi','tr','cs','ru','uk','el','hu'
 }
 
-def _normalize_lang(lang: str|None) -> str:
-    if not lang: return 'en'
-    l = lang.replace('_','-').lower()
-    special = {'pt-br':'pt','zh-cn':'zh','zh-tw':'zh','nb-no':'no','nn-no':'no'}
-    return special.get(l, l.split('-')[0])
+def _normalize_lang(lang: str | None) -> str:
+    if not lang:
+        return "en"
+    code = lang.replace("_", "-").lower()
+    special = {
+        "pt-br": "pt",
+        "zh-cn": "zh",
+        "zh-tw": "zh",
+        "nb-no": "no",
+        "nn-no": "no",
+    }
+    return special.get(code, code.split("-")[0])
 
 
 class ZonosTTSEngine(BaseTTSEngine):
