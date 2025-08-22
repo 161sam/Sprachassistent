@@ -22,8 +22,6 @@
     "postinstall": "electron-builder install-app-deps",
     "dist:deb": "electron-builder --linux deb --publish=never",
     "pack:dir": "electron-builder --dir --publish=never",
-    "build:backend:linux": "echo \"(run later) pyinstaller backend/ws-server/ws-server.py --name ws-server --onefile --clean --noconfirm && mkdir -p voice-assistant-apps/desktop/resources/bin/linux && cp dist/ws-server voice-assistant-apps/desktop/resources/bin/linux/\"",
-    "build:backend:win": "echo \"(run later) pyinstaller backend/ws-server/ws-server.py --name ws-server --onefile --clean --noconfirm && mkdir -p voice-assistant-apps/desktop/resources/bin/win && copy dist\\\\ws-server.exe voice-assistant-apps\\\\desktop\\\\resources\\\\bin\\\\win\\\\\"",
     "dist:linux": "electron-builder --linux AppImage,deb",
     "dist:win": "electron-builder --win nsis",
     "dist": "electron-builder -mwl"
@@ -46,10 +44,6 @@
     "directories": { "buildResources": "build", "output": "dist" },
     "files": [ "src/**", "package.json" ],
     "asar": true,
-    "asarUnpack": [ "resources/**" ],
-    "extraResources": [
-      { "from": "resources/", "to": ".", "filter": ["**/*"] }
-    ],
     "linux": { "category": "Utility", "target": ["AppImage","deb"], "icon": "build/icons" },
     "win":   { "target": ["nsis"], "icon": "build/icons/icon.ico" },
     "nsis":  { "oneClick": true, "perMachine": false, "allowElevation": true, "deleteAppDataOnUninstall": false },
