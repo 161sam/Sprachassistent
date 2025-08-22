@@ -102,7 +102,12 @@ def optimize_for_prosody(text: str) -> str:
     result = text
     for num, word in number_replacements.items():
         result = result.replace(num, word)
-    
+
+    # Entferne einfache Markdown-Listen und Formatierungen
+    result = re.sub(r'^[\-\*\+]\s+', '', result, flags=re.MULTILINE)
+    result = re.sub(r'\[(.*?)\]\((.*?)\)', r'\1', result)
+    result = result.replace('**', '').replace('__', '').replace('`', '')
+
     # Entferne redundante Leerzeichen
     result = re.sub(r'\s+', ' ', result)
     
