@@ -11,7 +11,7 @@ const net = require('net');
 
 const https = require('http');
 
-async function waitForHealth(url='http://127.0.0.1:48232/health', retries=120, delay=500) {
+async function waitForHealth(url=`http://${process.env.WS_HOST || '127.0.0.1'}:${process.env.METRICS_PORT || '48232'}/health`, retries=120, delay=500) {
   return new Promise((resolve, reject) => {
     const ping = () => {
       const req = https.get(url, res => {
@@ -32,25 +32,13 @@ const projectRoot = app.isPackaged
   ? path.join(process.resourcesPath, 'app')
   : path.resolve(__dirname, '../../../');
 
-function resolveBackendBinary(projectRoot) {
-  const isDev = !app.isPackaged;
-  if (isDev) {
-    // Prefer explicit PYTHON env but fall back to platform defaults.
-    // On Linux/macOS use `python3` to avoid missing `python` shim.
-    // On Windows keep `python` as the typical command.
-    const pythonCmd = process.env.PYTHON
-      || (process.platform === 'win32' ? 'python' : 'python3');
-    return {
-      cmd: pythonCmd,
-      args: [path.join(projectRoot, 'backend', 'ws-server', 'ws-server.py')],
-      mode: 'script'
-    };
-  }
-  const base = process.resourcesPath;
-  const bin = process.platform === 'win32'
-    ? path.join(base, 'bin', 'win', 'ws-server.exe')
-    : path.join(base, 'bin', 'linux', 'ws-server');
-  return { cmd: bin, args: [], mode: 'binary' };
+function resolveBackendBinary() {
+  // Prefer explicit PYTHON env but fall back to platform defaults.
+  // On Linux/macOS use `python3` to avoid missing `python` shim.
+  // On Windows keep `python` as the typical command.
+  const pythonCmd = process.env.PYTHON
+    || (process.platform === 'win32' ? 'python' : 'python3');
+  return { cmd: pythonCmd, args: ['-m', 'ws_server.cli'] };
 }
 
 let mainWindow;
@@ -199,40 +187,11 @@ function createTray() {
 }
 
 // ---- Backend ----------------------------------------------------------------
-function waitForPort(port, host = '127.0.0.1', retries = 240, delay = 500) {
-  return new Promise((resolve, reject) => {
-    const tryConnect = () => {
-      const socket = net.connect(port, host, () => {
-        socket.end();
-        resolve();
-      });
-      socket.on('error', () => {
-        socket.destroy();
-        if (retries-- <= 0) {
-          reject(new Error('Backend start timed out'));
-        } else {
-          setTimeout(tryConnect, delay);
-        }
-      });
-    };
-    tryConnect();
-  });
-}
-
 async function startBackend() {
   try {
-    const backend = resolveBackendBinary(projectRoot);
+    const backend = resolveBackendBinary();
 
-    // --- FORCE LOCAL WS ENV (autopatch) ---
-    const env = {
-      ...process.env,
-      WS_HOST: '127.0.0.1',
-      WS_PORT: '48231',
-      METRICS_PORT: '48232',
-      JWT_SECRET: process.env.JWT_SECRET || 'devsecret',
-      JWT_ALLOW_PLAIN: process.env.JWT_ALLOW_PLAIN || '1',
-      JWT_BYPASS: process.env.JWT_BYPASS || '0'
-    };
+    const env = { ...process.env };
     delete env.PORT; delete env.HTTP_PORT; delete env.APP_PORT; delete env.NEXT_PUBLIC_PORT;
 
     console.log('[desktop] Spawning backend (%s): %s %s', app.isPackaged ? 'prod' : 'dev', backend.cmd, backend.args.join(' '));
@@ -243,16 +202,33 @@ async function startBackend() {
       stdio: 'inherit'
     });
     backendProcess.on('exit', (code) => console.log('[desktop] Backend exited', code));
-    // Handle spawn errors (e.g. missing Python binary) to avoid crashing
     backendProcess.on('error', (err) => {
       log.error('Backend spawn error:', err);
-      dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
+      dialog.showMessageBox({
+        type: 'error',
+        title: 'Backend-Start fehlgeschlagen',
+        message: err.message || String(err),
+        buttons: ['OK', 'Build-Anleitung öffnen']
+      }).then(result => {
+        if (result.response === 1) {
+          const doc = path.join(projectRoot, 'docs', 'Build-Anleitung.md');
+          shell.openPath(doc).catch(() => {});
+        }
+      });
     });
 
     await waitForHealth();
   } catch (err) {
     log.error('Failed to start backend:', err);
-    dialog.showErrorBox('Backend-Start fehlgeschlagen', err.message || String(err));
+    const res = await dialog.showMessageBox({
+      type: 'error',
+      title: 'Backend nicht erreichbar',
+      message: err.message || String(err),
+      buttons: ['Erneut versuchen', 'Beenden']
+    });
+    if (res.response === 0) {
+      return startBackend();
+    }
     throw err;
   }
 }
