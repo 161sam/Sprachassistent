@@ -78,7 +78,12 @@ class VoiceAssistantGUI {
             
             // Performance monitoring
             showPerformanceMetrics: false,
-            enableLatencyMonitoring: true
+            enableLatencyMonitoring: true,
+
+            // Staged TTS playback
+            stagedTtsFastStart: true,
+            stagedTtsChunkPlayback: true,
+            stagedTtsCrossfadeMs: 100
         };
         
         this.performanceMetrics = {
@@ -99,7 +104,10 @@ class VoiceAssistantGUI {
                 chunkSize: this.settings.chunkSize,
                 chunkIntervalMs: this.settings.chunkIntervalMs,
                 adaptiveQuality: this.settings.adaptiveQuality,
-                enableMetrics: this.settings.enableLatencyMonitoring
+                enableMetrics: this.settings.enableLatencyMonitoring,
+                quickstartPiper: this.settings.stagedTtsFastStart,
+                chunkedPlayback: this.settings.stagedTtsChunkPlayback,
+                crossfadeDurationMs: this.settings.stagedTtsCrossfadeMs
             };
             
             this.voiceAssistant = new VoiceAssistant(config);
@@ -573,6 +581,9 @@ class VoiceAssistantGUI {
             streamer.config.chunkSize = this.settings.chunkSize;
             streamer.config.chunkIntervalMs = this.settings.chunkIntervalMs;
             streamer.config.adaptiveQuality = this.settings.adaptiveQuality;
+            this.voiceAssistant.config.quickstartPiper = this.settings.stagedTtsFastStart;
+            this.voiceAssistant.config.chunkedPlayback = this.settings.stagedTtsChunkPlayback;
+            this.voiceAssistant.config.crossfadeDurationMs = this.settings.stagedTtsCrossfadeMs;
         }
     }
 
@@ -756,8 +767,11 @@ let voiceAssistantGUI = null;
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🎨 Initializing Voice Assistant GUI...');
-    
+
     voiceAssistantGUI = new VoiceAssistantGUI();
+    if (typeof loadCurrentSettings === 'function') {
+        loadCurrentSettings();
+    }
     await voiceAssistantGUI.initialize();
     
     // Focus on text input
