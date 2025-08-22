@@ -5,6 +5,8 @@ from typing import Dict, Any, Optional
 import time
 from dataclasses import dataclass
 
+from ws_server.metrics.collector import collector
+
 logger = logging.getLogger(__name__)
 
 
@@ -119,6 +121,7 @@ class BinaryAudioHandler:
             # Update metrics
             self.metrics['frames_processed'] += 1
             self.metrics['bytes_received'] += frame.frame_size
+            collector.audio_in_bytes_total.inc(len(frame.audio_data))
             
             # Track stream
             if frame.stream_id not in self.active_streams:

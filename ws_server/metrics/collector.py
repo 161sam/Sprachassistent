@@ -125,6 +125,18 @@ class MetricsCollector:
             registry=self.registry,
         )
 
+        # Audio throughput counters
+        self.audio_in_bytes_total = Counter(
+            "audio_in_bytes_total",
+            "Total number of audio bytes received from clients",
+            registry=self.registry,
+        )
+        self.audio_out_bytes_total = Counter(
+            "audio_out_bytes_total",
+            "Total number of audio bytes sent to clients",
+            registry=self.registry,
+        )
+
         # Histograms for latency measurements
         self.stt_latency = Histogram(
             "stt_latency_seconds",
