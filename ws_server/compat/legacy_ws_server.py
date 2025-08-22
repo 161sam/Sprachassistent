@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 from __future__ import annotations
 import os
 WS_HOST = os.getenv('WS_HOST','127.0.0.1')
@@ -40,7 +41,7 @@ import numpy as np
 import os
 import logging
 from datetime import datetime
-from typing import Dict, Optional, List, AsyncGenerator
+from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
@@ -60,9 +61,10 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
 from staged_tts import StagedTTSProcessor
 from staged_tts.staged_processor import StagedTTSConfig
-from audio.vad import VoiceActivityDetector, VADConfig, create_vad_processor
+from audio.vad import VoiceActivityDetector, VADConfig
 
 from auth.token_utils import verify_token
+from ws_server.metrics.collector import collector
 
 # Load environment variables from optional defaults then override with .env
 load_dotenv('.env.defaults', override=False)
@@ -1170,6 +1172,7 @@ class VoiceServer:
             return
 
         client_id = await self.connection_manager.register(websocket)
+        collector.active_connections.inc()
 
         try:
             # ---- Handshake ---------------------------------------------------
@@ -1222,11 +1225,13 @@ class VoiceServer:
             async for message in websocket:
                 try:
                     data = json.loads(message)
+                    collector.messages_total.labels(protocol="json").inc()
                     await self._handle_message(client_id, data)
 
                     # Update stats
-                    self.connection_manager.connection_info[client_id]['messages_received'] += 1
-                    self.connection_manager.connection_info[client_id]['last_activity'] = time.time()
+                    info = self.connection_manager.connection_info[client_id]
+                    info['messages_received'] += 1
+                    info['last_activity'] = time.time()
                     self.stats['messages_processed'] += 1
 
                 except json.JSONDecodeError:
@@ -1258,6 +1263,7 @@ class VoiceServer:
                 pass
         finally:
             await self.connection_manager.unregister(client_id)
+            collector.active_connections.dec()
             
     async def _handle_message(self, client_id: str, data: Dict):
         """Handle individual WebSocket message"""
