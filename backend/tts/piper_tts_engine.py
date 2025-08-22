@@ -13,8 +13,9 @@ import wave
 from typing import Optional, Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor
 from piper import PiperVoice, SynthesisConfig
+from .voice_aliases import resolve_voice_alias
 
-from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSInitializationError, TTSSynthesisError
+from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult, TTSInitializationError
 
 logger = logging.getLogger(__name__)
 
@@ -55,20 +56,44 @@ class PiperTTSEngine(BaseTTSEngine):
             "de-karlsson-low": "de_DE-karlsson-low.onnx",
             "en-amy-low": "en_US-amy-low.onnx"
         }
+
+    def supports_voice(self, voice: str) -> bool:  # type: ignore[override]
+        canonical = resolve_voice_alias(voice)
+        return voice in self.supported_voices or canonical in self.supported_voices
+
+    def _list_available_models(self, bases: List[str]) -> List[str]:
+        models = set()
+        for b in bases:
+            p = os.path.join(b, "piper")
+            try:
+                for fn in os.listdir(p):
+                    if fn.endswith(".onnx"):
+                        models.add(os.path.splitext(fn)[0])
+            except FileNotFoundError:
+                continue
+            except Exception:
+                continue
+        return sorted(models)
         
     async def initialize(self) -> bool:
         # --- BEGIN: robust local Piper model resolver ---
-        import os, logging
+        import os
+        import logging
         log = logging.getLogger("backend.tts.piper_tts_engine")
         # Stimmenname aus Instanz, ENV oder Default ziehen
-        voice = getattr(self, "voice", None) or os.getenv("TTS_VOICE") or "de_DE-thorsten-low"
-        # Beide Namensvarianten testen
-        cand_names = list(dict.fromkeys([voice, voice.replace("de_DE-","de-"), voice.replace("de-","de_DE-")]));
+        voice = resolve_voice_alias(getattr(self, "voice", None) or os.getenv("TTS_VOICE") or "de_DE-thorsten-low")
+        # Alias-Varianten testen
+        cand_names = list(dict.fromkeys([
+            voice,
+            voice.replace("de_DE-", "de-"),
+            voice.replace("de-", "de_DE-"),
+        ]))
         # Mögliche Basisverzeichnisse (in Reihenfolge) sammeln
         bases = []
         for envk in ("TTS_MODEL_DIR", "MODELS_DIR"):
             v = os.getenv(envk)
-            if v: bases.append(v)
+            if v:
+                bases.append(v)
         # Fallback: <repo>/models
         bases.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models"))
         tried = []
@@ -87,13 +112,18 @@ class PiperTTSEngine(BaseTTSEngine):
         log.warning("Piper: kein lokales Modell gefunden; geprüft:")
         for onnx, js in tried:
             log.warning(f"  - {onnx} | {js}")
+        available = self._list_available_models(bases)
+        if available:
+            log.warning("Verfügbare Modelle: %s", ", ".join(available))
         # --- END: robust local Piper model resolver ---
         # --- BEGIN local model fallback for direct files ---
-        import os, logging
+        import os
+        import logging
         logger = logging.getLogger("backend.tts.piper_tts_engine")
         base = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "models")
         voice = (os.getenv("TTS_VOICE") or "").strip()
         def _resolve_local_files(v):
+            v = resolve_voice_alias(v)
             names = [v, v.replace("de_DE-", "de-"), v.replace("de-", "de_DE-")]
             for name in names:
                 onnx  = os.path.join(base, "piper", f"{name}.onnx")
@@ -219,6 +249,8 @@ class PiperTTSEngine(BaseTTSEngine):
         """Bestimme Modell-Pfad für Stimme"""
         if self.config.model_path and os.path.exists(self.config.model_path):
             return self.config.model_path
+
+        voice = resolve_voice_alias(voice)
 
         # Standard-Pfade prüfen
         model_filename = self.voice_model_mapping.get(voice, f"{voice}.onnx")
