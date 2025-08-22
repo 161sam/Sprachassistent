@@ -61,6 +61,7 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.staged_tts import StagedTTSProcessor
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
+from ws_server.core.prompt import get_system_prompt
 from audio.vad import VoiceActivityDetector, VADConfig
 
 from auth.token_utils import verify_token
@@ -1100,10 +1101,7 @@ class VoiceServer:
 
         msgs = self._hist(client_id)
         if not msgs or msgs[0].get("role") != "system":
-            msgs.insert(0, {
-                "role": "system",
-                "content": "You are a concise, helpful voice assistant. Answer in the user's language. When unsure, ask a brief clarifying question."
-            })
+            msgs.insert(0, {"role": "system", "content": get_system_prompt()})
         msgs.append({"role": "user", "content": user_text})
         self._hist_trim(client_id)
 
