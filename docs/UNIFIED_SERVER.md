@@ -11,6 +11,7 @@ python -m ws_server.cli
 
 ```bash
 pip install -r requirements.txt
+cp env.example .env
 python -m ws_server.cli
 # in another terminal
 cd voice-assistant-apps/desktop && npm install && npm start

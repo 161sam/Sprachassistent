@@ -17,6 +17,6 @@ focused commit.
 - [x] Sprint 12 — Model discovery & validation
 - [x] Sprint 13 — Configurable LLM prosody prompt
 - [x] Sprint 14 — CI pipeline & "no duplicates" gate
-- [ ] Sprint 15 — Desktop playback sequencer polish
-- [ ] Sprint 16 — Docs & release notes
+- [x] Sprint 15 — Desktop playback sequencer polish
+- [x] Sprint 16 — Docs & release notes
 

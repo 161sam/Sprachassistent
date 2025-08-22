@@ -119,13 +119,17 @@ Via WebSocket-Message:
 
 ### Audio-Playback-Sequencer
 
+- Chunks werden pro `sequence_id` in einer Queue gesammelt.
+- `audio.load()` puffert den nächsten Chunk vor, um Lücken zu vermeiden.
+- Die Crossfade-Dauer ist frei einstellbar (80–120 ms).
+
 ```javascript
 class StagedTTSPlayer {
   constructor() {
     this.sequences = new Map();
     this.crossfadeMs = 100;
   }
-  
+
   handleTTSChunk(message) {
     const { sequence_id, index, total, audio } = message;
 
@@ -136,6 +140,7 @@ class StagedTTSPlayer {
     const seq = this.sequences.get(sequence_id);
     const el = new Audio(audio.startsWith('data:') ? audio : `data:audio/wav;base64,${audio}`);
     el.preload = 'auto';
+    el.load();
     seq.chunks[index] = el;
 
     if (index === seq.index) {

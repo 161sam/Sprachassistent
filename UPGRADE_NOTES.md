@@ -4,6 +4,8 @@
 - Start the backend via `python -m ws_server.cli`.
 - Legacy scripts under `backend/ws-server/` have been removed; update any
   custom wrappers to point to the new entrypoint.
+- The desktop app expects the server at this entrypoint; start it before
+  running `npm start` in `voice-assistant-apps/desktop`.
 
 ## LLM Model Listings
 - WebSocket messages `get_llm_models` and `switch_llm_model` now expose
