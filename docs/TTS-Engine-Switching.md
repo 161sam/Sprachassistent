@@ -182,7 +182,7 @@ kokoro_config = TTSConfig(
 
 ### Server-Konfiguration
 
-In `backend/ws-server/ws-server-with-tts-switching.py`:
+In `archive/legacy_ws_server/ws-server-with-tts-switching.py`:
 
 ```python
 config = StreamingConfig(
@@ -273,7 +273,7 @@ pip install faster-whisper
 
 ```bash
 # Backend-Logs
-tail -f backend/ws-server/logs/ws-server.log
+tail -f archive/legacy_ws_server/logs/ws-server.log
 
 # TTS-spezifische Logs
 tail -f ~/.local/share/kokoro/logs/

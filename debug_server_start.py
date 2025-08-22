@@ -152,11 +152,8 @@ def debug_server_init():
     print("\n=== DEBUG: Server-Initialisierung ===")
     
     try:
-        # Change to backend/ws-server directory for proper imports
-        os.chdir('/home/saschi/Sprachassistent/backend/ws-server')
-        
-        # Try importing the server class
-        from ws_server import VoiceServer
+        # Try importing the server class from unified entrypoint
+        from ws_server.transport.server import VoiceServer
         print("✓ VoiceServer import erfolgreich")
 
         # Try creating instance

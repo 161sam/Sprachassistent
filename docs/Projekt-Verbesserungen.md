@@ -65,7 +65,7 @@ Sprachassistent/
 
 ### A. Async Audio Streaming mit FastAPI
 ```python
-# backend/ws-server/audio/streaming.py
+# archive/legacy_ws_server/audio/streaming.py
 import asyncio
 import aiofiles
 from fastapi import WebSocket
@@ -122,7 +122,7 @@ class AudioStreamer:
 
 ### B. Non-blocking STT/TTS Engine
 ```python
-# backend/ws-server/audio/stt_engine.py
+# archive/legacy_ws_server/audio/stt_engine.py
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from faster_whisper import WhisperModel
@@ -153,7 +153,7 @@ class AsyncSTTEngine:
 
 ### C. Optimierte WebSocket-Architektur
 ```python
-# backend/ws-server/main.py
+# archive/legacy_ws_server/main.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio

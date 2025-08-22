@@ -117,7 +117,8 @@ def start_voice_assistant():
     # 3. Start server
     cmd = [
         "/home/saschi/Sprachassistent/.venv/bin/python",
-        "/home/saschi/Sprachassistent/backend/ws-server/ws-server.py"
+        "-m",
+        "ws_server.cli",
     ]
     
     env = os.environ.copy()
