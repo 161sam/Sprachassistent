@@ -1,33 +1,31 @@
 # Unified WebSocket Server
 
-The unified server exposes a single entry point that speaks both JSON v1 and Binary v2 protocols. Clients negotiate the protocol during the initial handshake.
-
-## Start
+The voice assistant backend exposes a single server entrypoint.  Run it
+from the project root:
 
 ```bash
 python -m ws_server.cli
 ```
 
-Environment variables such as `WS_HOST`, `WS_PORT` and `METRICS_PORT` configure the ports. The server also exposes an HTTP metrics API on `/metrics` and a health check on `/health`.
+## Environment
 
-## Protocol negotiation
+The server reads configuration from the environment.  Common variables
+include:
 
-1. Client sends a JSON `hello` message describing its capabilities.
-2. Server replies with a feature banner listing supported protocols.
-3. If both sides agree on `binary_audio` and it is enabled server side, audio frames are exchanged using Binary v2; otherwise JSON v1 is used.
+| Variable | Description |
+| --- | --- |
+| `WS_HOST` | Bind address for the WebSocket server |
+| `WS_PORT` | Port for client connections |
+| `METRICS_PORT` | HTTP port for the metrics endpoint |
 
-## Sequence events
+## Protocol
 
-Staged TTS emits a stream of events:
+Clients connect via WebSocket.  A `hello` message is exchanged during the
+handshake, followed by JSON messages or binary audio frames.
 
-- `tts_chunk` – contains `sequence_id`, chunk `index`, `total`, `engine`, `text` and `audio`.
-- `tts_sequence_end` – marks the end of a sequence.
+## Health & Metrics
 
-## Settings
+Metrics and a simple health check are exposed over HTTP on
+`http://127.0.0.1:$METRICS_PORT/metrics` and `.../health` once the server
+is running.
 
-All options are read from environment variables via the configuration layer:
-
-- `WS_HOST` / `WS_PORT` – WebSocket bind address.
-- `METRICS_PORT` – port for `/metrics` and `/health`.
-- `ENABLE_BINARY_AUDIO` – enable Binary v2 audio ingress.
-- `CHUNK_TTS_TIMEOUT_SEC` – timeout for Zonos TTS chunks.
