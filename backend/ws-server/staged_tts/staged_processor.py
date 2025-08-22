@@ -98,17 +98,20 @@ class StagedTTSProcessor:
             tasks.append(intro_task)
         
         # Stage B: Zonos Hauptinhalt (parallel verarbeiten)
-        for i, chunk_text in enumerate(main_chunks[:self.config.max_chunks - 1]):
-            zonos_task = asyncio.create_task(
-                self._synthesize_chunk(
-                    text=chunk_text,
-                    engine="zonos",
-                    sequence_id=sequence_id,
-                    index=i + 1,
-                    total=1 + len(main_chunks)
+        if "zonos" in getattr(self.tts_manager, "engines", {}):
+            for i, chunk_text in enumerate(main_chunks[:self.config.max_chunks - 1]):
+                zonos_task = asyncio.create_task(
+                    self._synthesize_chunk(
+                        text=chunk_text,
+                        engine="zonos",
+                        sequence_id=sequence_id,
+                        index=i + 1,
+                        total=1 + len(main_chunks)
+                    )
                 )
-            )
-            tasks.append(zonos_task)
+                tasks.append(zonos_task)
+        else:
+            logger.info("Zonos Engine nicht verfügbar, verwende nur Piper-Intro")
         
         completed_chunks = await asyncio.gather(*tasks, return_exceptions=True)
 
