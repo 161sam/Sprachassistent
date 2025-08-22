@@ -12,7 +12,7 @@ focused commit.
 - [x] Sprint 7 — Binary ingress + JSON compatibility
 - [x] Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
 - [x] Sprint 9 — Metrics unification
-- [ ] Sprint 10 — Intent routing & skills completion
+- [x] Sprint 10 — Intent routing & skills completion
 - [ ] Sprint 11 — Error handling & client resilience
 - [ ] Sprint 12 — Model discovery & validation
 - [ ] Sprint 13 — Configurable LLM prosody prompt

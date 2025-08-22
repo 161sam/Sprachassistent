@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
@@ -7,6 +8,8 @@ try:
     import joblib  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     joblib = None
+
+from .skills import load_all_skills
 
 logger = logging.getLogger(__name__)
 
@@ -40,12 +43,14 @@ class IntentClassifier:
                     "hallo da",
                     "danke dir",
                     "frage zum wetter",
+                    "schalte das licht ein",
                 ]
                 train_labels = [
                     "time_query",
                     "greeting",
                     "gratitude",
-                    "external_request",
+                    "knowledge",
+                    "automation",
                 ]
                 self.model = Pipeline([
                     ("vec", TfidfVectorizer()),
@@ -81,8 +86,69 @@ class IntentClassifier:
             return IntentPrediction("gratitude", 0.5)
         if any(
             word in lower
+            for word in ["schalte", "workflow", "automation", "n8n", "trigger"]
+        ):
+            return IntentPrediction("automation", 0.5)
+        if any(
+            word in lower
             for word in ["frage", "wissen", "hilfe", "wetter", "garage", "status"]
         ):
-            return IntentPrediction("external_request", 0.5)
+            return IntentPrediction("knowledge", 0.5)
         return IntentPrediction("unknown", 0.0)
+
+
+class IntentRouter:
+    """Router, der Intents zu Skills oder externen Diensten leitet."""
+
+    def __init__(self, skills_path: Optional[str | Path] = None) -> None:
+        self.classifier = IntentClassifier()
+        self.skills = load_all_skills(skills_path)
+        self.flowise_url = os.getenv("FLOWISE_URL")
+        self.n8n_host = os.getenv("N8N_HOST")
+        self.n8n_port = os.getenv("N8N_PORT", "5678")
+
+    async def route(self, text: str) -> str:
+        prediction = self.classifier.classify(text)
+        # Zuerst lokale Skills prüfen
+        for skill in self.skills:
+            if skill.intent_name == prediction.intent or skill.can_handle(text):
+                return skill.handle(text)
+
+        if prediction.intent == "automation" and self.n8n_host:
+            return await self._call_n8n(text)
+
+        if self.flowise_url and prediction.intent in {"knowledge", "unknown"}:
+            return await self._call_flowise(text)
+
+        return "Keine passende Antwort gefunden."
+
+    async def _call_flowise(self, text: str) -> str:
+        import aiohttp
+
+        url = f"{self.flowise_url.rstrip('/')}/chat"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json={"question": text}) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("text") or data.get("answer") or ""
+                    return f"[Flowise Fehler {resp.status}]"
+        except Exception:  # pragma: no cover - network errors
+            logger.error("Flowise request failed", exc_info=True)
+            return "Flowise Fehler"
+
+    async def _call_n8n(self, text: str) -> str:
+        import aiohttp
+
+        url = f"http://{self.n8n_host}:{self.n8n_port}/webhook/intent"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json={"query": text}) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("text") or data.get("answer") or ""
+                    return f"[n8n Fehler {resp.status}]"
+        except Exception:  # pragma: no cover - network errors
+            logger.error("n8n request failed", exc_info=True)
+            return "n8n Fehler"
 

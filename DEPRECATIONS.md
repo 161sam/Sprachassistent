@@ -14,3 +14,4 @@
 | `backend/ws-server/` | `archive/legacy_ws_server/` |
 | `backend/ws-server/README.md` | `archive/legacy_ws_server/README.md` |
 | `ws_server/transport/fastapi_adapter.py` | _archived (unused)_ |
+| `archive/legacy_ws_server/skills/` | `ws_server/skills/` |
