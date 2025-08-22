@@ -31,8 +31,11 @@ Streaming-Unterstützung folgt.
 
 ## Protocol
 
-Clients connect via WebSocket.  A `hello` message is exchanged during the
-handshake, followed by JSON messages or binary audio frames.
+Clients connect via WebSocket.  During the handshake the client sends either
+`{"op": "hello"}` or the legacy form `{"type": "hello"}`.  The server
+responds with `{"op": "ready", "features": {"binary_audio": true}}` to
+advertise binary audio frame support.  After this exchange clients may stream
+PCM16 audio either as base64 encoded JSON chunks or as native binary frames.
 
 ## Health & Metrics
 
