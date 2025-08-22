@@ -28,6 +28,13 @@ def test_limit_and_chunk_bounds_and_length():
     assert all(80 <= len(c) <= 180 for c in chunks[:-1])
 
 
+def test_limit_and_chunk_respects_500_char_limit():
+    text = "Dies ist ein sehr langer Text. " * 40
+    chunks = _limit_and_chunk(text)
+    assert sum(len(c) for c in chunks) <= 500
+    assert all(80 <= len(c) <= 180 for c in chunks[:-1])
+
+
 def test_create_intro_chunk_splits_intro():
     chunks = [
         "Dies ist ein wirklich sehr langer Satz, der als Intro dienen soll und daher gekürzt werden muss, damit er nicht zu lang wird.",
