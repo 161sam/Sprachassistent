@@ -17,6 +17,11 @@ include:
 | `WS_HOST` | Bind address for the WebSocket server |
 | `WS_PORT` | Port for client connections |
 | `METRICS_PORT` | HTTP port for the metrics endpoint |
+| `STT_MODEL` | Whisper/Faster-Whisper model name |
+| `STT_DEVICE` | Device for STT execution (`cpu`, `cuda`, ...) |
+| `TTS_ENGINE` | Default TTS engine (`zonos`, `piper`, ...) |
+| `TTS_VOICE` | Default voice identifier |
+| `JWT_SECRET` | Shared secret for token verification |
 
 ## Protocol
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -20,8 +21,11 @@ DEFAULT_ENV: dict[str, str] = {
     "WS_HOST": "127.0.0.1",
     "WS_PORT": "48231",
     "METRICS_PORT": "48232",
-    "STT_ENGINE": "faster-whisper",
+    "STT_MODEL": "tiny",
+    "STT_DEVICE": "cpu",
     "TTS_ENGINE": "zonos",
+    "TTS_VOICE": "de-thorsten-low",
+    "JWT_SECRET": "devsecret",
     "TTS_SPEED": "1.0",
     "TTS_VOLUME": "1.0",
     "TTS_MODEL_DIR": "./models",
@@ -66,7 +70,7 @@ def load_env(path: Optional[str | Path] = None) -> None:
 def get_tts_engine_default() -> str:
     """Return desired default TTS engine with fallback if Zonos is missing."""
 
-    engine = os.getenv("TTS_ENGINE", "zonos").lower()
+    engine = os.getenv("TTS_ENGINE", DEFAULT_ENV["TTS_ENGINE"]).lower()
     if engine == "zonos":
         try:  # optional dependency
             from backend.tts.engine_zonos import ZonosTTSEngine  # type: ignore # noqa: F401
@@ -74,3 +78,53 @@ def get_tts_engine_default() -> str:
             logger.warning("Zonos nicht verfügbar (%s) – falle auf Piper zurück", exc)
             engine = "piper"
     return engine
+
+
+def _as_bool(value: str) -> bool:
+    return value.lower() in {"1", "true", "yes"}
+
+
+@dataclass
+class Config:
+    """Central application configuration loaded from environment."""
+
+    ws_host: str
+    ws_port: int
+    metrics_port: int
+    stt_model: str
+    stt_device: str
+    tts_engine: str
+    tts_voice: str
+    jwt_secret: str
+    jwt_bypass: bool
+    jwt_allow_plain: bool
+    llm_system_prompt: str
+
+    @classmethod
+    def from_env(cls) -> "Config":
+        """Construct configuration using the current environment."""
+
+        load_env()
+
+        return cls(
+            ws_host=os.getenv("WS_HOST", DEFAULT_ENV["WS_HOST"]),
+            ws_port=int(os.getenv("WS_PORT", DEFAULT_ENV["WS_PORT"])),
+            metrics_port=int(os.getenv("METRICS_PORT", DEFAULT_ENV["METRICS_PORT"])),
+            stt_model=os.getenv("STT_MODEL", DEFAULT_ENV["STT_MODEL"]),
+            stt_device=os.getenv("STT_DEVICE", DEFAULT_ENV["STT_DEVICE"]),
+            tts_engine=get_tts_engine_default(),
+            tts_voice=os.getenv("TTS_VOICE", DEFAULT_ENV["TTS_VOICE"]),
+            jwt_secret=os.getenv("JWT_SECRET", DEFAULT_ENV["JWT_SECRET"]),
+            jwt_bypass=_as_bool(os.getenv("JWT_BYPASS", "0")),
+            jwt_allow_plain=_as_bool(os.getenv("JWT_ALLOW_PLAIN", "0")),
+            llm_system_prompt=os.getenv(
+                "LLM_SYSTEM_PROMPT", DEFAULT_ENV["LLM_SYSTEM_PROMPT"]
+            ),
+        )
+
+
+# Load configuration once at import time for convenience
+config = Config.from_env()
+
+
+__all__ = ["Config", "config", "load_env", "get_tts_engine_default"]

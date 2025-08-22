@@ -1,5 +1,6 @@
-import os
 from typing import Optional
+
+from ws_server.core.config import config
 
 try:  # pragma: no cover - optional dependency
     import jwt as pyjwt
@@ -8,27 +9,26 @@ except Exception:  # pragma: no cover
 
 
 def verify_token(token: Optional[str]) -> bool:
-    """Verify a JWT or plain token according to environment settings."""
-    if os.getenv("JWT_BYPASS", "0") == "1":
+    """Verify a JWT or plain token according to configuration settings."""
+
+    if config.jwt_bypass:
         return True
 
     if not token:
-        if os.getenv("JWT_ALLOW_PLAIN", "0") == "1":
-            return True
-        return False
+        return config.jwt_allow_plain
 
     t = token.strip()
     if t.lower().startswith("bearer "):
         t = t[7:].strip()
 
-    secret = os.getenv("JWT_SECRET", "devsecret")
-
-    if os.getenv("JWT_ALLOW_PLAIN", "0") == "1" and t == secret:
+    if config.jwt_allow_plain and t == config.jwt_secret:
         return True
 
     if pyjwt is not None:
         try:
-            pyjwt.decode(t, secret, algorithms=["HS256"], options={"verify_aud": False})
+            pyjwt.decode(
+                t, config.jwt_secret, algorithms=["HS256"], options={"verify_aud": False}
+            )
             return True
         except Exception:
             return False
