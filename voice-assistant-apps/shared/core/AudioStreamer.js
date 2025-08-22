@@ -954,6 +954,7 @@ class VoiceAssistant {
         const src = data.audio.startsWith('data:') ? data.audio : `data:audio/wav;base64,${data.audio}`;
         const audio = new Audio(src);
         audio.preload = 'auto';
+        audio.load();
         seq.chunks[data.index] = audio;
 
         if (!this.currentSequenceId) this.currentSequenceId = id;

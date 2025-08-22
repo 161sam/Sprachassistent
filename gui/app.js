@@ -581,9 +581,11 @@ class VoiceAssistantGUI {
             streamer.config.chunkSize = this.settings.chunkSize;
             streamer.config.chunkIntervalMs = this.settings.chunkIntervalMs;
             streamer.config.adaptiveQuality = this.settings.adaptiveQuality;
-            this.voiceAssistant.config.quickstartPiper = this.settings.stagedTtsFastStart;
-            this.voiceAssistant.config.chunkedPlayback = this.settings.stagedTtsChunkPlayback;
-            this.voiceAssistant.config.crossfadeDurationMs = this.settings.stagedTtsCrossfadeMs;
+            this.voiceAssistant.updatePlaybackSettings({
+                quickstartPiper: this.settings.stagedTtsFastStart,
+                chunkedPlayback: this.settings.stagedTtsChunkPlayback,
+                crossfadeDurationMs: Number(this.settings.stagedTtsCrossfadeMs)
+            });
         }
     }
 
