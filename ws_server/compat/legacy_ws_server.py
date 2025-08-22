@@ -80,6 +80,7 @@ logger = logging.getLogger(__name__)
 from ws_server.routing.intent_router import IntentClassifier
 from ws_server.routing.skills import load_all_skills
 from ws_server.metrics.http_api import start_http_server as start_metrics_api
+from ws_server.protocol.handshake import parse_client_hello, build_ready
 
 # --- Helpers: Zonos-Language-Normalization & Kokoro-Voice listing ---
 def _normalize_zonos_lang():
@@ -1146,25 +1147,16 @@ class VoiceServer:
             raw = await asyncio.wait_for(websocket.recv(), timeout=10)
             try:
                 hello = json.loads(raw)
+                parse_client_hello(hello)
             except Exception:
                 logger.warning("Invalid handshake JSON from %s: %s", client_ip, raw)
                 await websocket.close(code=4400, reason="bad handshake")
                 return
 
-            # Some older clients still send {"type":"hello"} instead of
-            # {"op":"hello"}.  Accept both to maintain compatibility and
-            # avoid connection drops.
-            op = hello.get('op') or hello.get('type')
-            if op != 'hello':
-                logger.warning("Unexpected handshake op=%s", op)
-                await websocket.close(code=4400, reason="bad handshake")
-                return
-
-            await self.connection_manager.send_to_client(client_id, {
-                'op': 'ready',
-                'client_id': client_id,
-                'server_time': time.time()
-            })
+            await self.connection_manager.send_to_client(
+                client_id,
+                build_ready({"binary_audio": True}),
+            )
 
             # Optional: zusätzliche Verbindungsinformationen
             available_engines = await self.tts_manager.get_available_engines()
