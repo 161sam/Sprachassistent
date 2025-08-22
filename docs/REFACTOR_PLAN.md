@@ -14,7 +14,7 @@ focused commit.
 - [x] Sprint 9 — Metrics unification
 - [x] Sprint 10 — Intent routing & skills completion
 - [x] Sprint 11 — Error handling & client resilience
-- [ ] Sprint 12 — Model discovery & validation
+- [x] Sprint 12 — Model discovery & validation
 - [ ] Sprint 13 — Configurable LLM prosody prompt
 - [ ] Sprint 14 — CI pipeline & "no duplicates" gate
 - [ ] Sprint 15 — Desktop playback sequencer polish
