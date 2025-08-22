@@ -17,10 +17,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest ruff aiohttp prometheus-client websockets
+          pip install ruff pytest pytest-cov aiohttp prometheus-client websockets numpy python-dotenv
       - name: Repo hygiene
         run: python scripts/repo_hygiene.py --check
       - name: Lint
         run: ruff check ws_server backend/tts
       - name: Tests
-        run: python -m pytest -q
+        run: pytest -q
