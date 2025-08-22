@@ -5,7 +5,7 @@ focused commit.
 
 - [x] Sprint 1 — Duplicate detection & quarantine
 - [x] Sprint 2 — Single entrypoint & import path sanitation
-- [ ] Sprint 3 — Modular slicing of the monolith
+- [x] Sprint 3 — Modular slicing of the monolith
 - [ ] Sprint 4 — Config consolidation & naming hygiene
 - [ ] Sprint 5 — TTS single source of truth & lazy loading
 - [ ] Sprint 6 — STT in-memory & streaming-friendly
