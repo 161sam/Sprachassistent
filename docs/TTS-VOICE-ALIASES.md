@@ -3,6 +3,11 @@
 The backend uses **canonical voice names** (e.g. `de-thorsten-low`) that map to engine-specific assets.
 Mappings live in `ws_server/tts/voice_aliases.py`.
 
+## Available Voices
+
+- `de-thorsten-low` – German male voice (Piper: `models/piper/de-thorsten-low.onnx`, Zonos: `thorsten`)
+- `de_DE-thorsten-low` – locale-style alias for `de-thorsten-low`
+
 ## Adding a Voice
 1. Choose a new canonical name.
 2. Add per-engine `EngineVoice` entries in `voice_aliases.py`.
