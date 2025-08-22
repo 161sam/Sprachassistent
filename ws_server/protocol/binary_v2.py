@@ -106,7 +106,11 @@ class BinaryAudioHandler:
             # Parse binary frame
             frame = self.parse_binary_frame(data)
             if not frame:
-                await self._send_error(websocket, "Invalid binary frame format")
+                await self._send_error(
+                    websocket,
+                    "invalid_frame",
+                    "Invalid binary frame format",
+                )
                 return
 
             # Determine expected PCM parameters from STT processor or defaults
@@ -115,7 +119,11 @@ class BinaryAudioHandler:
 
             # Validate PCM frame size (16-bit samples)
             if len(frame.audio_data) % (2 * expected_ch) != 0:
-                await self._send_error(websocket, "Ungültige PCM-Framelänge")
+                await self._send_error(
+                    websocket,
+                    "invalid_pcm_length",
+                    "Ungültige PCM-Framelänge",
+                )
                 return
 
             # Update metrics
@@ -142,7 +150,11 @@ class BinaryAudioHandler:
                 stream_info['sample_rate'] != expected_sr
                 or stream_info['channels'] != expected_ch
             ):
-                await self._send_error(websocket, "PCM-Parameter unterscheiden sich vom Stream-Setup")
+                await self._send_error(
+                    websocket,
+                    "pcm_mismatch",
+                    "PCM-Parameter unterscheiden sich vom Stream-Setup",
+                )
                 return
             
             # Check sequence order (optional - for debugging)
@@ -170,7 +182,11 @@ class BinaryAudioHandler:
             
         except Exception as e:
             logger.error(f"Error handling binary message: {e}")
-            await self._send_error(websocket, f"Binary processing error: {str(e)}")
+            await self._send_error(
+                websocket,
+                "binary_processing_error",
+                f"Binary processing error: {str(e)}",
+            )
     
     async def _process_audio_data(self, websocket, audio_message, stt_processor, message_handler):
         """Process audio data through existing STT pipeline"""
@@ -198,7 +214,11 @@ class BinaryAudioHandler:
                 
         except Exception as e:
             logger.error(f"Error processing audio data: {e}")
-            await self._send_error(websocket, f"STT processing error: {str(e)}")
+            await self._send_error(
+                websocket,
+                "stt_processing_error",
+                f"STT processing error: {str(e)}",
+            )
     
     async def _send_response(self, websocket, result, stream_id):
         """Send response back to client"""
@@ -214,14 +234,15 @@ class BinaryAudioHandler:
         except Exception as e:
             logger.error(f"Error sending response: {e}")
     
-    async def _send_error(self, websocket, error_message):
-        """Send error message to client"""
+    async def _send_error(self, websocket, code: str, message: str):
+        """Send structured error message to client"""
         error_response = {
             'type': 'error',
+            'code': code,
+            'message': message,
             'timestamp': time.time(),
-            'message': error_message
         }
-        
+
         try:
             await websocket.send(json.dumps(error_response))
         except Exception as e:
@@ -279,11 +300,17 @@ class WebSocketBinaryRouter:
                         
                 except json.JSONDecodeError:
                     logger.error("Invalid JSON message received")
-                    await self._send_error(websocket, "Invalid JSON format")
+                    await self._send_error(
+                        websocket, "invalid_json", "Invalid JSON format"
+                    )
                     
         except Exception as e:
             logger.error(f"Error routing message: {e}")
-            await self._send_error(websocket, f"Message routing error: {str(e)}")
+            await self._send_error(
+                websocket,
+                "routing_error",
+                f"Message routing error: {str(e)}",
+            )
     
     async def _handle_capability_negotiation(self, websocket, data):
         """Handle client capability negotiation"""
@@ -311,14 +338,15 @@ class WebSocketBinaryRouter:
         await websocket.send(json.dumps(server_capabilities))
         logger.info(f"Capability negotiation completed for client {client_id}")
     
-    async def _send_error(self, websocket, error_message):
-        """Send error message to client"""
+    async def _send_error(self, websocket, code: str, message: str):
+        """Send structured error message to client"""
         error_response = {
             'type': 'error',
+            'code': code,
+            'message': message,
             'timestamp': time.time(),
-            'message': error_message
         }
-        
+
         try:
             await websocket.send(json.dumps(error_response))
         except Exception as e:

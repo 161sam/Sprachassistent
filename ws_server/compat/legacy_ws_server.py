@@ -1416,6 +1416,7 @@ class VoiceServer:
     
     async def _handle_staged_tts_response(self, client_id: str, input_text: str, response_text: str):
         """Handle staged TTS response with Piper intro + Zonos main content"""
+        sequence_id = None
         try:
             # Process with staged TTS
             chunks = await self.staged_tts.process_staged_tts(response_text)
@@ -1461,32 +1462,54 @@ class VoiceServer:
             end_message = self.staged_tts.create_sequence_end_message(sequence_id)
             await self.connection_manager.send_to_client(client_id, end_message)
             logger.debug(f"Sent sequence end for {sequence_id}")
-                
+
         except Exception as e:
             logger.error(f"Staged TTS error: {e}")
-            await self._fallback_single_tts(client_id, input_text, response_text)
-    
-    async def _fallback_single_tts(self, client_id: str, input_text: str, response_text: str):
+            await self._fallback_single_tts(
+                client_id, input_text, response_text, sequence_id
+            )
+
+    async def _fallback_single_tts(
+        self,
+        client_id: str,
+        input_text: str,
+        response_text: str,
+        sequence_id: str | None = None,
+    ):
         """Fallback to single TTS synthesis when staged TTS fails"""
         try:
             tts_result = await self.tts_manager.synthesize(response_text)
-            await self._send_text_response(client_id, {
-                'input_text': input_text,
-                'response_text': response_text,
-                'audio_data': tts_result.audio_data if tts_result.success else None,
-                'tts_engine_used': tts_result.engine_used,
-                'tts_voice_used': getattr(tts_result, 'voice_used', 'default'),
-                'tts_success': tts_result.success,
-                'tts_error': tts_result.error_message if not tts_result.success else None
-            })
+            await self._send_text_response(
+                client_id,
+                {
+                    'input_text': input_text,
+                    'response_text': response_text,
+                    'audio_data': tts_result.audio_data if tts_result.success else None,
+                    'tts_engine_used': tts_result.engine_used,
+                    'tts_voice_used': getattr(tts_result, 'voice_used', 'default'),
+                    'tts_success': tts_result.success,
+                    'tts_error': tts_result.error_message if not tts_result.success else None,
+                },
+            )
+            if sequence_id:
+                end_message = {
+                    'type': 'tts_sequence_end',
+                    'sequence_id': sequence_id,
+                    'timestamp': time.time(),
+                }
+                await self.connection_manager.send_to_client(client_id, end_message)
         except Exception as e:
             logger.error(f"Fallback TTS error: {e}")
             # Send error response
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'error',
-                'message': 'TTS synthesis failed',
-                'timestamp': time.time()
-            })
+            await self.connection_manager.send_to_client(
+                client_id,
+                {
+                    'type': 'error',
+                    'code': 'tts_synthesis_failed',
+                    'message': 'TTS synthesis failed',
+                    'timestamp': time.time(),
+                },
+            )
         
     async def _handle_switch_tts_engine(self, client_id: str, data: Dict):
         """Handle TTS engine switch request"""

@@ -65,7 +65,8 @@ class VoiceAssistantCore {
       // Network
       autoReconnect: true,
       connectionTimeout: 3000,
-      maxRetries: 3,
+      maxRetries: Infinity,
+      metricsPort: 48232,
       
       // Performance
       cacheResponses: true,
@@ -118,6 +119,9 @@ class VoiceAssistantCore {
       // Platform-specific initialization
       await this.initializePlatformFeatures();
       
+      // Ensure backend is reachable before opening WebSocket
+      await this.probeServer();
+
       // Network initialization
       await this.initializeWebSocket();
       
@@ -308,7 +312,8 @@ class VoiceAssistantCore {
       this.ws.onclose = (event) => {
         console.log('🔌 WebSocket closed:', event.code, event.reason);
         this.updateConnectionStatus('disconnected', '❌ Disconnected');
-        
+        this.showNotification('error', 'Verbindung getrennt', 'WebSocket geschlossen');
+
         if (this.settings.autoReconnect && event.code !== 1000) {
           this.scheduleReconnect();
         }
@@ -317,6 +322,7 @@ class VoiceAssistantCore {
       this.ws.onerror = (error) => {
         console.error('🔌 WebSocket error:', error);
         this.updateConnectionStatus('error', '❌ Connection Error');
+        this.showNotification('error', 'Verbindungsfehler', 'WebSocket-Fehler');
         this.metrics.errors++;
       };
 
@@ -324,6 +330,20 @@ class VoiceAssistantCore {
       console.error('WebSocket initialization failed:', error);
       throw new Error('Cannot connect to voice server');
     }
+  }
+
+  async probeServer(retries = 5, delay = 500) {
+    const url = `http://${this.settings.wsHost}:${this.settings.metricsPort}/health`;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await fetch(url, { cache: 'no-cache' });
+        if (res.ok) return;
+      } catch {
+        // ignore
+      }
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw new Error('health check failed');
   }
 
   async authenticate() {
@@ -408,10 +428,16 @@ class VoiceAssistantCore {
       this.handleError(data);
       break;
     }
-  } catch (error) {
-    console.error('Message parsing error:', error);
+    } catch (error) {
+      console.error('Message parsing error:', error);
+    }
   }
-}
+
+  handleError(data) {
+    const msg = data.message || data.code || 'Unbekannter Fehler';
+    this.showNotification('error', 'Serverfehler', msg);
+    this.metrics.errors++;
+  }
 
   handleLlmModels(data) {
     this.llmModels = data.models || [];
