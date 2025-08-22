@@ -1,4 +1,443 @@
-Analyse der Projektstruktur und Refaktorierungsplan Sprachassistent
+# 🧑‍💻 Codex Developer Prompt — Refactor & Advance the Voice Assistant
+
+**Mission:** Implement the refactoring plan in **small, verifiable sprints** without losing existing features (unless explicitly superseded). Keep latency low, quality high, and the repo clean (no duplicates, no dead code on the import path).
+
+**Repository assumptions**
+
+* Root contains `backend/`, `ws_server/`, `voice-assistant-apps/`, `gui/`, `archive/`, `tests/` or `testsuite/`.
+* Current unified entrypoint is `ws_server/cli.py` (WebSocket) and a legacy `backend/ws-server/ws-server.py` still exists.
+* Electron desktop app lives in `voice-assistant-apps/desktop`.
+
+**Golden rules**
+
+1. **No feature regressions.** Replace only when the new path fully covers the old behavior.
+2. **Single source of truth.** One server entrypoint (`python -m ws_server.cli`). No mirror copies under `backend/ws-server/`.
+3. **Idempotent changes.** Scripts and transforms can run repeatedly.
+4. **Atomic PRs.** One sprint → one commit with a clear message and a short changelog.
+5. **Tests first mindset.** Add/adjust tests alongside changes. Keep them fast and hermetic.
+6. **Naming hygiene.** Use clear, descriptive names. Avoid `enhanced/advanced/pro/v2/ultimate`.
+7. **Local only.** Do not call external services or invent APIs. Operate on the repo as it is.
+
+---
+
+## Kickoff (run first)
+
+```bash
+git checkout -b feat/refactor-foundation
+python3 -m pip install -U pip
+# if ruff/pytest/pytest-asyncio not present:
+python3 -m pip install ruff pytest pytest-asyncio
+```
+
+Create a **refactor dashboard** file to track progress:
+
+* `DEPRECATIONS.md` – list of files replaced/removed + new path.
+* `docs/UNIFIED_SERVER.md` – how to run, protocol, env, health/metrics.
+* `docs/REFACTOR_PLAN.md` – checklist of sprints below, keep in sync.
+
+---
+
+## Sprint 1 — Duplicate detection & quarantine
+
+**Goal:** Identify and quarantine parallel implementations and backups so they **cannot** be imported inadvertently.
+
+**Tasks**
+
+* Add `scripts/repo_hygiene.py` to detect:
+
+  * backup files: `*.bak*`, `*indentfix*`, `*fix*`
+  * parallel servers: `backend/ws-server/ws-server.py`, `ws_server/transport/*enhanced*`, legacy copies in `archive/`
+  * duplicated TTS engines (e.g., Zonos in multiple places)
+* Move legacy/unused to `archive/` and add `pyproject.toml`/`setup.cfg` `exclude` patterns or runtime guards so **none** are on `sys.path`.
+* Add a CI‑style check: `python scripts/repo_hygiene.py --check` exits non‑zero on violations.
+
+**Acceptance**
+
+* `repo_hygiene` finds 0 violations.
+* `DEPRECATIONS.md` lists every quarantined path and the replacement.
+
+**Commit message**
+
+```
+sprint-1(repo-hygiene): detect duplicates, quarantine legacy code, add DEPRECATIONS.md
+```
+
+---
+
+## Sprint 2 — Single entrypoint & import path sanitation
+
+**Goal:** One server entrypoint: `python -m ws_server.cli`. Desktop app must use this.
+
+**Tasks**
+
+* Ensure `voice-assistant-apps/desktop` spawns `python -m ws_server.cli` (not `backend/ws-server/ws-server.py`).
+* In `ws_server/transport/server.py` add a **strict path gate** to prevent importing from `backend/ws-server/` unless explicitly needed for compatibility shims.
+* Remove any dynamic legacy imports from hot paths; keep a minimal shim only if necessary and document in `DEPRECATIONS.md`.
+
+**Acceptance**
+
+* Desktop `npm start` logs show `ws_server.cli` entrypoint.
+* No imports from `backend/ws-server/` at runtime.
+
+**Commit message**
+
+```
+sprint-2(entrypoint): unify to ws_server.cli and harden import paths for legacy-free runtime
+```
+
+---
+
+## Sprint 3 — Modular slicing of the monolith
+
+**Goal:** Break legacy server logic into cohesive modules without behavior change.
+
+**Tasks**
+
+* Create (or complete) target layout under `ws_server/`:
+
+  ```
+  core/      (config, connections, streams)
+  protocol/  (json_v1, binary_v2, handshake)
+  transport/ (server, fastapi_adapter)
+  metrics/   (collector, http_api, perf_monitor)
+  tts/       (manager, engines/{piper,kokoro,zonos})
+  routing/   (intent_router, skills loader)
+  auth/      (token, rate_limit placeholder)
+  ```
+* Extract code into modules with same public interfaces used by `cli.py` / current handlers.
+
+**Acceptance**
+
+* `python -m ws_server.cli` runs with identical logs and behavior as before.
+
+**Commit message**
+
+```
+sprint-3(modularity): extract server monolith into core/protocol/transport/metrics/routing/tts/auth
+```
+
+---
+
+## Sprint 4 — Config consolidation & naming hygiene
+
+**Goal:** One config source, consistent env usage, no magic literals.
+
+**Tasks**
+
+* `ws_server/core/config.py`: dataclass or pydantic settings loading `.env` + defaults.
+* Replace scattered env reads with `Config`.
+* Normalize names: `WS_HOST`, `WS_PORT`, `METRICS_PORT`, `STT_MODEL`, `STT_DEVICE`, `TTS_ENGINE`, `TTS_VOICE`, `JWT_SECRET`, etc.
+* Remove suffixes in code identifiers; keep protocol names stable via `protocol/*`.
+
+**Acceptance**
+
+* `grep` shows no ad‑hoc `os.getenv(...)` in non‑config files.
+* Docs updated with env table.
+
+**Commit message**
+
+```
+sprint-4(config): centralize settings, normalize env names, update docs
+```
+
+---
+
+## Sprint 5 — TTS single source of truth & lazy loading
+
+**Goal:** Only one Zonos/Piper/Kokoro implementation; engines are lazy‑loaded, with graceful fallback.
+
+**Tasks**
+
+* Re‑export duplicates to a single canonical engine implementation (prefer `backend/tts/engine_zonos.py` or `ws_server/tts/engines/zonos.py` → pick one; the other becomes a thin re‑export or is removed).
+* `TTSManager` supports lazy import; if engine unavailable, mark **unavailable** and auto‑fallback (Piper).
+
+**Acceptance**
+
+* When Zonos assets are missing, a warning is logged; Piper answers and system does not crash.
+
+**Commit message**
+
+```
+sprint-5(tts): unify engine sources, add lazy loading and robust fallback
+```
+
+---
+
+## Sprint 6 — STT in‑memory & streaming‑friendly
+
+**Goal:** No temp files; ready for streaming STT.
+
+**Tasks**
+
+* Convert STT ingestion to in‑memory buffers (`bytes` → `np.int16`), remove WAV temp files and subprocesses.
+* Keep current behavior and quality; add TODO stubs for true streaming.
+
+**Acceptance**
+
+* No file I/O in STT hot path; latency drops measurably on short utterances.
+
+**Commit message**
+
+```
+sprint-6(stt): eliminate temp-file I/O; in-memory audio path for faster transcription
+```
+
+---
+
+## Sprint 7 — Binary ingress + JSON compatibility
+
+**Goal:** Unified transport that accepts JSON v1 and binary audio frames, negotiated in handshake.
+
+**Tasks**
+
+* `protocol/handshake.py`: accept `{"op":"hello"}` and legacy `{"type":"hello"}`; reply `{"op":"ready", "features": {...}}`.
+* `protocol/binary_v2.py`: parser/builder for audio frames; route to STT pipeline.
+* Keep JSON `audio_chunk` (Base64) as fallback.
+
+**Acceptance**
+
+* Integration test: JSON‑only client works; binary client streams PCM16 LE frames.
+
+**Commit message**
+
+```
+sprint-7(protocol): handshake negotiation; add binary audio ingress alongside JSON v1
+```
+
+---
+
+## Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
+
+**Goal:** Perceptibly lower TTFB with high‑quality follow‑up.
+
+**Tasks**
+
+* `_limit_and_chunk(text)` (≤500 chars; target 80–180 per chunk).
+* `_tts_staged()`:
+
+  * Stage A: short Piper intro (CPU) first.
+  * Stage B: Zonos main chunks (GPU) in parallel; cap chunks (≤3) and per‑chunk timeout (e.g., 8–10s).
+* New WS messages: `tts_chunk` and `tts_sequence_end`.
+
+**Acceptance**
+
+* Desktop client receives intro chunk within \~sub‑second, then main chunks; on Zonos timeout only intro is played and sequence ends.
+
+**Commit message**
+
+```
+sprint-8(tts-staged): chunking + staged playback (Piper intro → Zonos main) with timeouts and sequence events
+```
+
+---
+
+## Sprint 9 — Metrics unification
+
+**Goal:** One metrics collector for connections, audio throughput, TTS/STT latencies, errors.
+
+**Tasks**
+
+* `metrics/collector.py`: counters, histograms (e.g., `tts_chunk_emitted_total`, `tts_sequence_timeout_total`, `stt_latency_ms`).
+* `metrics/http_api.py`: `/metrics`, `/health`.
+
+**Acceptance**
+
+* `curl http://127.0.0.1:$METRICS_PORT/metrics` exposes new metrics; `/health` returns 200.
+
+**Commit message**
+
+```
+sprint-9(metrics): unify collector + HTTP endpoints for health and Prometheus scraping
+```
+
+---
+
+## Sprint 10 — Intent routing & skills completion
+
+**Goal:** Make routing real: local skills, LLM (Flowise), automation (n8n).
+
+**Tasks**
+
+* `routing/intent_router.py`:
+
+  * Simple classifier (rules or lightweight model).
+  * Dispatch matrix: skill → local handler; knowledge → Flowise (if env set); automation → n8n.
+* `skills/` loader with clean extension points.
+
+**Acceptance**
+
+* With env configured, intents reach Flowise/n8n; without, local paths still function.
+
+**Commit message**
+
+```
+sprint-10(routing): functional intent router with skills plugin loader and optional Flowise/n8n paths
+```
+
+---
+
+## Sprint 11 — Error handling & client resilience
+
+**Goal:** Harden server and client interaction.
+
+**Tasks**
+
+* Server: catch/send structured errors, close sequences cleanly on failure, backpressure logs.
+* Desktop: add reconnect with backoff; health probe on startup; error banner on auth/connect failures.
+
+**Acceptance**
+
+* Kill/restart server → client reconnects automatically; no orphaned sequences.
+
+**Commit message**
+
+```
+sprint-11(hardening): structured errors, graceful sequence closes, desktop reconnect with backoff
+```
+
+---
+
+## Sprint 12 — Model discovery & validation
+
+**Goal:** Fewer surprises at runtime.
+
+**Tasks**
+
+* Voice alias map (e.g., `de-thorsten-low` → `de_DE-thorsten-low`) and model scanning at startup.
+* CLI `python -m ws_server.cli --validate-models` prints missing/linked models.
+
+**Acceptance**
+
+* Startup logs list available voices; missing assets produce actionable warnings.
+
+**Commit message**
+
+```
+sprint-12(models): voice aliasing, asset discovery, and validation CLI
+```
+
+---
+
+## Sprint 13 — Configurable LLM prosody prompt
+
+**Goal:** Consistently speakable output.
+
+**Tasks**
+
+* Add system prompt promoting short, punctuated sentences (≤500 chars).
+* Server‑side hard cap post‑gen via `_limit_and_chunk`.
+
+**Acceptance**
+
+* Long LLM answers are neatly chunked and read well; no Markdown/list formatting.
+
+**Commit message**
+
+```
+sprint-13(llm-prosody): add speakable system prompt and hard-cap chunking
+```
+
+---
+
+## Sprint 14 — CI pipeline & “no duplicates” gate
+
+**Goal:** Keep debt from creeping back.
+
+**Tasks**
+
+* GitHub Actions (or local script): `ruff`, `pytest -q`, `scripts/repo_hygiene.py --check`.
+* Fail CI if hygiene fails or coverage drops below baseline (set minimal threshold initially).
+
+**Acceptance**
+
+* CI green locally; hygiene fails on re‑introduced backups/dupes.
+
+**Commit message**
+
+```
+sprint-14(ci): add lint/tests/hygiene gates; fail on duplicates or deprecated paths
+```
+
+---
+
+## Sprint 15 — Desktop playback sequencer polish
+
+**Goal:** Smooth multi‑chunk audio UX.
+
+**Tasks**
+
+* Queue by `sequence_id`, prebuffer next chunk, crossfade 80–120 ms.
+* Toggles: fast‑start (Piper), chunk playback, crossfade duration.
+
+**Acceptance**
+
+* No audible gaps between intro and main; UI shows chunk progress.
+
+**Commit message**
+
+```
+sprint-15(desktop): queued playback with prebuffer and crossfade; UX toggles
+```
+
+---
+
+## Sprint 16 — Docs & release notes
+
+**Goal:** Ship a coherent story.
+
+**Tasks**
+
+* Update `docs/UNIFIED_SERVER.md`, `docs/STAGED_TTS.md`.
+* Write `UPGRADE_NOTES.md` for the unified entrypoint.
+* Summarize deprecations in `DEPRECATIONS.md`.
+
+**Acceptance**
+
+* Fresh checkout can run backend + desktop app using only documented steps.
+
+**Commit message**
+
+```
+sprint-16(docs): unify docs, upgrade notes, and final deprecations list
+```
+
+---
+
+## Test suite expectations (add or fix as you go)
+
+* **Protocol/transport**
+
+  * JSON hello + legacy `type:"hello"` accepted; `op:"ready"` returned.
+  * Binary frames parsed and routed; JSON base64 fallback still works.
+* **TTS/STT**
+
+  * `_limit_and_chunk` unit tests: boundaries (120/180/500).
+  * Staged TTS emits `tts_chunk` then `tts_sequence_end` even on Zonos timeout.
+  * Engine fallback when model missing.
+* **Routing**
+
+  * Skill → local handler; knowledge → Flowise (mocked); automation → n8n (mocked).
+* **Metrics/health**
+
+  * `/health` 200; `/metrics` exports new counters/histograms.
+
+---
+
+## Done criteria (project level)
+
+* One server entrypoint, **zero runtime imports** from legacy paths.
+* No duplicates or backup files on the import path; hygiene script clean.
+* Lower perceived TTFB via Piper intro; stable Zonos follow‑up.
+* In‑memory STT with measurable latency improvement.
+* Desktop app bound to unified server with reconnect.
+* Clear docs; safe upgrade path; tests green.
+
+---
+
+**Final note to Codex:**
+Operate only on files in this repository. Don’t fetch or invent external code. Keep each sprint self‑contained, reversible, and covered by tests and docs.
+
+# Analyse der Projektstruktur und Refaktorierungsplan Sprachassistent
 Identifizierte Probleme und technische Schulden
 
 Parallele Implementierungen & Duplikate: In der Codebasis existieren mehrere parallele Versionen gleicher Funktionalität. Besonders auffällig ist dies beim WebSocket-Server – es gab unterschiedliche Varianten (z.B. ws-server.py, „enhanced“ Versionen) mit redundanten Funktionen
