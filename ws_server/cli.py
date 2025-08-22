@@ -3,10 +3,7 @@ import argparse
 import asyncio
 import logging
 
-from ws_server.transport.server import VoiceServer
-from ws_server.metrics.collector import collector
-from ws_server.metrics.http_api import start_http_server
-from backend.tts.model_validation import list_voices_with_aliases, validate_models
+from backend.tts.model_validation import list_voices_with_aliases
 from ws_server.core.config import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -21,16 +18,26 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    voices = validate_models()
+    alias_map = list_voices_with_aliases()
     if args.validate_models:
-        alias_map = list_voices_with_aliases()
-        for voice in voices:
-            aliases = alias_map.get(voice, [])
+        for voice, aliases in alias_map.items():
             if aliases:
                 print(f"{voice}: {', '.join(aliases)}")
             else:
                 print(voice)
         return
+
+    for voice, aliases in alias_map.items():
+        if aliases:
+            logging.info(
+                "Verfügbare Stimme: %s (Aliase: %s)", voice, ", ".join(aliases)
+            )
+        else:
+            logging.info("Verfügbare Stimme: %s", voice)
+
+    from ws_server.transport.server import VoiceServer
+    from ws_server.metrics.collector import collector
+    from ws_server.metrics.http_api import start_http_server
 
     server = VoiceServer()
     await server.initialize()

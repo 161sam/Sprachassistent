@@ -7,6 +7,13 @@ from the project root:
 python -m ws_server.cli
 ```
 
+Use `--validate-models` to list detected voices and their aliases without
+starting the server:
+
+```bash
+python -m ws_server.cli --validate-models
+```
+
 ## Environment
 
 The server reads configuration from the environment.  Common variables
