@@ -82,6 +82,7 @@ flowchart TB
 
 ### 🎯 Kernfunktionen
 - **🎤 Lokale Spracheingabe** mit faster-whisper STT
+- **🧩 Vereinheitlichter WebSocket-Server** spricht JSON v1 und Binary v2
 - **🔊 Flexible TTS-Engines** mit Piper, Kokoro & Zonos + Realtime-Switching
 - **🧠 Intelligentes Routing** zwischen lokalen Skills und Cloud-LLMs
 - **🌊 Moderne animierte UI** mit konfigurierbaren Effekten
@@ -704,7 +705,7 @@ Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert.
   ```bash
   # Backend im Repo-Root:
   . .venv/bin/activate
-  python backend/ws-server/ws-server.py
+  python -m ws_server.cli
   # Electron (in voice-assistant-apps/desktop):
   npm start
   ```
@@ -714,7 +715,7 @@ Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert.
 * Build/Packaging: siehe **docs/Build-Anleitung.md**.
   Wir nutzen **electron-builder**. In Produktion startet die App ein mit PyInstaller erstelltes Backend-Binary aus `process.resourcesPath`.
 
-* Ports/ENV: Standard ist lokal `127.0.0.1:48231` (WebSocket) und `48232` (Metrics).
+* Ports/ENV: Standard ist lokal `127.0.0.1:48231` (WebSocket) und `48232` (Metrics). Binary v2 ist integriert; die alten `ws-server-enhanced*` Dateien sind veraltet.
 
 ## Lizenz / Danksagung
 

@@ -21,14 +21,6 @@ if [ -f "$SRC_DIR/binary_audio_handler.py" ]; then
   cp -n "$SRC_DIR/binary_audio_handler.py" ws_server/protocol/binary_v2.py
 fi
 
-#   – Enhanced Server (nur als Referenz/Adapter)
-if [ -f "$SRC_DIR/enhanced_websocket_server.py" ]; then
-  cp -n "$SRC_DIR/enhanced_websocket_server.py" ws_server/transport/enhanced_ws_server.py
-fi
-if [ -f "$SRC_DIR/ws-server-enhanced.py" ]; then
-  cp -n "$SRC_DIR/ws-server-enhanced.py" ws_server/transport/server_enhanced_entry.py
-fi
-
 #   – Metriken
 if [ -f "$SRC_DIR/performance_metrics.py" ]; then
   cp -n "$SRC_DIR/performance_metrics.py" ws_server/metrics/collector.py
