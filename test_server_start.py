@@ -22,8 +22,9 @@ def test_server_start():
     # Start server
     print("2️⃣  Starting server...")
     cmd = [
-        "/home/saschi/Sprachassistent/.venv/bin/python", 
-        "/home/saschi/Sprachassistent/backend/ws-server/ws-server.py"
+        "/home/saschi/Sprachassistent/.venv/bin/python",
+        "-m",
+        "ws_server.cli",
     ]
     
     print(f"Command: {' '.join(cmd)}")

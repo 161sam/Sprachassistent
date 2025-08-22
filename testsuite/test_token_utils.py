@@ -4,7 +4,7 @@ from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     'token_utils',
-    Path(__file__).resolve().parents[1] / 'backend/ws-server/auth/token_utils.py'
+    Path(__file__).resolve().parents[1] / 'archive/legacy_ws_server/auth/token_utils.py'
 )
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)

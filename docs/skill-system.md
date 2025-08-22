@@ -1,7 +1,7 @@
 # Skill-System
 
 Der WebSocket-Server lädt zur Laufzeit Skills aus dem Ordner
-`backend/ws-server/skills`. Jeder Skill implementiert die Klasse
+`skills`. Jeder Skill implementiert die Klasse
 `BaseSkill` und kann so modular erweitert werden. Eine ML-gestützte
 Intent-Klassifikation entscheidet standardmäßig, welcher Skill aktiv ist.
 Fällt das Modell aus, greift eine Schlüsselwort-Heuristik als Fallback.

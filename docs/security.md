@@ -10,5 +10,5 @@ Der WebSocket-Server schützt Zugriffe über zwei Mechanismen:
    verbinden. Verstöße werden mit dem WebSocket-Close-Code `4401` und dem Grund
    `unauthorized` abgewiesen.
 
-Die Tokenprüfung ist in `backend/ws-server/auth/token_utils.py` ausgelagert und
+Die Tokenprüfung ist in `archive/legacy_ws_server/auth/token_utils.py` ausgelagert und
 kann zukünftig durch eigene Module erweitert werden.

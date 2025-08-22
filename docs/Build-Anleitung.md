@@ -12,7 +12,7 @@ Diese Anleitung zeigt, wie die **Standalone Desktop-App** (Electron GUI + Python
   - **Windows:** NSIS Installer; Backend-Binary idealerweise **nativ** auf Windows mit PyInstaller bauen.
 
 ## Übersicht
-- DEV-Modus: Electron startet `backend/ws-server/ws-server.py` direkt (Python).
+- DEV-Modus: Electron startet `python -m ws_server.cli` direkt.
 - PROD-Modus (paketiert): Electron startet das **Backend-Binary** aus `process.resourcesPath/bin/<platform>/`.
 
 ## Backend bauen (manuell, später ausführen)
@@ -22,7 +22,7 @@ Diese Anleitung zeigt, wie die **Standalone Desktop-App** (Electron GUI + Python
 ```bash
 . .venv/bin/activate   # falls vorhanden
 pip install --upgrade pip pyinstaller
-pyinstaller backend/ws-server/ws-server.py \
+pyinstaller ws_server/cli.py \
   --name ws-server --onefile --clean --noconfirm
 mkdir -p voice-assistant-apps/desktop/resources/bin/linux
 cp dist/ws-server voice-assistant-apps/desktop/resources/bin/linux/
@@ -33,7 +33,7 @@ chmod +x voice-assistant-apps/desktop/resources/bin/linux/ws-server
 
 ```powershell
 py -m pip install --upgrade pip pyinstaller
-pyinstaller backend/ws-server/ws-server.py --name ws-server --onefile --clean --noconfirm
+pyinstaller ws_server/cli.py --name ws-server --onefile --clean --noconfirm
 mkdir voice-assistant-apps\desktop\resources\bin\win -Force
 copy dist\ws-server.exe voice-assistant-apps\desktop\resources\bin\win\
 ```

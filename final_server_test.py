@@ -26,7 +26,8 @@ def run_test():
     
     cmd = [
         "/home/saschi/Sprachassistent/.venv/bin/python",
-        "/home/saschi/Sprachassistent/backend/ws-server/ws-server.py"
+        "-m",
+        "ws_server.cli",
     ]
     
     env = os.environ.copy()
@@ -184,7 +185,7 @@ if __name__ == "__main__":
             print("\nTo start manually:")
             print("cd /home/saschi/Sprachassistent")
             print("source .venv/bin/activate")
-            print("python backend/ws-server/ws-server.py")
+            print("python -m ws_server.cli")
         else:
             print("\n🔧 VOICE ASSISTANT SERVER NEEDS MORE WORK")
             print("Check the detailed output above for specific issues.")
