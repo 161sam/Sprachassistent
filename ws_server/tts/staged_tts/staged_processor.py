@@ -39,6 +39,7 @@ class StagedTTSConfig:
     max_chunks: int = 3
     enable_caching: bool = True
     cache_size: int = 256
+    crossfade_duration_ms: int = 100
 
 
 class StagedTTSProcessor:
@@ -55,7 +56,7 @@ class StagedTTSProcessor:
         self.config = config or StagedTTSConfig()
         # LRU Cache for synthesized audio
         self._cache: "OrderedDict[str, bytes]" = OrderedDict()
-        # TODO: allow configuring crossfade duration between Piper and Zonos stages
+
         
     async def process_staged_tts(self, text: str) -> List[TTSChunk]:
         """
@@ -245,7 +246,8 @@ class StagedTTSProcessor:
             "audio": f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
             "success": chunk.success,
             "error": chunk.error_message,
-            "timestamp": time.time()
+            "timestamp": time.time(),
+            "crossfade_ms": self.config.crossfade_duration_ms,
         }
     
     def create_sequence_end_message(self, sequence_id: str) -> Dict[str, Any]:

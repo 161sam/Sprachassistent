@@ -106,7 +106,15 @@ class BinaryAudioHandler:
             if not frame:
                 await self._send_error(websocket, "Invalid binary frame format")
                 return
-            # TODO: verify PCM parameters like sample rate and channels before forwarding
+
+            # Determine expected PCM parameters from STT processor or defaults
+            expected_sr = getattr(stt_processor, "sample_rate", 16000)
+            expected_ch = getattr(stt_processor, "channels", 1)
+
+            # Validate PCM frame size (16-bit samples)
+            if len(frame.audio_data) % (2 * expected_ch) != 0:
+                await self._send_error(websocket, "Ungültige PCM-Framelänge")
+                return
 
             # Update metrics
             self.metrics['frames_processed'] += 1
@@ -118,11 +126,21 @@ class BinaryAudioHandler:
                     'start_time': time.time(),
                     'last_sequence': -1,
                     'frame_count': 0,
-                    'total_audio_bytes': 0
+                    'total_audio_bytes': 0,
+                    'sample_rate': expected_sr,
+                    'channels': expected_ch,
                 }
                 self.metrics['active_streams'] = len(self.active_streams)
-            
+
             stream_info = self.active_streams[frame.stream_id]
+
+            # Ensure PCM parameters stay consistent per stream
+            if (
+                stream_info['sample_rate'] != expected_sr
+                or stream_info['channels'] != expected_ch
+            ):
+                await self._send_error(websocket, "PCM-Parameter unterscheiden sich vom Stream-Setup")
+                return
             
             # Check sequence order (optional - for debugging)
             if frame.sequence <= stream_info['last_sequence']:
@@ -140,8 +158,8 @@ class BinaryAudioHandler:
                 'timestamp': frame.timestamp,
                 'audio_data': frame.audio_data,  # Keep as bytes for efficiency
                 'format': 'binary',
-                'sample_rate': 16000,  # Default - could be included in handshake
-                'channels': 1
+                'sample_rate': expected_sr,
+                'channels': expected_ch,
             }
             
             # Process through existing STT pipeline

@@ -1786,17 +1786,28 @@ class VoiceServer:
             old_model = config.stt_model
             config.stt_model = model
             
-            await self.connection_manager.send_to_client(client_id, {
-                'type': 'stt_model_switch_scheduled',
-                'old_model': old_model,
-                'new_model': model,
-                'requires_restart': True,
-                'message': f'STT model switched to {model}. Restart required for full effect.',
-                'timestamp': time.time()
-            })
-            
-            # TODO: Implement hot model swapping if needed
-            # This would require rebuilding the STT engine
+            # Try hot-swapping the STT engine
+            try:
+                self.stt_engine.model_size = model
+                await self.stt_engine.initialize()
+                await self.connection_manager.send_to_client(client_id, {
+                    'type': 'stt_model_switched',
+                    'old_model': old_model,
+                    'new_model': model,
+                    'requires_restart': False,
+                    'message': f'STT model switched to {model}.',
+                    'timestamp': time.time()
+                })
+            except Exception as exc:
+                config.stt_model = old_model
+                await self.connection_manager.send_to_client(client_id, {
+                    'type': 'stt_model_switch_failed',
+                    'old_model': old_model,
+                    'new_model': model,
+                    'requires_restart': True,
+                    'message': f'Switching STT model failed: {exc}. Restart required.',
+                    'timestamp': time.time()
+                })
             
         except Exception as e:
             logger.error(f"Error switching STT model: {e}")
