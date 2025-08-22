@@ -267,6 +267,7 @@ class StreamingConfig:
     staged_tts_chunk_timeout: int = int(os.getenv("STAGED_TTS_CHUNK_TIMEOUT", "10"))
     staged_tts_max_chunks: int = int(os.getenv("STAGED_TTS_MAX_CHUNKS", "3"))
     staged_tts_enable_caching: bool = os.getenv("STAGED_TTS_ENABLE_CACHING", "true").lower() == "true"
+    staged_tts_cache_size: int = int(os.getenv("STAGED_TTS_CACHE_SIZE", "256"))
     
     # VAD Configuration
     vad_enabled: bool = os.getenv("VAD_ENABLED", "false").lower() == "true"
@@ -932,7 +933,8 @@ class VoiceServer:
             max_intro_length=config.staged_tts_max_intro_length,
             chunk_timeout_seconds=config.staged_tts_chunk_timeout,
             max_chunks=config.staged_tts_max_chunks,
-            enable_caching=config.staged_tts_enable_caching
+            enable_caching=config.staged_tts_enable_caching,
+            cache_size=config.staged_tts_cache_size
         )
         self.staged_tts = StagedTTSProcessor(self.tts_manager, staged_tts_config)
         logger.info(f"🎭 Staged TTS: {'enabled' if config.staged_tts_enabled else 'disabled'}")
