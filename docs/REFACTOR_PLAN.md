@@ -11,7 +11,7 @@ focused commit.
 - [x] Sprint 6 — STT in-memory & streaming-friendly
 - [x] Sprint 7 — Binary ingress + JSON compatibility
 - [x] Sprint 8 — Staged TTS UX (intro Piper, main Zonos)
-- [ ] Sprint 9 — Metrics unification
+- [x] Sprint 9 — Metrics unification
 - [ ] Sprint 10 — Intent routing & skills completion
 - [ ] Sprint 11 — Error handling & client resilience
 - [ ] Sprint 12 — Model discovery & validation
