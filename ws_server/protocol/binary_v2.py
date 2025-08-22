@@ -1,12 +1,12 @@
-import asyncio
 import struct
 import json
 import logging
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 import time
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class BinaryFrame:
@@ -16,6 +16,55 @@ class BinaryFrame:
     timestamp: float
     audio_data: bytes
     frame_size: int
+
+
+def build_audio_frame(stream_id: str, sequence: int, timestamp: float, audio_data: bytes) -> bytes:
+    """Build a binary audio frame.
+
+    The frame layout is:
+    [stream_id_length:1][stream_id][sequence:4][timestamp:8][audio]
+    where integers are big-endian.
+    """
+    sid_bytes = stream_id.encode("utf-8")
+    if len(sid_bytes) > 255:
+        raise ValueError("stream_id too long")
+
+    header = struct.pack(">B", len(sid_bytes)) + sid_bytes
+    header += struct.pack(">I", sequence)
+    header += struct.pack(">d", timestamp)
+    return header + audio_data
+
+
+def parse_audio_frame(data: bytes) -> BinaryFrame:
+    """Parse a binary audio frame.
+
+    Raises:
+        ValueError: if the buffer is too short or malformed.
+    """
+    if len(data) < 1 + 4 + 8:
+        raise ValueError("binary frame too short")
+
+    stream_id_length = data[0]
+    header_length = 1 + stream_id_length + 4 + 8
+    if len(data) < header_length:
+        raise ValueError("binary frame incomplete")
+
+    stream_id = data[1:1 + stream_id_length].decode("utf-8")
+    offset = 1 + stream_id_length
+    sequence = struct.unpack(">I", data[offset:offset + 4])[0]
+    offset += 4
+    timestamp = struct.unpack(">d", data[offset:offset + 8])[0]
+    offset += 8
+    audio_data = data[offset:]
+
+    return BinaryFrame(
+        stream_id=stream_id,
+        sequence=sequence,
+        timestamp=timestamp,
+        audio_data=audio_data,
+        frame_size=len(data),
+    )
+
 
 class BinaryAudioHandler:
     """Handles binary audio frame processing for WebSocket server"""
@@ -30,50 +79,17 @@ class BinaryAudioHandler:
         }
     
     def parse_binary_frame(self, data: bytes) -> Optional[BinaryFrame]:
-        """
-        Parse binary frame with format:
-        [stream_id_length:1][stream_id:variable][sequence:4][timestamp:8][audio_data:remaining]
+        """Parse binary frame data into a :class:`BinaryFrame`.
+
+        Any parsing error is logged and results in ``None``.
         """
         try:
-            if len(data) < 13:  # Minimum: 1 + 1 + 4 + 8 = 14 bytes
-                logger.warning(f"Binary frame too short: {len(data)} bytes")
-                return None
-            
-            # Parse stream_id_length (1 byte)
-            stream_id_length = struct.unpack('B', data[0:1])[0]
-            
-            if len(data) < 1 + stream_id_length + 12:
-                logger.warning("Binary frame incomplete")
-                return None
-            
-            # Parse stream_id
-            stream_id = data[1:1+stream_id_length].decode('utf-8')
-            
-            # Parse sequence (4 bytes, unsigned int)
-            sequence_offset = 1 + stream_id_length
-            sequence = struct.unpack('>I', data[sequence_offset:sequence_offset+4])[0]
-            
-            # Parse timestamp (8 bytes, double)
-            timestamp_offset = sequence_offset + 4
-            timestamp = struct.unpack('>d', data[timestamp_offset:timestamp_offset+8])[0]
-            
-            # Extract audio data
-            audio_offset = timestamp_offset + 8
-            audio_data = data[audio_offset:]
-            
-            return BinaryFrame(
-                stream_id=stream_id,
-                sequence=sequence,
-                timestamp=timestamp,
-                audio_data=audio_data,
-                frame_size=len(data)
-            )
-            
-        except Exception as e:
-            logger.error(f"Error parsing binary frame: {e}")
+            return parse_audio_frame(data)
+        except ValueError as exc:
+            logger.warning(f"Binary frame parsing failed: {exc}")
             self.metrics['parse_errors'] += 1
             return None
-    
+
     async def handle_binary_message(self, websocket, data: bytes, stt_processor, message_handler):
         """
         Handle incoming binary audio message
