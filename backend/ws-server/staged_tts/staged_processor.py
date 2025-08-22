@@ -11,6 +11,7 @@ import hashlib
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from collections import OrderedDict
+from ws_server.metrics.collector import collector
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,7 @@ class StagedTTSProcessor:
                 tasks.append(zonos_task)
         else:
             logger.info("Zonos Engine nicht verfügbar, verwende nur Piper-Intro")
+            collector.tts_engine_unavailable_total.labels(engine="zonos").inc()
         
         completed_chunks = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -162,6 +164,7 @@ class StagedTTSProcessor:
                 )
             except asyncio.TimeoutError:
                 logger.warning(f"{engine.capitalize()} TTS Timeout für chunk {index}")
+                collector.tts_sequence_timeout_total.labels(engine=engine).inc()
                 return TTSChunk(
                     sequence_id=sequence_id,
                     index=index,
@@ -228,7 +231,9 @@ class StagedTTSProcessor:
         audio_b64 = None
         if chunk.audio_data:
             audio_b64 = base64.b64encode(chunk.audio_data).decode("utf-8")
-        
+        if chunk.success and chunk.audio_data:
+            collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
+
         return {
             "type": "tts_chunk",
             "sequence_id": chunk.sequence_id,

@@ -1461,26 +1461,48 @@ class VoiceServer:
         try:
             # Process with staged TTS
             chunks = await self.staged_tts.process_staged_tts(response_text)
-            
+
             if not chunks:
-                # Fallback to single TTS if staging fails
-                logger.warning("Staged TTS failed, falling back to single synthesis")
-                await self._fallback_single_tts(client_id, input_text, response_text)
+                logger.warning("Staged TTS erzeugte keine Chunks")
+                await self._send_text_response(client_id, {
+                    'input_text': input_text,
+                    'response_text': response_text,
+                    'audio_data': None,
+                    'tts_engine_used': None,
+                    'tts_voice_used': None,
+                    'tts_success': False,
+                    'tts_error': 'no_chunks'
+                })
                 return
-            
-            # Send chunks in sequence
-            sequence_id = chunks[0].sequence_id if chunks else None
-            
+
+            sequence_id = chunks[0].sequence_id
+
+            first = chunks[0]
+            if not (first.success and first.audio_data):
+                logger.warning("Piper Intro fehlgeschlagen, sende Textantwort")
+                await self._send_text_response(client_id, {
+                    'input_text': input_text,
+                    'response_text': response_text,
+                    'audio_data': None,
+                    'tts_engine_used': None,
+                    'tts_voice_used': None,
+                    'tts_success': False,
+                    'tts_error': first.error_message or 'piper_failed'
+                })
+                end_message = self.staged_tts.create_sequence_end_message(sequence_id)
+                await self.connection_manager.send_to_client(client_id, end_message)
+                return
+
             for chunk in chunks:
+                if not (chunk.success and chunk.audio_data):
+                    continue
                 chunk_message = self.staged_tts.create_chunk_message(chunk)
                 await self.connection_manager.send_to_client(client_id, chunk_message)
                 logger.debug(f"Sent {chunk.engine} chunk {chunk.index}/{chunk.total}")
-            
-            # Send sequence end message
-            if sequence_id:
-                end_message = self.staged_tts.create_sequence_end_message(sequence_id)
-                await self.connection_manager.send_to_client(client_id, end_message)
-                logger.debug(f"Sent sequence end for {sequence_id}")
+
+            end_message = self.staged_tts.create_sequence_end_message(sequence_id)
+            await self.connection_manager.send_to_client(client_id, end_message)
+            logger.debug(f"Sent sequence end for {sequence_id}")
                 
         except Exception as e:
             logger.error(f"Staged TTS error: {e}")
