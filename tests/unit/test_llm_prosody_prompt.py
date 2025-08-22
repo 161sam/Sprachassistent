@@ -1,7 +1,7 @@
 from ws_server.core.prompt import get_system_prompt
 from ws_server.tts.staged_tts.chunking import (
     optimize_for_prosody,
-    limit_and_chunk,
+    _limit_and_chunk,
     create_intro_chunk,
 )
 
@@ -23,7 +23,7 @@ def test_optimize_for_prosody_strips_markdown():
 
 def test_limit_and_chunk_bounds_and_length():
     text = "Dies ist ein sehr langer Text. " * 20
-    chunks = limit_and_chunk(text, max_length=400)
+    chunks = _limit_and_chunk(text, max_length=400)
     assert sum(len(c) for c in chunks) <= 400
     assert all(80 <= len(c) <= 180 for c in chunks[:-1])
 

@@ -6,7 +6,7 @@ import re
 from typing import List
 
 
-def limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
+def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.
     

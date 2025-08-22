@@ -68,11 +68,11 @@ class StagedTTSProcessor:
         Returns:
             Liste von TTSChunk-Objekten in der richtigen Reihenfolge
         """
-        from .chunking import limit_and_chunk, create_intro_chunk, optimize_for_prosody
+        from .chunking import _limit_and_chunk, create_intro_chunk, optimize_for_prosody
         
         # Text optimieren und chunken
         optimized_text = optimize_for_prosody(text)
-        chunks = limit_and_chunk(optimized_text, self.config.max_response_length)
+        chunks = _limit_and_chunk(optimized_text, self.config.max_response_length)
         
         if not chunks:
             logger.warning("Keine Text-Chunks generiert")
