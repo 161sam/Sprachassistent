@@ -1,9 +1,5 @@
 import asyncio
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend" / "ws-server"))
-from staged_tts.staged_processor import StagedTTSProcessor, StagedTTSConfig
+from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor, StagedTTSConfig
 from ws_server.metrics.collector import collector
 
 

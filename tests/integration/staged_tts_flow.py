@@ -1,13 +1,7 @@
 import asyncio
 import time
 
-from pathlib import Path
-import sys
-
-# Ensure staged_tts package is importable
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend" / "ws-server"))
-
-from staged_tts.staged_processor import (
+from ws_server.tts.staged_tts.staged_processor import (
     StagedTTSConfig,
     StagedTTSProcessor,
 )
