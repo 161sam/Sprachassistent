@@ -56,8 +56,16 @@ class PiperTTSEngine(BaseTTSEngine):
             "en-amy-low": "en_US-amy-low.onnx"
         }
 
+        # Stimme ggf. normalisieren (alias → kanonisch)
+        self.config.voice = self._normalize_voice(self.config.voice)
+
+    # Helfer zur Vereinheitlichung von Stimmennamen
+    def _normalize_voice(self, voice: str) -> str:
+        """Normalisiere Stimmenalias zu kanonischer Form."""
+        return voice.replace("de_DE-", "de-") if voice else voice
+
     def supports_voice(self, voice: str) -> bool:  # type: ignore[override]
-        return voice in self.supported_voices
+        return self._normalize_voice(voice) in self.supported_voices
 
     def _list_available_models(self, bases: List[str]) -> List[str]:
         models = set()
@@ -186,11 +194,14 @@ class PiperTTSEngine(BaseTTSEngine):
         if not self.is_initialized:
             await self.initialize()
             
-        # Stimme bestimmen
-        target_voice = voice or self.config.voice
+        # Stimme bestimmen und ggf. normalisieren
+        requested_voice = voice or self.config.voice
+        target_voice = self._normalize_voice(requested_voice)
         if not self.supports_voice(target_voice):
-            logger.warning(f"Stimme '{target_voice}' nicht unterstützt, verwende '{self.config.voice}'")
-            target_voice = self.config.voice
+            logger.warning(
+                f"Stimme '{requested_voice}' nicht unterstützt, verwende '{self.config.voice}'"
+            )
+            target_voice = self._normalize_voice(self.config.voice)
 
         try:
             audio_data, sr = await self._synthesize_with_piper(text, target_voice, model_path=model_path, **kwargs)
