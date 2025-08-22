@@ -59,8 +59,8 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
 from backend.tts import TTSManager, TTSEngineType, TTSConfig
-from staged_tts import StagedTTSProcessor
-from staged_tts.staged_processor import StagedTTSConfig
+from ws_server.tts.staged_tts import StagedTTSProcessor
+from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from audio.vad import VoiceActivityDetector, VADConfig
 
 from auth.token_utils import verify_token
