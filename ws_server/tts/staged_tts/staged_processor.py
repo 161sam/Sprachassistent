@@ -213,9 +213,12 @@ class StagedTTSProcessor:
 
     def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
         try:
+            engines = getattr(self.tts_manager, "engines", {})
+            if engine not in engines:
+                return False
             if hasattr(self.tts_manager, "engine_allowed_for_voice"):
                 return bool(self.tts_manager.engine_allowed_for_voice(engine, voice))
-            return engine in getattr(self.tts_manager, "engines", {})
+            return True
         except Exception:
             return False
 

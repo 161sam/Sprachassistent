@@ -188,38 +188,40 @@ class TTSManager:
 
         try:
             ev = self._resolve_engine_voice(target_engine, canonical_voice)
-            if target_engine == "piper":
-                raw = await self.engines[target_engine].synthesize(
-                    text, voice=canonical_voice, cfg={"model_path": ev.model_path, **kwargs}
-                )
-                if isinstance(raw, dict) and "wav_bytes" in raw:
-                    audio = raw.get("wav_bytes")
-                    sr = raw.get("sample_rate", 0)
-                    fmt = raw.get("format", "wav")
-                    err = raw.get("error")
-                    success = audio is not None and not err
-                    if success:
-                        audio, sr = self._postprocess_audio(audio, sr)
-                    return TTSResult(
-                        audio_data=audio,
-                        success=success,
-                        error_message=err,
-                        engine_used="piper",
-                        sample_rate=sr,
-                        audio_format=fmt,
+            engine_obj = self.engines[target_engine]
+            if hasattr(engine_obj, "speak"):
+                if target_engine == "piper":
+                    raw = await engine_obj.speak(
+                        text, voice=canonical_voice, config={"model_path": ev.model_path, **kwargs}
                     )
-                result = raw
-            elif target_engine == "zonos":
-                result = await self.engines[target_engine].synthesize(
-                    text, voice_id=ev.voice_id, **kwargs
-                )
-            elif target_engine == "kokoro":
-                result = await self.engines[target_engine].synthesize(
-                    text, voice_id=ev.voice_id, **kwargs
-                )
+                else:
+                    raw = await engine_obj.speak(text, voice=ev.voice_id, config=kwargs)
             else:
-                raise ValueError(f"Unknown TTS engine: {target_engine}")
+                if target_engine == "piper":
+                    raw = await engine_obj.synthesize(
+                        text, voice=canonical_voice, cfg={"model_path": ev.model_path, **kwargs}
+                    )
+                else:
+                    raw = await engine_obj.synthesize(text, voice_id=ev.voice_id, **kwargs)
 
+            if isinstance(raw, dict) and "wav_bytes" in raw:
+                audio = raw.get("wav_bytes")
+                sr = raw.get("sample_rate", 0)
+                fmt = raw.get("format", "wav")
+                err = raw.get("error")
+                success = audio is not None and not err
+                if success:
+                    audio, sr = self._postprocess_audio(audio, sr)
+                return TTSResult(
+                    audio_data=audio,
+                    success=success,
+                    error_message=err,
+                    engine_used=target_engine,
+                    sample_rate=sr,
+                    audio_format=fmt,
+                )
+
+            result = raw  # assume TTSResult
             if result.success and result.audio_data:
                 processed, sr = self._postprocess_audio(result.audio_data, result.sample_rate)
                 result.audio_data = processed

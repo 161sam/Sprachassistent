@@ -169,7 +169,23 @@ class KokoroTTSEngine(BaseTTSEngine):
                 processing_time_ms=(time.time() - start_time) * 1000,
                 engine_used="Kokoro"
             )
-            
+
+    async def speak(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Unified speak API returning wav bytes and metadata."""
+        cfg = config or {}
+        result = await self.synthesize(text, voice_id=voice or self.config.voice, **cfg)
+        return {
+            "wav_bytes": result.audio_data,
+            "sample_rate": result.sample_rate,
+            "format": result.audio_format,
+            "error": result.error_message,
+        }
+
     async def _synthesize_with_kokoro(self, text: str, voice: str, **kwargs) -> Optional[bytes]:
         """Interne Synthese mit Kokoro"""
         if not self.kokoro_model:
