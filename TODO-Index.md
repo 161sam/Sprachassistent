@@ -6,6 +6,7 @@
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **piper/__init__.py**: replace stub with real piper dependency. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
+- **backend/tts/engine_zonos.py**: log voice scan and cleanup errors instead of silent `pass`. _Prio: Niedrig_
 - **backend/tts/base_tts_engine.py**: replace `pass` in abstract methods with `raise NotImplementedError` for clearer contracts. _Prio: Niedrig_
 - **ws_server/tts/engines/piper.py**: move implementation into `backend/tts` to keep engines centralized. _Prio: Niedrig_
 
@@ -47,6 +48,7 @@
 
 ## Tools & Scripts
 - **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. ✅ Done in commit `startup error handling`. _Prio: Niedrig_
+- **debug_server_start.py**: log cleanup errors instead of bare `except: pass`. _Prio: Niedrig_
 
 ## ❓ Offene Fragen
 - **VoiceAssistantCore & AudioStreamer**: modules have distinct roles and remain separate. ✅ Decision documented in `reports/notes/core-audiostreamer-assessment.md`.

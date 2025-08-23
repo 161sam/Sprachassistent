@@ -237,6 +237,8 @@ class ZonosTTSEngine(BaseTTSEngine):
                         voices.append(fn[:-len(ext)])
                         break
         except Exception:
+            # TODO: log voice directory scan errors instead of silent pass
+            #       (see TODO-Index.md: Backend/Zonos engine)
             pass
         # Fallback: aktive Stimme wenigstens anbieten
         if self._active_voice and self._active_voice not in voices:
@@ -276,5 +278,7 @@ class ZonosTTSEngine(BaseTTSEngine):
                 import torch
                 torch.cuda.empty_cache()
         except Exception:
+            # TODO: log cleanup errors instead of silent pass
+            #       (see TODO-Index.md: Backend/Zonos engine)
             pass
     

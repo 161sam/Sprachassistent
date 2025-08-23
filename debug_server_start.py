@@ -215,7 +215,9 @@ async def main():
     # Cleanup
     try:
         await server.tts_manager.cleanup()
-    except:
+    except Exception:
+        # TODO: log cleanup errors instead of using bare pass
+        #       (see TODO-Index.md: Tools/debug server)
         pass
 
 if __name__ == "__main__":
