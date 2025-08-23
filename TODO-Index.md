@@ -10,7 +10,7 @@
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
 - **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
-- **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. _Prio: Mittel_
+- **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. ✅ Done in commit `gui shared core`. _Prio: Mittel_
 - **gui layout and design refresh**: reorganize GUI elements (status page, input placement, icon-only round buttons). _Prio: Niedrig_
 - **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. _Prio: Niedrig_
 
@@ -43,4 +43,3 @@
 ## ❓ Offene Fragen
 - ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
 - ❓ Is the legacy WS server still required, or can the compat layer be dropped?
-- ❓ Is `gui/enhanced-voice-assistant.js` still required or can its features be merged into the shared core modules?
