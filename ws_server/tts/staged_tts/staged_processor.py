@@ -101,17 +101,29 @@ class StagedTTSProcessor:
         sequence_id = uuid.uuid4().hex[:8]
         plan = self._resolve_plan(canonical_voice)
 
-        tasks = []
+        # Wenn ein Intro-Text vorhanden ist, aber keine Intro-Engine verfügbar,
+        # wird der Text als regulärer Haupt-Chunk behandelt.
+        if intro_text and not plan.intro_engine and plan.main_engine:
+            main_chunks.insert(0, intro_text)
+            intro_text = None
+
+        max_main = self.config.max_chunks - (1 if intro_text and plan.intro_engine else 0)
+        main_chunks = main_chunks[:max_main]
+        total_chunks = (1 if intro_text and plan.intro_engine else 0) + len(main_chunks)
+
+        tasks: list[asyncio.Task] = []
         if intro_text and plan.intro_engine:
             tasks.append(asyncio.create_task(self._synthesize_chunk(
-                intro_text, plan.intro_engine, sequence_id, 0, 1 + len(main_chunks), canonical_voice
+                intro_text, plan.intro_engine, sequence_id, 0, total_chunks, canonical_voice
             )))
+
         if plan.main_engine:
-            for i, chunk_text in enumerate(main_chunks[: self.config.max_chunks - 1]):
+            offset = 1 if intro_text and plan.intro_engine else 0
+            for i, chunk_text in enumerate(main_chunks):
                 tasks.append(asyncio.create_task(self._synthesize_chunk(
-                    chunk_text, plan.main_engine, sequence_id, i + 1, 1 + len(main_chunks), canonical_voice
+                    chunk_text, plan.main_engine, sequence_id, i + offset, total_chunks, canonical_voice
                 )))
-        else:
+        elif not tasks:
             logger.info("Keine Main-Engine verfügbar – nur Intro wird gespielt.")
 
         completed = await asyncio.gather(*tasks, return_exceptions=True)
