@@ -25,7 +25,7 @@
     "dev": "cordova run android --livereload",
     "prebuild": "npm run lint",
     "postbuild": "echo 'Build completed successfully!'",
-    "install-plugins": "cordova plugin add cordova-plugin-whitelist cordova-plugin-statusbar cordova-plugin-device cordova-plugin-splashscreen cordova-plugin-network-information cordova-plugin-vibration cordova-plugin-media-capture cordova-plugin-media cordova-plugin-file cordova-plugin-android-permissions cordova-plugin-websocket cordova-plugin-app-version cordova-plugin-dialogs cordova-plugin-inappbrowser cordova-plugin-background-mode cordova-plugin-local-notification cordova-plugin-speech-recognition cordova-plugin-tts"
+    "install-plugins": "cordova plugin add cordova-plugin-whitelist cordova-plugin-statusbar cordova-plugin-device cordova-plugin-splashscreen cordova-plugin-network-information cordova-plugin-vibration cordova-plugin-media-capture cordova-plugin-media cordova-plugin-file@8.0.0 cordova-plugin-android-permissions cordova-plugin-websocket@0.12.2 cordova-plugin-app-version cordova-plugin-dialogs cordova-plugin-inappbrowser cordova-plugin-background-mode cordova-plugin-local-notification cordova-plugin-speech-recognition@1.0.1 cordova-plugin-tts"
   },
   "keywords": [
     "voice",
