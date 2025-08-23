@@ -63,9 +63,12 @@
           if (msg && msg.op === "staged_tts_chunk") {
             const sr = msg.sampleRate || SAMPLE_RATE;
             const fmt = (msg.format || "f32").toLowerCase();
-            if (fmt !== "f32") return; // wir behandeln hier nur f32
-            const pcm = b64ToFloat32(msg.pcm);
-            enqueueFloat32(pcm, sr);
+            if (fmt === "f32" && msg.pcm) {
+              const pcm = b64ToFloat32(msg.pcm);
+              enqueueFloat32(pcm, sr);
+            } else {
+              playTTSChunk(msg);
+            }
             return;
           }
           if (msg && msg.op === "staged_tts_end") {
