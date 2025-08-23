@@ -7,6 +7,7 @@
 - **piper/__init__.py**: replace stub with real piper dependency. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
 - **backend/tts/base_tts_engine.py**: replace `pass` in abstract methods with `raise NotImplementedError` for clearer contracts. _Prio: Niedrig_
+- **ws_server/tts/engines/piper.py**: move implementation into `backend/tts` to keep engines centralized. _Prio: Niedrig_
 
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
@@ -14,6 +15,8 @@
 - **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. ✅ Done in commit `gui shared core`. _Prio: Mittel_
 - **gui layout and design refresh**: reorganize GUI elements (status page, input placement, icon-only round buttons). ✅ Done in commit `gui layout refresh`. _Prio: Niedrig_
 - **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. ✅ Done in commit `gui message flash`. _Prio: Niedrig_
+- **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: deduplicate streaming logic with `AudioStreamer.js`. _Prio: Mittel_
+- **voice-assistant-apps/shared/core/AudioStreamer.js**: unify with `VoiceAssistantCore.js` to avoid duplicate streaming logic. _Prio: Mittel_
 
 ## WS-Server / Protokolle
 - **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. ✅ Done in commit `stt streaming`. _Prio: Hoch_
@@ -29,11 +32,13 @@
 - **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. ✅ Done in commit `remove legacy ws backup`. _Prio: Niedrig_
 - **archive/legacy_ws_server/skills/__init__.py**: implement BaseSkill methods or remove legacy skill module. ✅ Done in commit `remove legacy skills module`. _Prio: Niedrig_
 - **ws_server/compat/legacy_ws_server.py**: replace silent `pass` blocks in exception handlers with logging or explicit error handling. _Prio: Mittel_
+- **ws_server/compat/legacy_ws_server.py**: replace `DummyTTSManager.cleanup` stub with proper implementation or dedicated mock. _Prio: Niedrig_
 
 ## Config
 - **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
 - **config/tts.json**: align with `voice_aliases.py` to remove duplication. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
 - **env.example**: consolidate TTS defaults with `config/tts.json` to prevent drift. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
+- **backend/tts/voice_aliases.py**: unify alias mapping with `ws_server/tts/voice_aliases.py` to avoid duplication. _Prio: Mittel_
 
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. ✅ Done in commit `docs true streaming stubs`. _Prio: Niedrig_

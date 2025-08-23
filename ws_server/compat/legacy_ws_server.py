@@ -910,6 +910,8 @@ class VoiceServer:
                     from backend.tts.base_tts_engine import TTSResult
                     return TTSResult(success=False, error_message="TTS not available")
                 async def cleanup(self):
+                    # TODO: provide real cleanup or use dedicated mock
+                    #       (see TODO-Index.md: WS-Server / Legacy compatibility)
                     pass
                 def get_available_engines(self):
                     return []
