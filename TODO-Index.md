@@ -24,6 +24,7 @@
 - **ws_server/metrics/collector.py**: track memory usage and network throughput metrics. _Prio: Mittel_
 - **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. _Prio: Niedrig_
 - **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. _Prio: Niedrig_
+- **archive/legacy_ws_server/skills/__init__.py**: implement BaseSkill methods or remove legacy skill module. _Prio: Niedrig_
 
 ## Config
 - **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. _Prio: Niedrig_
@@ -34,9 +35,13 @@
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. _Prio: Niedrig_
 - **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. _Prio: Niedrig_
 
+## Tools & Scripts
+- **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. _Prio: Niedrig_
+
 ## ❓ Offene Fragen
 - ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
 - ❓ Is the legacy WS server still required, or can the compat layer be dropped?
 - ❓ Are the torch/torchaudio/soundfile stubs still necessary once real libraries are installed?
 - ❓ Is `gui/enhanced-voice-assistant.js` still required or can its features be merged into the shared core modules?
 - ❓ Can `ws_server/compat/legacy_ws_server.py.backup.int_fix` be removed after verifying no changes are needed?
+- ❓ Is the archived legacy skill system (`archive/legacy_ws_server`) still required or can it be removed entirely?

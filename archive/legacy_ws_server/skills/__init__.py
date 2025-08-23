@@ -9,10 +9,10 @@ class BaseSkill:
     intent_name: str = "base"
 
     def can_handle(self, text: str) -> bool:
-        raise NotImplementedError
+        raise NotImplementedError  # TODO: implement skill detection or remove legacy module (see TODO-Index.md: WS-Server / Protokolle)
 
     def handle(self, text: str) -> str:
-        raise NotImplementedError
+        raise NotImplementedError  # TODO: implement skill response handler or remove legacy module (see TODO-Index.md: WS-Server / Protokolle)
 
 def _discover_modules(path: Path) -> List[str]:
     return [name for _, name, _ in pkgutil.iter_modules([str(path)])]

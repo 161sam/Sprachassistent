@@ -59,8 +59,8 @@ def kill_processes_on_ports(ports):
                                     time.sleep(0.5)
                                     try:
                                         os.kill(int(pid), signal.SIGKILL)
-                                    except:
-                                        pass
+                                    except Exception:
+                                        pass  # TODO: handle kill failure explicitly (see TODO-Index.md: Tools & Scripts)
                             except Exception as pe:
                                 print(f"   PID extraction failed: {pe}")
         except Exception as e:
@@ -86,8 +86,8 @@ def kill_processes_on_ports(ports):
                                     os.kill(int(pid), signal.SIGTERM)
                                     time.sleep(0.2)
                                     os.kill(int(pid), signal.SIGKILL)
-                                except:
-                                    pass
+                                except Exception:
+                                    pass  # TODO: handle kill failure explicitly (see TODO-Index.md: Tools & Scripts)
         except Exception as e:
             print(f"   lsof method failed: {e}")
 
@@ -176,7 +176,7 @@ def start_voice_assistant():
                     if line:
                         line_clean = line.strip()
                         print(f"   📋 {line_clean}")
-                        
+
                         # Check for success indicators
                         if "Voice server initialized successfully" in line:
                             websocket_ready = True
@@ -185,7 +185,7 @@ def start_voice_assistant():
                         elif "STT model" in line and "loaded" in line:
                             print("   ✅ STT Model ready!")
             except Exception:
-                pass
+                pass  # TODO: log subprocess read errors (see TODO-Index.md: Tools & Scripts)
             
             # Test endpoints every 5 seconds after 15s
             if i > 15 and i % 5 == 0:
