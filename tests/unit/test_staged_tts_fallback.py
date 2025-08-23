@@ -20,16 +20,23 @@ class OnlyPiperManager:
         return R()
 
     def engine_allowed_for_voice(self, engine, voice):
-        return engine == "piper"
+        # advertise support for zonos to trigger fallback logic
+        return True
 
 
 def test_fallback_to_piper_only():
     collector.tts_engine_unavailable_total.labels(engine="zonos")._value.set(0)
     collector.tts_chunk_emitted_total.labels(engine="piper")._value.set(0)
-    proc = StagedTTSProcessor(OnlyPiperManager(), StagedTTSConfig(max_chunks=3))
-    chunks = asyncio.run(proc.process_staged_tts("Hallo Welt. Noch ein Satz.", "de-thorsten-low"))
-    assert len(chunks) == 1
+    proc = StagedTTSProcessor(
+        OnlyPiperManager(),
+        StagedTTSConfig(max_chunks=3, max_intro_length=20),
+    )
+    text = "Hallo Welt. Noch ein Satz."
+    chunks = asyncio.run(proc.process_staged_tts(text, "de-thorsten-low"))
+    # zonos chunk fails, piper chunk succeeds
+    assert len(chunks) == 2
     assert chunks[0].engine == "piper"
+    assert chunks[1].engine == "zonos" and not chunks[1].success
     proc.create_chunk_message(chunks[0])
     assert collector.tts_engine_unavailable_total.labels(engine="zonos")._value.get() == 1
     assert collector.tts_chunk_emitted_total.labels(engine="piper")._value.get() == 1

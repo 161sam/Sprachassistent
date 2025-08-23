@@ -128,6 +128,8 @@ class PiperTTSEngine(BaseTTSEngine):
             loop = asyncio.get_event_loop()
             voice_obj = await loop.run_in_executor(self.executor, PiperVoice.load, model_path)
             self.voice_cache[self.config.voice or "de-thorsten-low"] = voice_obj
+            # Modellpfad für spätere Prüfungen sichern
+            self.config.model_path = model_path
             self.is_initialized = True
             logger.info("Piper TTS initialisiert mit Stimme: %s", self.config.voice or "de-thorsten-low")
             return True
