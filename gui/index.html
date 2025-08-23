@@ -670,6 +670,31 @@
       animation: fadeIn 0.3s ease;
     }
 
+    /* Status Page Overlay */
+    .status-page {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-xl);
+      z-index: 150;
+    }
+
+    .status-page.open {
+      display: flex;
+    }
+
+    .status-page .status-close {
+      margin-top: var(--spacing-lg);
+    }
+
     .settings-modal.open {
       display: flex;
     }
@@ -1565,6 +1590,16 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
+  <!-- TODO-FIXED(2025-08-23): layout refresh with status overlay -->
+  <div class="status-page" id="statusPage">
+    <div>
+      <h2>Status</h2>
+      <p id="statusConnection">Verbindung: --</p>
+      <p id="statusTts">TTS: --</p>
+      <button class="btn-secondary status-close" onclick="closeStatusPage()">Schließen</button>
+    </div>
+  </div>
+
   <!-- Load core components -->
   <script src="../voice-assistant-apps/shared/core/AudioStreamer.js"></script>
   
@@ -1730,7 +1765,7 @@
 
       // Info button
       document.getElementById('infoBtn').addEventListener('click', () => {
-        showSystemInfo();
+        showStatusPage();
       });
 
       // Intersection Observer for animations
@@ -2439,6 +2474,22 @@
         
         showNotification('info', '📊 System-Information', info, 8000);
       }
+    }
+
+    // TODO-FIXED(2025-08-23): dedicated status overlay
+    function showStatusPage() {
+      if (voiceAssistant) {
+        const metrics = voiceAssistant.getMetrics();
+        document.getElementById('statusConnection').textContent =
+          `Verbindung: ${metrics.connection.connected ? 'Aktiv' : 'Getrennt'}`;
+        document.getElementById('statusTts').textContent =
+          `TTS: ${metrics.config.ttsEngine}`;
+      }
+      document.getElementById('statusPage').classList.add('open');
+    }
+
+    function closeStatusPage() {
+      document.getElementById('statusPage').classList.remove('open');
     }
 
     // Verbindungstatus in der Konsole ausgeben

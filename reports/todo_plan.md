@@ -1,15 +1,9 @@
 # TODO Work Plan
 
 ## Frontend (GUI)
-1. **gui animations**
-   - **Files:** `gui/index.html`, `gui/app.js`
+1. **gui layout and design refresh**
+   - **Files:** `gui/index.html`, `gui/app.js`, `gui/styles.css`
    - **Priority:** Low
    - **Domain:** Frontend
    - **Dependencies:** None
-   - **Rationale:** Matrix rain and avatar pulse exist; add missing message flash effect for incoming text.
-2. **gui layout and design refresh**
-   - **Files:** `gui/index.html`, `styles`
-   - **Priority:** Low
-   - **Domain:** Frontend
-   - **Dependencies:** None
-   - **Rationale:** Further refine status section, input placement and button styling for cohesive layout.
+   - **Rationale:** Reorganize status view, keep input fixed at bottom and ensure round icon-only controls.
