@@ -16,6 +16,7 @@
 - **ws_server/compat/legacy_ws_server.py**: legacy compatibility – plan migration away from this layer once transport server is updated. _Prio: Niedrig_
 - **ws_server/transport/fastapi_adapter.py**: add tests and consider merging into core transport server. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: streamline integration with `text_sanitizer`/`text_normalize` to reduce pipeline complexity. _Prio: Mittel_
+- **ws_server/tts/text_sanitizer.py** & **ws_server/tts/text_normalize.py**: clarify and consolidate responsibilities to avoid overlapping sanitization steps. _Prio: Mittel_
 
 ## Config
 - **backend/tts/voice_aliases.py**: merge with `ws_server/tts/voice_aliases.py` to avoid configuration drift. _Prio: Mittel_
