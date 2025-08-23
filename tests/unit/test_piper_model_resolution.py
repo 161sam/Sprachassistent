@@ -63,3 +63,20 @@ def test_home_fallback(monkeypatch, tmp_path):
     cfg = TTSConfig(engine_type="piper", voice="de-thorsten-low")
     engine = PiperTTSEngine(cfg)
     assert engine._resolve_model_path("de-thorsten-low") == str(model.resolve())
+
+
+def test_resolve_alias_voice(monkeypatch, tmp_path):
+    models_dir = tmp_path / "models" / "piper"
+    models_dir.mkdir(parents=True)
+    model = models_dir / "de-thorsten-low.onnx"
+    model.write_bytes(b"0")
+    (model.with_suffix(".onnx.json")).write_text('{"sample_rate": 22050}')
+    monkeypatch.setenv("TTS_MODEL_DIR", str(tmp_path / "models"))
+    cfg = TTSConfig(
+        engine_type="piper",
+        voice="de_DE-thorsten-low",
+        model_path="models/piper/de-thorsten-low.onnx",
+    )
+    engine = PiperTTSEngine(cfg)
+    path = engine._resolve_model_path("de_DE-thorsten-low")
+    assert Path(path).name == "de-thorsten-low.onnx"

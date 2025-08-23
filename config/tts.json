@@ -13,6 +13,18 @@
         "language": "de",
         "sample_rate": 48000
       }
+    },
+    "de_DE-thorsten-low": {
+      "piper": {
+        "model_path": "models/piper/de-thorsten-low.onnx",
+        "language": "de",
+        "sample_rate": 22050
+      },
+      "zonos": {
+        "voice_id": "thorsten",
+        "language": "de",
+        "sample_rate": 48000
+      }
     }
   },
   "playback": {

@@ -151,7 +151,10 @@ class TTSManager:
         alias = VOICE_ALIASES.get(voice, {}).get("piper")
         model = alias.model_path if alias else None
         if not model:
-            logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
+            logger.info(
+                'Piper deaktiviert: Kein Piper-Modell für voice=%s gefunden',
+                voice,
+            )
             return None
 
         model_dir = os.getenv("TTS_MODEL_DIR", self.config.model_dir)
@@ -166,7 +169,10 @@ class TTSManager:
             if home.exists():
                 mp = home
             else:
-                logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
+                logger.info(
+                    'Piper deaktiviert: Kein Piper-Modell für voice=%s gefunden',
+                    voice,
+                )
                 return None
 
         return TTSConfig(
@@ -187,10 +193,18 @@ class TTSManager:
             raise ValueError(f"Voice '{canonical_voice}' not defined for engine '{engine}'")
         return ev
 
-    def engine_allowed_for_voice(self, engine: str, canonical_voice: str) -> bool:
+    def engine_allowed_for_voice(self, engine: str, voice: str) -> bool:
+        """Check if engine has mapping for given voice.
+
+        Accepts alias voices and resolves them to canonical form."""
+        canonical_voice = canonicalize_voice(voice)
         mapping = VOICE_ALIASES.get(canonical_voice, {})
         ev = mapping.get(engine)
         return bool(ev and (ev.voice_id or ev.model_path))
+
+    def get_canonical_voice(self, voice: str | None) -> str:
+        """Return canonical voice id using env fallback."""
+        return canonicalize_voice(voice or os.getenv("TTS_VOICE", "de-thorsten-low"))
 
     def _postprocess_audio(self, audio: bytes, sample_rate: int) -> tuple[bytes, int]:
         target_sr = int(os.getenv("TTS_TARGET_SR", sample_rate) or sample_rate)

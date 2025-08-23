@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 from ws_server.metrics.collector import collector
 from ws_server.tts.text_sanitizer import sanitize_for_tts_strict, pre_clean_for_piper
 from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
+from ws_server.tts.voice_utils import canonicalize_voice
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,7 @@ class StagedTTSProcessor:
 
     async def process_staged_tts(self, text: str, canonical_voice: str) -> List[TTSChunk]:
         """Sanitize, chunk and synthesize text in stages."""
+        canonical_voice = canonicalize_voice(canonical_voice)
         # TODO: unify sanitizer and normalizer steps to avoid duplicate processing
         #       (see TODO-Index.md: WS-Server / Protokolle)
         text = sanitize_for_tts_strict(text)
@@ -283,8 +285,6 @@ class StagedTTSProcessor:
         }
 
     def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
-        from ws_server.tts.voice_utils import canonicalize_voice
-
         try:
             engines = getattr(self.tts_manager, "engines", {})
             engine_obj = engines.get(engine)
