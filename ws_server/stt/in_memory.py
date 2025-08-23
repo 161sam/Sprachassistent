@@ -22,4 +22,5 @@ def pcm16_bytes_to_float32(data: bytes) -> np.ndarray:
     samples /= 32768.0
     return samples
 
-# TODO: Streaming support for chunked STT without buffering entire audio.
+# TODO: Streaming support for chunked STT without buffering entire audio
+#       (see TODO-Index.md: WS-Server / Protokolle)

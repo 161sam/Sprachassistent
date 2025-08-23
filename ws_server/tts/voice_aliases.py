@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import Optional, Dict
 
 
+# TODO: unify with config/tts.json and environment variables to avoid
+#       duplicated voice settings (see TODO-Index.md: Config)
+
 @dataclass(frozen=True)
 class EngineVoice:
     voice_id: Optional[str] = None

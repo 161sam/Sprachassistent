@@ -420,7 +420,8 @@ class AsyncSTTEngine:
     async def process_binary_audio(self, audio_data: bytes, **_kwargs) -> str:
         """Transcribe raw PCM16 bytes directly.
 
-        TODO: Stream chunk-wise without buffering entire audio.
+        TODO: Stream chunk-wise without buffering entire audio
+        (see TODO-Index.md: WS-Server / Protokolle).
         """
         return await self.transcribe_audio(audio_data)
 
