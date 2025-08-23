@@ -2,8 +2,10 @@
 
 import re
 from typing import List
-from ws_server.tts.text_sanitizer import sanitize_for_tts_strict, pre_clean_for_piper
-from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
+from ws_server.tts.text_sanitizer import (
+    sanitize_for_tts_strict,
+    pre_sanitize_text,
+)
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.
@@ -15,7 +17,7 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     Returns:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
-    text = pre_clean_for_piper(sanitize_basic(text))
+    text = pre_sanitize_text(text)
     # Text begrenzen auf max_length
     text = text.strip()
     if len(text) > max_length:

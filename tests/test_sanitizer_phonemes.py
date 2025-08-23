@@ -3,7 +3,8 @@ import unicodedata
 import logging
 import pytest
 from ws_server.tts.text_normalize import sanitize_for_tts
-from ws_server.tts.text_sanitizer import sanitize_for_tts_strict
+from ws_server.tts.text_sanitizer import sanitize_for_tts_strict, pre_sanitize_text
+from ws_server.tts.staged_tts.chunking import _limit_and_chunk
 from tools.tts.phoneme_audit import PROBLEM_TEXTS, load_map, audit_texts
 
 
@@ -61,3 +62,12 @@ def test_strict_sanitizer_warns_and_cleans(caplog):
     cleaned = sanitize_for_tts_strict("çedilla ☃")
     assert cleaned == "cedilla"
     assert "unbekanntes Zeichen" in caplog.text
+
+
+def test_pre_sanitize_text_handles_combining():
+    assert pre_sanitize_text("çedilla") == "cedilla"
+
+
+def test_chunking_pre_sanitizes():
+    chunks = _limit_and_chunk("naïve çedilla")
+    assert chunks == ["naive cedilla"]

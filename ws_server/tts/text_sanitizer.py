@@ -7,6 +7,8 @@ import unicodedata
 import logging
 from typing import Dict
 
+from .text_normalize import sanitize_for_tts as _basic_sanitize
+
 logger = logging.getLogger(__name__)
 
 _TYPOMAP = {
@@ -69,6 +71,19 @@ def pre_clean_for_piper(text: str) -> str:
         logger.warning("pre_clean_for_piper entfernte %d Zeichen", removed)
     return t
 
+
+def pre_sanitize_text(text: str) -> str:
+    """Run basic + strict sanitizers and log removed characters."""
+    if not text:
+        return text
+    analysis = analyze_problematic_chars(text)
+    cleaned = pre_clean_for_piper(_basic_sanitize(text))
+    if analysis.get("count"):
+        logger.warning(
+            "pre_sanitize_text entfernte %d Zeichen: %s",
+            analysis["count"], " ".join(analysis["unique"]),
+        )
+    return cleaned
 
 def analyze_problematic_chars(text: str) -> Dict[str, any]:
     """Return a summary of non-ASCII or combining characters."""
