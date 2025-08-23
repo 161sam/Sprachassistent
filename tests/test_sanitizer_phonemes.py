@@ -71,3 +71,16 @@ def test_pre_sanitize_text_handles_combining():
 def test_chunking_pre_sanitizes():
     chunks = _limit_and_chunk("naïve çedilla")
     assert chunks == ["naive cedilla"]
+
+
+def test_strict_sanitizer_strips_ascii(caplog):
+    caplog.set_level(logging.WARNING)
+    cleaned = sanitize_for_tts_strict("foo% bar$")
+    assert cleaned == "foo bar"
+    assert "%" not in cleaned and "$" not in cleaned
+    assert "unbekanntes Zeichen" in caplog.text
+
+
+def test_chunking_drops_ascii():
+    chunks = _limit_and_chunk("test% chunk$")
+    assert chunks == ["test chunk"]

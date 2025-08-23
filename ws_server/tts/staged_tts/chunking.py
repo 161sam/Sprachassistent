@@ -1,6 +1,7 @@
 """Text-Chunking und Sanitizing für sprechgerechte TTS-Ausgabe."""
 
 import re
+import unicodedata
 from typing import List
 from ws_server.tts.text_sanitizer import (
     sanitize_for_tts_strict,
@@ -18,6 +19,7 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
     text = pre_sanitize_text(text)
+    text = unicodedata.normalize("NFC", text)
     # Text begrenzen auf max_length
     text = text.strip()
     if len(text) > max_length:

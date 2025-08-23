@@ -11,6 +11,7 @@ except Exception:  # pragma: no cover - optional dep
 PROBLEM_TEXTS = [
     "façade",
     "garçon",
+    "gaŗçon",
     "çedilla",
     "fa̧cade",
     "übermäßig",

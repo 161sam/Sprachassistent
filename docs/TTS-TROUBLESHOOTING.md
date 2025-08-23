@@ -28,9 +28,10 @@ The warning *"Missing phoneme from id map"* usually stems from stray
 combining marks (for example the cedilla `\u0327`) or characters outside the
 model's alphabet. The helper `pre_sanitize_text()` normalizes
 text (NFKC→NFD→NFC), removes combining marks, and maps or drops unknown
-symbols (e.g. `Ł`→`L`, `đ`→`d`). It logs a warning instead of raising an error.
-Feeding texts like `façade`, `garçon`, `çedilla`, `übermäßig`, `Łódź`,
-`İstanbul` or `naïve` no longer produces this warning.
+symbols (e.g. `Ł`→`L`, `đ`→`d`). Unsupported ASCII symbols like `%` or `$`
+are stripped as well. Every removal triggers a warning instead of raising an
+error. Feeding texts like `façade`, `garçon`, `çedilla`, `übermäßig`,
+`Łódź`, `İstanbul` or `naïve` no longer produces this warning.
 
 ## Fallback Strategy
 Unknown phonemes are dropped or mapped once per symbol with a warning. Logs stay readable and synthesis continues.
