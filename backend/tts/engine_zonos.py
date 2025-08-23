@@ -139,6 +139,8 @@ class ZonosTTSEngine(BaseTTSEngine):
                 from ws_server.tts.text_normalize import sanitize_for_tts
                 text = sanitize_for_tts(text)
             except Exception:
+                # TODO: handle sanitize_for_tts import failure explicitly
+                #       instead of silent pass (see TODO-Index.md: Backend)
                 pass
 
             voice = voice_id or self._active_voice
@@ -167,6 +169,8 @@ class ZonosTTSEngine(BaseTTSEngine):
                 try:
                     conditioning["rate"] = float(speed)
                 except Exception:
+                    # TODO: handle invalid speed value gracefully instead of
+                    #       silent pass (see TODO-Index.md: Backend)
                     pass
 
             use_fp16 = (self.device == 'cuda')

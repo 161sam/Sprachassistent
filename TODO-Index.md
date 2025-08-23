@@ -5,6 +5,7 @@
 - **ws_server/tts/engines/piper.py**: keep implementation in sync with backend wrapper. _Prio: Niedrig_
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. _Prio: Niedrig_
 - **piper/__init__.py**: replace stub with real piper dependency. _Prio: Niedrig_
+- **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. _Prio: Niedrig_
 
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. _Prio: Mittel_
