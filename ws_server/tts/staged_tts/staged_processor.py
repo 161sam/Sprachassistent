@@ -43,8 +43,19 @@ class StagedTTSConfig:
     enable_caching: bool = True
     cache_size: int = 256
     crossfade_duration_ms: int = 100
-    # TODO: make crossfade duration configurable for UX experiments
-    #       (see TODO-Index.md: WS-Server / Protokolle)
+    # TODO-FIXED(2025-08-23): crossfade duration now configurable via env var
+
+    @classmethod
+    def from_env(cls) -> "StagedTTSConfig":
+        import os
+        value = os.getenv("STAGED_TTS_CROSSFADE_MS")
+        cfg = cls()
+        if value:
+            try:
+                cfg.crossfade_duration_ms = int(value)
+            except ValueError:
+                logger.warning("Ungültiger Wert für STAGED_TTS_CROSSFADE_MS: %s", value)
+        return cfg
 
 
 @dataclass
@@ -69,7 +80,7 @@ class StagedTTSProcessor:
     def __init__(self, tts_manager, config: StagedTTSConfig | None = None):
         self.plan = StagedPlan()
         self.tts_manager = tts_manager
-        self.config = config or StagedTTSConfig()
+        self.config = config or StagedTTSConfig.from_env()
         self._cache: "OrderedDict[str, tuple[bytes, int]]" = OrderedDict()
 
     async def process_staged_tts(self, text: str, canonical_voice: str) -> List[TTSChunk]:

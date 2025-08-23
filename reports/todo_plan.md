@@ -23,9 +23,9 @@ This plan consolidates outstanding items from `TODO-Index.md`. Tasks are ordered
 3. **Documentation upkeep** – update `docs/Refaktorierungsplan.md` and `docs/GUI-TODO.md`.
    - Domain: Docs
    - Dependencies: none
-4. **WS‑Server enhancements** – FastAPI adapter, sanitizer/normalizer clarification, staged TTS crossfade config, and removal of legacy backups.
+4. **WS‑Server enhancements** – FastAPI adapter, sanitizer/normalizer clarification, and removal of legacy backups.
    - Domain: WS‑Server
-   - Dependencies: various; crossfade config depends on staged TTS design decisions
+   - Dependencies: various
 
 ## Dependency Notes
 - Merging `VoiceAssistantCore` and `AudioStreamer` is required before removing GUI duplication.

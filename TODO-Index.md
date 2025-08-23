@@ -22,7 +22,7 @@
 - **ws_server/tts/text_normalize.py**: clarify responsibilities with other sanitizer components. _Prio: Niedrig_
 - **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. ✅ Done in commit `binary PCM validation`. _Prio: Hoch_
 - **ws_server/metrics/collector.py**: track memory usage and network throughput metrics. ✅ Done in commit `metrics network throughput`. _Prio: Mittel_
-- **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. _Prio: Niedrig_
+- **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. ✅ Done in commit `staged tts crossfade env`. _Prio: Niedrig_
 - **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. _Prio: Niedrig_
 - **archive/legacy_ws_server/skills/__init__.py**: implement BaseSkill methods or remove legacy skill module. _Prio: Niedrig_
 
