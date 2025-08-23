@@ -5,20 +5,21 @@ from pathlib import Path
 from typing import List, Optional
 
 import pkgutil
+ 
 
-    class BaseSkill:
-        """Basis-Interface für alle Skills."""
-        intent_name: str = "base"
+class BaseSkill:
+    """Basis-Interface für alle Skills."""
+    intent_name: str = "base"
 
-        def can_handle(self, text: str) -> bool:
-            # TODO: implement intent matching logic in subclasses
-            #       (see TODO-Index.md: WS-Server / Protokolle)
-            raise NotImplementedError
+    def can_handle(self, text: str) -> bool:
+        # TODO: implement intent matching logic in subclasses
+        #       (see TODO-Index.md: WS-Server / Protokolle)
+        raise NotImplementedError
 
-        def handle(self, text: str) -> str:
-            # TODO: implement handler that returns skill response
-            #       (see TODO-Index.md: WS-Server / Protokolle)
-            raise NotImplementedError
+    def handle(self, text: str) -> str:
+        # TODO: implement handler that returns skill response
+        #       (see TODO-Index.md: WS-Server / Protokolle)
+        raise NotImplementedError
 
 def _discover_modules(path: Path) -> List[str]:
     return [name for _, name, _ in pkgutil.iter_modules([str(path)])]
