@@ -1,6 +1,6 @@
 /**
  * 🎵 Enhanced Audio Streaming Worklet Processor
- * 
+ *
  * GPU-accelerated audio processing worklet with VAD support
  * Features:
  * - Real-time Voice Activity Detection (VAD)
@@ -9,6 +9,9 @@
  * - Binary frame preparation
  * - Performance monitoring
  */
+// TODO: clarify whether a separate AudioWorklet is still required or can be
+//       merged with main streaming logic
+//       (see TODO-Index.md: ❓/AudioWorklets)
 
 class AudioStreamingProcessor extends AudioWorkletProcessor {
     constructor(options) {

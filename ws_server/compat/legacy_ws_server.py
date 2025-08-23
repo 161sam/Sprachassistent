@@ -18,8 +18,6 @@ Features integrated from previous versions:
 * STT audio pre-processing (in-memory ``numpy`` pipeline)
 * Intent routing with optional Flowise/n8n calls (``aiohttp``)
 * Metrics API und TTS-Engine-Switching
-
-# TODO-FIXED(2025-08-23): compat layer still required; transport server imports this module
 # TODO: plan migration away from legacy compat layer once a new transport server
 #       exists (see TODO-Index.md: WS-Server / Protokolle)
 
@@ -124,7 +122,6 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
             label = f"{pretty} [{k}]"
             out.append({"label": label, "key": k})
     except Exception as exc:
-        # TODO-FIXED(2025-08-23): log Kokoro voice detection errors instead of silent pass
         logger.error("Kokoro voice detection failed: %s", exc)
     return out
 
@@ -428,7 +425,6 @@ class AsyncSTTEngine:
         self, audio_data: bytes, *, stream_id: str = "", sequence: int = 0, **_kwargs
     ) -> dict | None:
         """Transcribe a PCM16 audio chunk without buffering the whole stream."""
-        # TODO-FIXED(2025-08-23): stream chunk-wise without buffering entire audio
         text = await self.transcribe_audio(audio_data)
         return {"text": text} if text else None
 
@@ -476,7 +472,7 @@ class AudioStreamManager:
         except RuntimeError:
             # wird in VoiceServer.initialize() gestartet
             # TODO: log missing event loop instead of silent pass
-            #       (see TODO-Index.md: WS-Server / Legacy compatibility)
+            #       (see TODO-Index.md: WS-Server / Protokolle)
             pass
 
     async def start_stream(self, client_id: str, response_callback) -> str:
@@ -913,7 +909,7 @@ class VoiceServer:
                     return TTSResult(success=False, error_message="TTS not available")
                 async def cleanup(self):
                     # TODO: provide real cleanup or use dedicated mock
-                    #       (see TODO-Index.md: WS-Server / Legacy compatibility)
+                    #       (see TODO-Index.md: WS-Server / Protokolle)
                     pass
                 def get_available_engines(self):
                     return []
@@ -1244,7 +1240,7 @@ class VoiceServer:
                 await websocket.close(code=4408, reason="handshake timeout")
             except Exception:
                 # TODO: handle close error instead of silent pass
-                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
+                #       (see TODO-Index.md: WS-Server / Protokolle)
                 pass
         except websockets.exceptions.ConnectionClosed as e:
             logger.info(f"Client {client_id} connection closed: {e.code} {e.reason}")
@@ -1254,7 +1250,7 @@ class VoiceServer:
                 await websocket.close(code=1011, reason="server error")
             except Exception:
                 # TODO: handle server close error instead of silent pass
-                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
+                #       (see TODO-Index.md: WS-Server / Protokolle)
                 pass
         finally:
             await self.connection_manager.unregister(client_id)
@@ -1756,7 +1752,7 @@ class VoiceServer:
                 gpu_available = torch.cuda.is_available()
             except ImportError:
                 # TODO: log missing torch dependency instead of pass
-                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
+                #       (see TODO-Index.md: WS-Server / Protokolle)
                 pass
             
             # Hardware-optimized recommendations

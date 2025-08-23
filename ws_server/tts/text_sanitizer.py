@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Utility functions for strict text sanitization in the TTS pipeline."""
-
-# TODO-FIXED(2025-02-14): now delegates basic normalisation to
 # ``text_normalize.basic_sanitize`` for a unified pipeline
 # TODO: consolidate with text_normalize to avoid duplicate sanitization
 #       (see TODO-Index.md: WS-Server / Protokolle)

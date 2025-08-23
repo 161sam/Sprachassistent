@@ -43,7 +43,6 @@ class StagedTTSConfig:
     enable_caching: bool = True
     cache_size: int = 256
     crossfade_duration_ms: int = 100
-    # TODO-FIXED(2025-08-23): crossfade duration now configurable via env var
 
     @classmethod
     def from_env(cls) -> "StagedTTSConfig":

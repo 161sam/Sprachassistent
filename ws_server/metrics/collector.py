@@ -6,8 +6,6 @@ active connections, message counts and basic latency histograms.  It is
 intentionally lightweight to avoid blocking the event loop.
 """
 
-# TODO-FIXED(2025-08-23): track memory usage and network throughput metrics
-
 from __future__ import annotations
 
 import asyncio

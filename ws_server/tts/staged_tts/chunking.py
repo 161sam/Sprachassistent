@@ -9,7 +9,6 @@ from ws_server.tts.text_sanitizer import (
 
 # TODO: streamline with text_sanitizer and text_normalize to reduce
 #       pipeline complexity (see TODO-Index.md: WS-Server / Protokolle)
-# TODO-FIXED(2024-06-01): rely solely on `pre_sanitize_text` for normalization
 # and expose public `limit_and_chunk` API to unify pipeline with sanitizer
 def limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """

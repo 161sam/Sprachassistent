@@ -9,8 +9,6 @@ from dataclasses import dataclass
 from ws_server.metrics.collector import collector
 
 logger = logging.getLogger(__name__)
-
-# TODO-FIXED(2025-02-15): verify PCM format and sample rate before processing
 #       (see TODO-Index.md: WS-Server / Protokolle)
 
 SUPPORTED_SAMPLE_RATES = {16000, 44100, 48000}

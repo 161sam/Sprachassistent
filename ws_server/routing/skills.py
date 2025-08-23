@@ -16,13 +16,11 @@ class BaseSkill(ABC):
     @abstractmethod
     def can_handle(self, text: str) -> bool:
         """Return ``True`` if this skill can handle the given text."""
-        # TODO-FIXED(2024-11-24): enforce explicit intent matching contract
         ...
 
     @abstractmethod
     def handle(self, text: str) -> str:
         """Process the text and return a response string."""
-        # TODO-FIXED(2024-11-24): enforce explicit handler contract
         ...
 
 

@@ -4,8 +4,6 @@ import re
 import logging
 
 logger = logging.getLogger(__name__)
-
-# TODO-FIXED(2025-02-14): moved core logic into ``basic_sanitize`` and
 # delegated public ``sanitize_for_tts`` to ``text_sanitizer`` for a unified
 # pipeline
 # TODO: consolidate with text_sanitizer to avoid overlapping duties

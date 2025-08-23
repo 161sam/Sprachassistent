@@ -8,8 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-# TODO-FIXED(2025-08-23): unified with config/tts.json and environment defaults
-
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "tts.json"
 
 

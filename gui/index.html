@@ -1590,7 +1590,6 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <!-- TODO-FIXED(2025-08-23): layout refresh with status overlay -->
   <div class="status-page" id="statusPage">
     <div>
       <h2>Status</h2>
@@ -2476,7 +2475,6 @@
       }
     }
 
-    // TODO-FIXED(2025-08-23): dedicated status overlay
     function showStatusPage() {
       if (voiceAssistant) {
         const metrics = voiceAssistant.getMetrics();
@@ -2521,7 +2519,6 @@
   
   <!-- TTS Engine Controller -->
   <script src="tts-engine-controller.js"></script>
-  <!-- TODO-FIXED(2025-08-23): use shared VoiceAssistantCore instead of standalone build -->
   <script src="../voice-assistant-apps/shared/core/VoiceAssistantCore.js"></script>
   <script src="app.js"></script>
 

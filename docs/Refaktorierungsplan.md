@@ -175,7 +175,6 @@ sprint-5(tts): unify engine sources, add lazy loading and robust fallback
   - incremental Whisper chunking
   - forward partial transcripts to intent routing
   - stream TTS answers without full buffering
-<!-- TODO-FIXED(2024-07-06): true streaming TODO stubs added -->
 
 **Acceptance**
 
