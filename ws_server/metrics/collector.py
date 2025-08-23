@@ -6,8 +6,7 @@ active connections, message counts and basic latency histograms.  It is
 intentionally lightweight to avoid blocking the event loop.
 """
 
-# TODO: track memory usage and network throughput metrics
-#       (see TODO-Index.md: WS-Server / Protokolle)
+# TODO-FIXED(2025-08-23): track memory usage and network throughput metrics
 
 from __future__ import annotations
 
@@ -45,10 +44,14 @@ except Exception:  # pragma: no cover - provide no-op stand-ins
         def labels(self, *args, **kwargs):  # pragma: no cover - stub
             return self
 
-        def inc(self, amount: float = 1, *args, **kwargs):  # type: ignore[no-redef]
+        def inc(
+            self, amount: float = 1, *args, **kwargs
+        ):  # type: ignore[no-redef]
             self._value._val += amount
 
-        def dec(self, amount: float = 1, *args, **kwargs):  # type: ignore[no-redef]
+        def dec(
+            self, amount: float = 1, *args, **kwargs
+        ):  # type: ignore[no-redef]
             self._value._val -= amount
 
         def observe(self, *args, **kwargs):  # type: ignore[no-redef]
@@ -83,6 +86,11 @@ class MetricsCollector:
         self.memory_rss_bytes = Gauge(
             "process_resident_memory_bytes",
             "Resident memory size of the server process in bytes",
+            registry=self.registry,
+        )
+        self.system_memory_percent = Gauge(
+            "system_memory_percent",
+            "Total system memory usage in percent",
             registry=self.registry,
         )
 
@@ -139,6 +147,16 @@ class MetricsCollector:
             "Total number of audio bytes sent to clients",
             registry=self.registry,
         )
+        self.network_bytes_sent_total = Counter(
+            "network_bytes_sent_total",
+            "Total number of bytes sent over all network interfaces",
+            registry=self.registry,
+        )
+        self.network_bytes_recv_total = Counter(
+            "network_bytes_recv_total",
+            "Total number of bytes received over all network interfaces",
+            registry=self.registry,
+        )
 
         # Histograms for latency measurements
         self.stt_latency = Histogram(
@@ -156,6 +174,7 @@ class MetricsCollector:
 
         self._system_task: Optional[asyncio.Task] = None
         self._process = psutil.Process() if psutil is not None else None
+        self._last_net_io = None
 
     # ------------------------------------------------------------------
     def start(self) -> None:
@@ -168,10 +187,31 @@ class MetricsCollector:
     async def _update_system_metrics(self) -> None:
         while True:
             try:
-                if psutil is not None:  # pragma: no cover - not critical in tests
+                if psutil is not None:
+                    # pragma: no cover - not critical in tests
                     self.cpu_percent.set(psutil.cpu_percent())
                     if self._process is not None:
-                        self.memory_rss_bytes.set(self._process.memory_info().rss)
+                        self.memory_rss_bytes.set(
+                            self._process.memory_info().rss
+                        )
+                    self.system_memory_percent.set(
+                        psutil.virtual_memory().percent
+                    )
+                    net = psutil.net_io_counters()
+                    if self._last_net_io is None:
+                        self._last_net_io = net
+                    else:
+                        sent_diff = max(
+                            0, net.bytes_sent - self._last_net_io.bytes_sent
+                        )
+                        recv_diff = max(
+                            0, net.bytes_recv - self._last_net_io.bytes_recv
+                        )
+                        if sent_diff:
+                            self.network_bytes_sent_total.inc(sent_diff)
+                        if recv_diff:
+                            self.network_bytes_recv_total.inc(recv_diff)
+                        self._last_net_io = net
             except Exception as exc:  # pragma: no cover - diagnostic only
                 logger.debug("cpu metrics failed: %s", exc)
             await asyncio.sleep(5)
@@ -180,6 +220,4 @@ class MetricsCollector:
 # Singleton instance used by the application
 collector = MetricsCollector()
 
-
 __all__ = ["collector", "MetricsCollector"]
-
