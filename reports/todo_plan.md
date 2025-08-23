@@ -1,53 +1,45 @@
 # TODO Work Plan
 
-This plan summarizes outstanding TODO items from `TODO-Index.md` with priorities and dependencies. Tasks are ordered high → low priority. Domains denote subsystem.
+This plan consolidates outstanding items from `TODO-Index.md`. Tasks are ordered by priority and grouped by domain. Dependencies describe prerequisite work.
 
 ## High Priority
-1. **ws_server/routing/skills.py** – flesh out `BaseSkill` interface and improve routing logic.
-   - Domain: WS‑Server/Routing
-   - Dependencies: none
+*No open high‑priority TODOs – previously completed tasks include STT streaming, skill routing, and PCM validation.*
 
 ## Medium Priority
-1. **voice-assistant-apps/shared/core/VoiceAssistantCore.js** & **AudioStreamer.js** – consolidate streaming logic into a single module.
+1. **Consolidate frontend streaming modules** – merge `voice-assistant-apps/shared/core/VoiceAssistantCore.js` and `AudioStreamer.js` to remove duplicated logic.
    - Domain: Frontend
-   - Dependencies: mutual; consolidation required before GUI tasks
-2. **gui/enhanced-voice-assistant.js** – remove duplication after core consolidation.
+   - Dependencies: none
+2. **Deduplicate GUI helper** – adjust `gui/enhanced-voice-assistant.js` after core consolidation.
    - Domain: Frontend
-   - Dependencies: depends on completion of the above consolidation
-3. **ws_server/compat/legacy_ws_server.py** – stream chunk-wise without buffering and log Kokoro voice detection errors.
-   - Domain: WS‑Server/Compat
-   - Dependencies: decision on legacy server retention
-4. **ws_server/tts/staged_tts/chunking.py** – review overlap with sanitizer/normalizer for unified pipeline.
-   - Domain: WS‑Server/TTS
-   - Dependencies: blocked until sanitizer/normalizer unification is defined
-5. **ws_server/metrics/collector.py** – record memory usage and network throughput.
+   - Dependencies: depends on consolidation above
+3. **Improve legacy WebSocket server** – stream chunk-wise and log Kokoro voice detection errors in `ws_server/compat/legacy_ws_server.py`.
+   - Domain: WS‑Server / Compat
+   - Dependencies: decision whether legacy server remains supported
+4. **Unify TTS pipeline pieces** – review overlap in `ws_server/tts/staged_tts/chunking.py` once sanitizer and normalizer responsibilities are clarified.
+   - Domain: WS‑Server / TTS
+   - Dependencies: outcome of sanitizer/normalizer unification
+5. **Extend metrics collector** – track system memory usage and network throughput in `ws_server/metrics/collector.py`.
    - Domain: Metrics
    - Dependencies: none
 
 ## Low Priority
-1. Backend cleanup (`backend/tts/piper_tts_engine.py`, `ws_server/tts/engines/piper.py`, `torch.py`/`torchaudio.py`/`soundfile.py`, `piper/__init__.py`, `backend/tts/engine_zonos.py`).
+1. **Backend cleanup** – remove deprecated wrappers and stubs (`backend/tts/piper_tts_engine.py`, `ws_server/tts/engines/piper.py`, `torch.py`, `torchaudio.py`, `soundfile.py`, `piper/__init__.py`, `backend/tts/engine_zonos.py`).
    - Domain: Backend
-   - Dependencies: installation of real libraries
-2. Config unification (`ws_server/tts/voice_aliases.py`, `config/tts.json`, `env.example`).
+   - Dependencies: installing real libraries
+2. **Config unification** – align `ws_server/tts/voice_aliases.py`, `config/tts.json`, and `.env.example`.
    - Domain: Config
-   - Dependencies: coordinated update across all files
-3. Documentation tasks (`docs/Refaktorierungsplan.md`, `docs/GUI-TODO.md`).
-   - Domain: Documentation
+   - Dependencies: coordinated update across files
+3. **Documentation upkeep** – update `docs/Refaktorierungsplan.md` and `docs/GUI-TODO.md`.
+   - Domain: Docs
    - Dependencies: none
-4. Additional WS-Server tasks (FastAPI adapter, sanitizer unification, text_normalize clarification, staged TTS crossfade config, removal of backups and legacy skills).
+4. **WS‑Server enhancements** – FastAPI adapter, sanitizer/normalizer clarification, staged TTS crossfade config, and removal of legacy backups.
    - Domain: WS‑Server
-   - Dependencies: various; crossfade config depends on staged TTS pipeline decisions
-5. Tooling (`start_voice_assistant.py` error handling).
+   - Dependencies: various; crossfade config depends on staged TTS design decisions
+5. **Tooling improvements** – replace silent pass blocks in `start_voice_assistant.py` with explicit error handling.
    - Domain: Tools & Scripts
    - Dependencies: none
 
 ## Dependency Notes
-- Sanitizer/normalizer unification must precede work on chunking overlap and text_normalize responsibilities.
-- Merging `VoiceAssistantCore` and `AudioStreamer` is required before deduplicating the GUI module.
-- Config consolidation across `voice_aliases.py`, `config/tts.json`, and `env.example` should be coordinated to avoid drift.
-
-## Planned Execution Order
-1. Implement skill interface and routing improvements (`ws_server/routing/skills.py`).
-2. Consolidate frontend streaming modules and adjust GUI.
-3. Improve legacy WS server and metrics collector.
-4. Tackle backend cleanup and config/documentation tasks.
+- Sanitizer/normalizer unification must precede TTS chunking review.
+- Merging `VoiceAssistantCore` and `AudioStreamer` is required before removing GUI duplication.
+- Config files should be updated in lockstep to avoid drift.
