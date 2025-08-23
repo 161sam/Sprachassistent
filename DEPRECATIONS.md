@@ -16,3 +16,5 @@
 | `ws_server/transport/fastapi_adapter.py` | _archived (unused)_ |
 | `archive/legacy_ws_server/skills/` | `ws_server/skills/` |
 | `voice-assistant-apps/shared/core/AudioStreamer.js` (manual queue) | sequence-based playback with prebuffered crossfade in same file |
+| `docs/GUI-TODO.md` | entries moved to `TODO-Index.md` |
+
