@@ -1,10 +1,11 @@
 import asyncio
+
 from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor, StagedTTSConfig
 from ws_server.metrics.collector import collector
 
 
 class OnlyPiperManager:
-    engines = {"piper": object()}
+    engines = {"piper": object(), "zonos": object()}
 
     async def synthesize(self, text, engine=None, voice=None):
         if engine != "piper":
