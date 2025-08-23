@@ -1154,24 +1154,33 @@
     }
 
     /* Landscape Orientation */
-    @media (orientation: landscape) and (max-height: 500px) {
-      .avatar {
-        width: 200px;
-        height: 200px;
+      @media (orientation: landscape) and (max-height: 500px) {
+        .avatar {
+          width: 200px;
+          height: 200px;
+        }
+
+        .main-content {
+          padding-bottom: 90px;
+        }
+
+        .header-section {
+          margin-bottom: var(--spacing-md);
+        }
       }
-      
-      .main-content {
-        padding-bottom: 90px;
+
+      #live-text-output.flash {
+        animation: messageFlash 0.8s var(--animation-easing);
       }
-      
-      .header-section {
-        margin-bottom: var(--spacing-md);
+
+      @keyframes messageFlash {
+        from { background: var(--accent-light); }
+        to { background: #1118; }
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="app-container">
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
     <!-- Top Navigation -->
     <nav class="top-nav">
       <div class="app-logo">

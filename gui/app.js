@@ -96,8 +96,11 @@
     lastSeq = sequence_id || lastSeq || 'default';
     box.textContent = text || '';
     box.style.display = text ? 'block' : 'none';
-    // auto-fade nach 12s
     if (text) {
+      // TODO-FIXED(2025-08-23): message flash when new text appears
+      box.classList.add('flash');
+      box.addEventListener('animationend', () => box.classList.remove('flash'), { once: true });
+      // auto-fade nach 12s
       clearTimeout(box._hideTimer);
       box._hideTimer = setTimeout(()=>{ box.style.display='none'; }, 12000);
     }
