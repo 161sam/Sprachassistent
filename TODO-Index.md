@@ -3,8 +3,8 @@
 ## Backend
 - **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. ✅ Done in commit `remove piper wrapper`. _Prio: Niedrig_
 - **ws_server/tts/engines/piper.py**: handle sample rate read errors explicitly; backend wrapper removed. ✅ Done in commit `piper sample rate errors`. _Prio: Niedrig_
-- **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. _Prio: Niedrig_
-- **piper/__init__.py**: replace stub with real piper dependency. _Prio: Niedrig_
+- **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
+- **piper/__init__.py**: replace stub with real piper dependency. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
 
 ## Frontend
@@ -43,6 +43,4 @@
 ## ❓ Offene Fragen
 - ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
 - ❓ Is the legacy WS server still required, or can the compat layer be dropped?
-- ❓ Are the torch/torchaudio/soundfile stubs still necessary once real libraries are installed?
 - ❓ Is `gui/enhanced-voice-assistant.js` still required or can its features be merged into the shared core modules?
-- ❓ Is the archived legacy skill system (`archive/legacy_ws_server`) still required or can it be removed entirely?
