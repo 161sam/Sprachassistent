@@ -132,6 +132,8 @@ class PiperTTSEngine(BaseTTSEngine):
             if sr > 0:
                 return sr
         except Exception:
+            # TODO: handle sample rate JSON read errors explicitly instead of
+            #       silent pass (see TODO-Index.md: Backend)
             pass
         if "de_DE-thorsten-low" in model_path:
             logger.warning("piper: sample_rate missing – fallback 22050 Hz")

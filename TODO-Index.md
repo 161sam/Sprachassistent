@@ -2,7 +2,7 @@
 
 ## Backend
 - **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. _Prio: Niedrig_
-- **ws_server/tts/engines/piper.py**: keep implementation in sync with backend wrapper. _Prio: Niedrig_
+- **ws_server/tts/engines/piper.py**: keep implementation in sync with backend wrapper; handle sample rate read errors explicitly. _Prio: Niedrig_
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. _Prio: Niedrig_
 - **piper/__init__.py**: replace stub with real piper dependency. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. _Prio: Niedrig_
@@ -14,7 +14,7 @@
 
 ## WS-Server / Protokolle
 - **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. _Prio: Hoch_
-- **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio. _Prio: Mittel_
+- **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio; log Kokoro voice detection errors instead of silent pass. _Prio: Mittel_
 - **ws_server/routing/skills.py**: flesh out skill interface and routing logic. _Prio: Hoch_
 - **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_
 - **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
