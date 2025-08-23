@@ -134,6 +134,18 @@ class ZonosTTSEngine(BaseTTSEngine):
             return TTSResult(success=False, audio_data=None, processing_time_ms=0.0, error_message="Zonos nicht initialisiert", engine_used="zonos")
 
         try:
+            # Text säubern – verhindert "Missing phoneme from id map"-Fehler
+            try:  # pragma: no cover - Import kann scheitern
+                from ws_server.tts.staged_tts.chunking import sanitize_for_tts
+                text = sanitize_for_tts(text)
+            except Exception:
+                pass
+            import unicodedata
+            text = unicodedata.normalize('NFD', text)
+            text = ''.join(ch for ch in text if unicodedata.category(ch) != 'Mn')
+            text = text.replace(chr(0x0327), '')
+            text = unicodedata.normalize('NFC', text)
+
             voice = voice_id or self._active_voice
             lang = _normalize_lang(language or self._active_lang or 'de')
 
