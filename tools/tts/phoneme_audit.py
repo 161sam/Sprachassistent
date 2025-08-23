@@ -20,6 +20,8 @@ PROBLEM_TEXTS = [
     "İstanbul",
     "Москва",
     "東京",
+    "Crème brûlée",
+    "¿Qué?",
 ]
 
 def load_map(path: str) -> set[str]:
