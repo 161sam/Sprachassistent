@@ -11,6 +11,8 @@
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. _Prio: Mittel_
 - **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. _Prio: Mittel_
 - **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. _Prio: Mittel_
+- **gui layout and design refresh**: reorganize GUI elements (status page, input placement, icon-only round buttons). _Prio: Niedrig_
+- **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. _Prio: Niedrig_
 
 ## WS-Server / Protokolle
 - **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. ✅ Done in commit `stt streaming`. _Prio: Hoch_
@@ -33,7 +35,7 @@
 
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. ✅ Done in commit `docs true streaming stubs`. _Prio: Niedrig_
-- **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. _Prio: Niedrig_
+- **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. ✅ Done in commit `gui todo merged`. _Prio: Niedrig_
 
 ## Tools & Scripts
 - **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. ✅ Done in commit `startup error handling`. _Prio: Niedrig_
