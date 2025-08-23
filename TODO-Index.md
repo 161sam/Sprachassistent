@@ -20,7 +20,7 @@
 - **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: review overlap with sanitizer/normalizer for unified pipeline. _Prio: Mittel_
 - **ws_server/tts/text_normalize.py**: clarify responsibilities with other sanitizer components. _Prio: Niedrig_
-- **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. _Prio: Hoch_
+- **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. ✅ Done in commit `binary PCM validation`. _Prio: Hoch_
 - **ws_server/metrics/collector.py**: track memory usage and network throughput metrics. _Prio: Mittel_
 - **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. _Prio: Niedrig_
 - **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. _Prio: Niedrig_
