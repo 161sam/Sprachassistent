@@ -10,7 +10,7 @@
     "build": "cordova build android",
     "build-release": "cordova build android --release",
     "serve": "cordova serve",
-    "prepare": "cordova prepare android",
+    "prepare": "node cordova-wrapper.js prepare android",
     "emulate": "cordova emulate android",
     "device": "cordova run android --device",
     "clean": "cordova clean android",
