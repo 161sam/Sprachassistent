@@ -4,6 +4,9 @@ import numpy as np
 float16 = 'float16'
 float32 = 'float32'
 
+# TODO: replace this minimal torch stub with the actual library or a proper
+#       test double (see TODO-Index.md: Backend)
+
 class _Cuda:
     @staticmethod
     def is_available() -> bool:

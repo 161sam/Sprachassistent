@@ -7,6 +7,8 @@ from ws_server.tts.text_sanitizer import (
     sanitize_for_tts_strict,
     pre_sanitize_text,
 )
+# TODO: review overlap with text_sanitizer and text_normalize modules for a
+#       unified pipeline (see TODO-Index.md: WS-Server / Protokolle)
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.
