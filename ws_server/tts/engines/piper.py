@@ -6,6 +6,9 @@ representation.  The engine reads the sample rate from the accompanying
 model JSON file and always returns proper WAV bytes.
 """
 
+# TODO: relocate to backend/tts to keep all engines in one place
+#       (see TODO-Index.md: Backend/TTS Engines)
+
 
 from __future__ import annotations
 
