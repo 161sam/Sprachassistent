@@ -42,6 +42,8 @@ def test_zonos_engine_sanitizes_text(monkeypatch, raw, forbidden):
         engine = ZonosTTSEngine(TTSConfig(voice="test", language="de"))
         engine.model = DummyModel()
         engine.device = "cpu"
+        engine.native_sr = 44100
+        engine._target_sr = 44100  # avoid resampling dependency
 
         def fake_make_cond_dict(*, text, language, speaker):
             captured["text"] = text
