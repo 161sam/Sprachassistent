@@ -123,6 +123,8 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
             label = f"{pretty} [{k}]"
             out.append({"label": label, "key": k})
     except Exception:
+        # TODO: log Kokoro voice detection errors instead of silent pass
+        #       (see TODO-Index.md: WS-Server / Protokolle)
         pass
     return out
 
