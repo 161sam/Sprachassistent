@@ -13,13 +13,14 @@
     } catch(e){ console.warn('[GUI] audio play failed', e); }
   }
 
+  // TODO-FIXED(2025-08-23): consolidated with shared VoiceAssistantCore
   async function ensureVA(){
     if (window.va) return window.va;
-    if (!window.EnhancedVoiceAssistant && !window.VoiceAssistant) {
-      console.error("[GUI] EnhancedVoiceAssistant nicht geladen.");
+    if (!window.VoiceAssistantCore && !window.VoiceAssistant) {
+      console.error("[GUI] VoiceAssistantCore nicht geladen.");
       return null;
     }
-    const Cls = window.EnhancedVoiceAssistant || window.VoiceAssistant;
+    const Cls = window.VoiceAssistantCore || window.VoiceAssistant;
     const va = new Cls({
       wsUrl: WS_URL,
       sampleRate: 16000,

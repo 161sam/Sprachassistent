@@ -1,32 +1,25 @@
 # TODO Work Plan
 
 ## Frontend
-1. **Consolidate VoiceAssistantCore with AudioStreamer**
-   - **Files:** `voice-assistant-apps/shared/core/VoiceAssistantCore.js`, `voice-assistant-apps/shared/core/AudioStreamer.js`
+1. **Unify GUI client with shared core modules**
+   - **Files:** `gui/enhanced-voice-assistant.js`, `gui/index.html`, `gui/app.js`
    - **Priority:** Medium
    - **Domain:** Frontend
    - **Dependencies:** None
-   - **Rationale:** Remove duplicated WebSocket/token handling to centralize streaming logic.
+   - **Rationale:** Avoid duplication by loading shared core modules directly.
 
-2. **Unify GUI client with shared core modules**
-   - **Files:** `gui/enhanced-voice-assistant.js`
-   - **Priority:** Medium
-   - **Domain:** Frontend
-   - **Dependencies:** Task 1 to provide unified streaming interface
-   - **Rationale:** Avoid duplication between GUI and shared core for easier maintenance.
-
-3. **GUI layout and design refresh**
+2. **GUI layout and design refresh**
    - **Files:** `gui/` assets
    - **Priority:** Low
    - **Domain:** Frontend
-   - **Dependencies:** Task 2 to ensure layout targets final components
+   - **Dependencies:** Task 1 provides stable base
    - **Rationale:** Improve visual structure and usability.
 
-4. **GUI animations (matrix-rain, avatar pulse, message flash)**
+3. **GUI animations (matrix-rain, avatar pulse, message flash)**
    - **Files:** `gui/` assets
    - **Priority:** Low
    - **Domain:** Frontend
-   - **Dependencies:** Task 3 for stable layout foundation
+   - **Dependencies:** Task 2 finalizes layout foundation
    - **Rationale:** Enhance visual feedback and engagement.
 
 ## Open Questions
