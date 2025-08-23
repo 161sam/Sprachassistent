@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Helper utilities for voice normalization."""
 
+import re
 from typing import Optional
 
 
@@ -14,7 +15,9 @@ def canonicalize_voice(voice: Optional[str]) -> Optional[str]:
     """
     if not voice:
         return voice
-    v = voice.strip().replace("de_DE-", "de-")
+    v = voice.strip()
+    # collapse locale style prefix, e.g. "de_DE-" or "EN_us-" -> "de-" / "en-"
+    v = re.sub(r"([a-z]{2})_[a-z]{2}-", r"\1-", v, flags=re.IGNORECASE)
     return v.lower()
 
 __all__ = ["canonicalize_voice"]
