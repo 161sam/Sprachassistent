@@ -1,6 +1,11 @@
 import os
 from pathlib import Path
 
+import pytest
+
+# TODO-FIXED(2024-11-21): require real piper after removing stub
+pytest.importorskip("piper")
+
 from ws_server.tts.engines.piper import PiperTTSEngine
 from backend.tts.base_tts_engine import TTSConfig
 

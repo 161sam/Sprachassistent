@@ -29,20 +29,13 @@
    - **Dependencies:** Task 3 for finalized layout
    - **Rationale:** enhance visual feedback and user engagement.
 
-## Backend / WS-Server
-5. **Implement FastAPI transport adapter**
-   - **Files:** `ws_server/transport/fastapi_adapter.py`
-   - **Priority:** Low
-   - **Domain:** WS-Server
-   - **Dependencies:** none
-   - **Rationale:** enable HTTP clients to reuse WebSocket server logic via FastAPI.
-
-6. **Replace stubbed audio dependencies**
+## Backend
+5. **Replace stubbed audio dependencies**
    - **Files:** `torch.py`, `torchaudio.py`, `soundfile.py`, `piper/__init__.py`
    - **Priority:** Low
    - **Domain:** Backend
-   - **Dependencies:** availability of real libraries or proper test mocks
-   - **Rationale:** remove brittle stubs and rely on real packages or scoped mocks.
+   - **Dependencies:** availability of real libraries or scoped test mocks
+   - **Rationale:** remove brittle stubs and rely on real packages or dedicated mocks.
 
 ## Open Questions
 - Are VoiceAssistantCore and AudioStreamer both needed or can they be fully merged?

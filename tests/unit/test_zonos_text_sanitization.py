@@ -2,7 +2,10 @@ import asyncio
 import contextlib
 import pytest
 
+# TODO-FIXED(2024-11-21): guard heavy audio deps after removing stubs
 torch = pytest.importorskip("torch")
+torchaudio = pytest.importorskip("torchaudio")
+soundfile = pytest.importorskip("soundfile")
 
 from backend.tts.engine_zonos import ZonosTTSEngine
 from backend.tts.base_tts_engine import TTSConfig
