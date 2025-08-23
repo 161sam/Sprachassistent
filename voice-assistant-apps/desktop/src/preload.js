@@ -99,3 +99,11 @@ const originalConsole = { ...console };
     originalConsole[method]('[Renderer]', ...args);
   };
 });
+
+// --- added: expose ttsPlan API ---
+
+try {
+  contextBridge.exposeInMainWorld('ttsPlan', {
+    setPlan: (intro, main) => ipcRenderer.invoke('tts-plan:set', { intro, main }),
+  });
+} catch {}

@@ -5,6 +5,51 @@ Text-Chunking für sprechgerechte TTS-Ausgabe
 import re
 from typing import List
 
+def sanitize_for_tts(text: str) -> str:
+    """
+    Macht Eingabetext TTS-freundlich:
+    - NFC-Normalisierung
+    - Zero-Width/NBSP entfernen
+    - typografische Zeichen nach ASCII
+    - verwaiste kombinierende Zeichen droppen
+    """
+    import unicodedata
+
+    # 1) NFC
+    text = unicodedata.normalize("NFC", text)
+
+    # 2) einfache Typographie-Mappings (sichtbare Zeichen direkt)
+    trans = {
+        '‘': "'", '’': "'", '‚': ',', '‛': "'",
+        '“': '"', '”': '"', '„': '"',
+        '–': '-', '—': '-', '−': '-',
+        '…': '...',
+        chr(0x00A0): ' ',  # NBSP
+    }
+    text = text.translate(str.maketrans(trans))
+
+    # 3) Zero-Width & Co. entfernen (per Codepoints, keine unsichtbaren Literalzeichen)
+    ZW = {0x200B: None, 0x200C: None, 0x200D: None, 0x200E: None,
+          0x200F: None, 0x2060: None, 0xFEFF: None}
+    text = text.translate(ZW)
+
+    # 4) Verwaiste kombinierende Zeichen entfernen
+    out = []
+    prev_is_base = False
+    for ch in text:
+        cat = unicodedata.category(ch)
+        if cat.startswith('M') and not prev_is_base:
+            # kombinierendes Zeichen ohne Basis -> verwerfen
+            continue
+        out.append(ch)
+        prev_is_base = not cat.startswith('M')
+    text = ''.join(out)
+
+    # 5) mehrfaches Whitespace trimmen
+    text = ' '.join(text.split())
+    return text
+
+
 
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
@@ -17,6 +62,10 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     Returns:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
+    try:
+        text = unicodedata.normalize('NFC', text)
+    except Exception:
+        pass
     # Text begrenzen auf max_length
     text = text.strip()
     if len(text) > max_length:
@@ -81,6 +130,7 @@ def create_intro_chunk(chunks: List[str], max_intro_length: int = 120) -> tuple[
 
 
 def optimize_for_prosody(text: str) -> str:
+    text = sanitize_for_tts(text)
     """
     Optimiere Text für natürliche TTS-Prosodie.
     
@@ -90,6 +140,7 @@ def optimize_for_prosody(text: str) -> str:
     Returns:
         Optimierter Text mit besserer Zeichensetzung
     """
+    text = sanitize_for_tts(text)
     # Zahlen in Wortform umwandeln (vereinfacht)
     number_replacements = {
         '20.000': 'zwanzigtausend',
@@ -97,6 +148,14 @@ def optimize_for_prosody(text: str) -> str:
         '2.000': 'zweitausend',
         '10.000': 'zehntausend',
         '100.000': 'hunderttausend',
+    
+    # HARDCORE FIX: Cedilla und alle diakritischen Zeichen entfernen
+    text = ''.join(
+        char for char in unicodedata.normalize('NFD', text)
+        if unicodedata.category(char) != 'Mn'
+    )
+    # Spezielle Behandlung für Cedilla
+    text = text.replace(chr(0x0327), '')  # Combining cedilla
     }
     
     result = text

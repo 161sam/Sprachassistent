@@ -129,22 +129,6 @@ class LMClient:
         self.base = base.rstrip("/")
         self.timeout = aiohttp.ClientTimeout(total=timeout)
 
-async def _emit_assistant_text(ws, sequence_id, text):
-    """Sende sofort den reinen Assistant-Text an den Client (Text-First UX)."""
-    try:
-        import time, json as _json
-        msg = {
-            "type": "assistant_text",
-            "sequence_id": sequence_id,
-            "text": text,
-            "timestamp": time.time(),
-        }
-        await ws.send(_json.dumps(msg))
-    except Exception as e:
-        logger = globals().get("logger")
-        if logger: logger.warning("assistant_text emit failed: %s", e)
-
-
     async def list_models(self) -> Dict[str, List[str]]:
         """Return available and loaded model identifiers from the LLM service.
 

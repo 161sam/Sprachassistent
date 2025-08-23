@@ -1,3 +1,20 @@
 {
-  "engines": {}
+  "default_engine": "piper",
+  "engines": ["piper", "zonos"],
+  "voice_map": {
+    "de-thorsten-low": { "piper": "de-thorsten-low" },
+    "de_DE-thorsten-low": {
+      "piper": "de_DE-thorsten-low",
+      "zonos": "thorsten"
+    }
+  },
+  "playback": {
+    "mode": "staged",
+    "autoplay": true,
+    "staged": {
+      "intro": "auto",   // auto|piper|zonos|none
+      "main":  "auto",   // auto|zonos|piper|none
+      "fastStart": true
+    }
+  }
 }

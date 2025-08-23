@@ -1,12 +1,14 @@
-"""
-Staged TTS Processor für parallele Piper + Zonos Verarbeitung
-"""
+"""Staged TTS Processor – planbasiert (Intro/Main), konfigurierbar"""
 
 import asyncio
 import time
 import uuid
 import base64
 import logging
+INTRO_MAX_CHARS = 160  # added by patch: begrenze Intro-Länge
+INTRO_TIMEOUT_MS = 8000
+
+logger = logging.getLogger(__name__)
 import hashlib
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -17,6 +19,47 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+
+def _hardcore_sanitize_text(text: str) -> str:
+    """Entfernt ALLE problematischen Zeichen für Piper TTS"""
+    if not text:
+        return text
+    
+    import unicodedata
+    
+    # Unicode normalisieren
+    text = unicodedata.normalize("NFKC", text)
+    
+    # HARDCORE: Alle diakritischen Zeichen entfernen
+    # Das ist der Grund für "Missing phoneme from id map: ̧"
+    text = ''.join(
+        char for char in unicodedata.normalize('NFD', text)
+        if unicodedata.category(char) != 'Mn'  # Remove all marks (diakritika)
+    )
+    
+    # Zusätzliche problematische Zeichen
+    replacements = {
+        chr(0x0327): '',      # Combining cedilla ̧ (Hauptproblem!)
+        'ç': 'c',             # c mit Cedilla
+        chr(0x201C): '"',     # Left double quote
+        chr(0x201D): '"',     # Right double quote
+        chr(0x2018): "'",     # Left single quote  
+        chr(0x2019): "'",     # Right single quote
+        chr(0x2014): '-',     # Em dash
+        chr(0x2013): '-',     # En dash
+        chr(0x2026): '...',   # Ellipsis
+        chr(0x00A0): ' ',     # Non-breaking space
+    }
+    
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    
+    # Mehrfache Leerzeichen normalisieren
+    text = ' '.join(text.split())
+    
+    return text
+
+
 class TTSChunk:
     """Repräsentiert einen TTS-Chunk mit Metadaten"""
     sequence_id: str
@@ -42,6 +85,23 @@ class StagedTTSConfig:
     crossfade_duration_ms: int = 100
 
 
+
+@dataclass
+class StagedPlan:
+    """Plan/Policy für Intro/Main – 'auto' wählt dynamisch."""
+    intro_engine: str | None = "auto"   # 'auto'|'piper'|'zonos'|None
+    main_engine:  str | None = "auto"   # 'auto'|'piper'|'zonos'|None
+    fast_start:   bool = True           # Intro parallel, wenn vorhanden
+
+def _env_override(name: str) -> str | None:
+    import os
+    val = os.getenv(name) or os.getenv(name.lower())
+    if not val:
+        return None
+    v = val.strip().lower()
+    return v if v in {"auto","piper","zonos","kokoro","none",""} else None
+
+
 class StagedTTSProcessor:
     """
     Hauptklasse für Staged TTS Processing
@@ -52,6 +112,7 @@ class StagedTTSProcessor:
     """
 
     def __init__(self, tts_manager, config: StagedTTSConfig = None):
+        self.plan = StagedPlan()
         self.tts_manager = tts_manager
         self.config = config or StagedTTSConfig()
         # LRU Cache for synthesized audio
@@ -83,16 +144,19 @@ class StagedTTSProcessor:
         
         # Sequence ID generieren
         sequence_id = uuid.uuid4().hex[:8]
+
+        # Plan bestimmen (konfigurierbar, ohne Hartverdrahtung)
+        plan = self._resolve_plan(canonical_voice)
         
         # Tasks für parallele Verarbeitung erstellen
         tasks = []
         
         # Stage A: Piper Intro (sofort starten)
-        if intro_text:
+        if intro_text and plan.intro_engine:
             intro_task = asyncio.create_task(
                 self._synthesize_chunk(
                     text=intro_text,
-                    engine="piper",
+                    engine=plan.intro_engine,
                     sequence_id=sequence_id,
                     index=0,
                     total=1 + len(main_chunks),
@@ -101,26 +165,22 @@ class StagedTTSProcessor:
             )
             tasks.append(intro_task)
         
-        # Stage B: Zonos Hauptinhalt (parallel verarbeiten)
-        if (
-            "zonos" in getattr(self.tts_manager, "engines", {})
-            and self.tts_manager.engine_allowed_for_voice("zonos", canonical_voice)
-        ):
+                # Stage B: Main-Streaming (parallel verarbeiten)
+        if plan.main_engine:
             for i, chunk_text in enumerate(main_chunks[: self.config.max_chunks - 1]):
-                zonos_task = asyncio.create_task(
+                main_task = asyncio.create_task(
                     self._synthesize_chunk(
                         text=chunk_text,
-                        engine="zonos",
+                        engine=plan.main_engine,
                         sequence_id=sequence_id,
                         index=i + 1,
                         total=1 + len(main_chunks),
                         voice=canonical_voice,
                     )
                 )
-                tasks.append(zonos_task)
+                tasks.append(main_task)
         else:
-            logger.info("Zonos Engine nicht verfügbar, verwende nur Piper-Intro")
-            collector.tts_engine_unavailable_total.labels(engine="zonos").inc()
+            logger.info("Keine Main-Engine verfügbar – nur Intro wird (falls vorhanden) gespielt.")
         
         completed_chunks = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -226,23 +286,29 @@ class StagedTTSProcessor:
             )
     
     def create_chunk_message(self, chunk: TTSChunk) -> Dict[str, Any]:
-        """
-        Erstelle WebSocket-Message für TTS-Chunk.
-        
-        Args:
-            chunk: TTSChunk-Objekt
-            
-        Returns:
-            WebSocket-Message Dictionary
-        """
-        audio_b64 = None
-        if chunk.audio_data:
-            audio_b64 = base64.b64encode(chunk.audio_data).decode("utf-8")
-        if chunk.success and chunk.audio_data:
-            collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
-            collector.audio_out_bytes_total.inc(len(chunk.audio_data))
+        """Erstelle WebSocket-Message für TTS-Chunk."""
+        audio_b64 = ""
+        try:
+            if chunk.audio_data:
+                import base64
+                audio_b64 = base64.b64encode(chunk.audio_data).decode("ascii")
+        except Exception as e:
+            logger.warning(
+                "STAGED_TTS::encode_failed | seq=%s idx=%s err=%s",
+                getattr(chunk, "sequence_id", None),
+                getattr(chunk, "index", None),
+                e,
+            )
 
-        return {
+        # Metriken
+        if chunk.success and chunk.audio_data:
+            try:
+                collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
+                collector.audio_out_bytes_total.inc(len(chunk.audio_data))
+            except Exception:
+                pass
+
+        msg = {
             "type": "tts_chunk",
             "sequence_id": chunk.sequence_id,
             "index": chunk.index,
@@ -255,33 +321,249 @@ class StagedTTSProcessor:
             "timestamp": time.time(),
             "crossfade_ms": self.config.crossfade_duration_ms,
         }
+        logger.debug(
+            "STAGED_TTS::chunk_msg | seq=%s idx=%s/%s engine=%s audio=%s",
+            chunk.sequence_id,
+            chunk.index,
+            chunk.total,
+            chunk.engine,
+            "yes" if audio_b64 else "no",
+        )
+        return msg
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Gib Cache-Statistiken zurück."""
+        total_size = sum(len(data) for data in self._cache.values())
+
+
+
+
+
+    def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
+        try:
+            if hasattr(self.tts_manager, "engine_allowed_for_voice"):
+                return bool(self.tts_manager.engine_allowed_for_voice(engine, voice))
+            return engine in getattr(self.tts_manager, "engines", {})
+        except Exception:
+            return False
+
+    def _resolve_plan(self, canonical_voice: str) -> StagedPlan:
+        """
+        Priorität:
+        1) ENV: STAGED_TTS_INTRO_ENGINE / STAGED_TTS_MAIN_ENGINE
+        2) (optional) config-Datei (nicht zwingend)
+        3) 'auto': Intro bevorzugt Piper (fast), Main bevorzugt Zonos (Qualität)
+        """
+        intro = _env_override("STAGED_TTS_INTRO_ENGINE")
+        main  = _env_override("STAGED_TTS_MAIN_ENGINE")
+
+        try:
+            intro = intro or globals().get("INTRO_ENGINE", None)
+            main  = main  or globals().get("MAIN_ENGINE", None)
+        except Exception:
+            pass
+
+        if intro in ("none",""): intro = None
+        if main  in ("none",""): main  = None
+
+        plan = StagedPlan(intro_engine=intro or "auto",
+                          main_engine= main  or "auto",
+                          fast_start=True)
+
+        def pick_intro():
+            if self._engine_available_for_voice("piper", canonical_voice):
+                return "piper"
+            return None
+
+        def pick_main():
+            if self._engine_available_for_voice("zonos", canonical_voice):
+                return "zonos"
+            if self._engine_available_for_voice("piper", canonical_voice):
+                return "piper"
+            return None
+
+        if plan.intro_engine == "auto":
+            plan.intro_engine = pick_intro()
+        if plan.main_engine == "auto":
+            plan.main_engine = pick_main()
+
+        logger.info("STAGED_TTS::plan | intro=%s | main=%s | voice=%s",
+                    plan.intro_engine, plan.main_engine, canonical_voice)
+        return plan
+# ---- added by patch: verbose staged-tts logger ----
+def _staged_log(evt: str, **kw):
+    try:
+        parts = [f"STAGED_TTS::{evt}"]
+        for k,v in kw.items():
+            if k in ("text","chunk_audio"):
+                # nicht den gesamten Text/Audios ausgeben
+                if isinstance(v,str):
+                    parts.append(f"{k}len={len(v)}")
+                else:
+                    parts.append(f"{k}type={type(v).__name__}")
+            else:
+                parts.append(f"{k}={v}")
+        logger.info(" | ".join(parts))
+    except Exception as e:
+        logger.debug("staged_log error: %s", e)
+
+
+# added by patch: PHASE_MAIN_ENGINE_ENFORCE
+def _enforce_main_engine(engine_name: str | None) -> str:
+    # fallback auf gesetzten MAIN_ENGINE
+    return (engine_name or "").strip() or globals().get("MAIN_ENGINE", "zonos")
+
+    def create_chunk_message(self, chunk: 'TTSChunk') -> Dict[str, Any]:
+        """Erstelle WebSocket-Message für TTS-Chunk."""
+        audio_b64 = ""
+        try:
+            if chunk.audio_data:
+                audio_b64 = base64.b64encode(chunk.audio_data).decode("ascii")
+        except Exception as e:
+            logger.warning(
+                "STAGED_TTS::encode_failed | seq=%s idx=%s err=%s",
+                getattr(chunk, "sequence_id", None),
+                getattr(chunk, "index", None),
+                e,
+            )
     
+        # Metriken
+        if chunk.success and chunk.audio_data:
+            try:
+                collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
+                collector.audio_out_bytes_total.inc(len(chunk.audio_data))
+            except Exception:
+                pass
+    
+        msg = {
+            "type": "tts_chunk",
+            "sequence_id": chunk.sequence_id,
+            "index": chunk.index,
+            "total": chunk.total,
+            "engine": chunk.engine,
+            "text": chunk.text,
+            "audio": f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
+            "success": chunk.success,
+            "error": chunk.error_message,
+            "timestamp": time.time(),
+            "crossfade_ms": self.config.crossfade_duration_ms,
+        }
+        logger.debug(
+            "STAGED_TTS::chunk_msg | seq=%s idx=%s/%s engine=%s audio=%s",
+            chunk.sequence_id,
+            chunk.index,
+            chunk.total,
+            chunk.engine,
+            "yes" if audio_b64 else "no",
+        )
+        return msg
+
     def create_sequence_end_message(self, sequence_id: str) -> Dict[str, Any]:
-        """
-        Erstelle Sequenz-Ende-Message.
-        
-        Args:
-            sequence_id: Sequenz-ID
-            
-        Returns:
-            WebSocket-Message Dictionary
-        """
-        return {
+        """Erstelle Sequenz-Ende-Message."""
+        msg = {
             "type": "tts_sequence_end",
             "sequence_id": sequence_id,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
+        logger.debug("STAGED_TTS::sequence_end | seq=%s", sequence_id)
+        return msg
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Gib Cache-Statistiken zurück."""
+        total_size = sum(len(data) for data in self._cache.values())
+
+    def create_chunk_message(self, chunk: 'TTSChunk') -> Dict[str, Any]:
+        """Erstelle WebSocket-Message für TTS-Chunk."""
+        audio_b64 = ""
+        try:
+            if chunk.audio_data:
+                audio_b64 = base64.b64encode(chunk.audio_data).decode("ascii")
+        except Exception as e:
+            logger.warning(
+                "STAGED_TTS::encode_failed | seq=%s idx=%s err=%s",
+                getattr(chunk, "sequence_id", None),
+                getattr(chunk, "index", None),
+                e,
+            )
     
-    def clear_cache(self):
-        """Leere den TTS-Cache."""
-        self._cache.clear()
-        logger.info("TTS-Cache geleert")
+        # Metriken
+        if chunk.success and chunk.audio_data:
+            try:
+                collector.tts_chunk_emitted_total.labels(engine=chunk.engine).inc()
+                collector.audio_out_bytes_total.inc(len(chunk.audio_data))
+            except Exception:
+                pass
     
+        msg = {
+            "type": "tts_chunk",
+            "sequence_id": chunk.sequence_id,
+            "index": chunk.index,
+            "total": chunk.total,
+            "engine": chunk.engine,
+            "text": chunk.text,
+            "audio": f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
+            "success": chunk.success,
+            "error": chunk.error_message,
+            "timestamp": time.time(),
+            "crossfade_ms": self.config.crossfade_duration_ms,
+        }
+        logger.debug(
+            "STAGED_TTS::chunk_msg | seq=%s idx=%s/%s engine=%s audio=%s",
+            chunk.sequence_id,
+            chunk.index,
+            chunk.total,
+            chunk.engine,
+            "yes" if audio_b64 else "no",
+        )
+        return msg
+
+    def create_sequence_end_message(self, sequence_id: str) -> Dict[str, Any]:
+        """Erstelle Sequenz-Ende-Message."""
+        msg = {
+            "type": "tts_sequence_end",
+            "sequence_id": sequence_id,
+            "timestamp": time.time(),
+        }
+        logger.debug("STAGED_TTS::sequence_end | seq=%s", sequence_id)
+        return msg
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """Gib Cache-Statistiken zurück."""
         total_size = sum(len(data) for data in self._cache.values())
         return {
             "entries": len(self._cache),
             "total_size_bytes": total_size,
-            "total_size_mb": total_size / (1024 * 1024)
+            "total_size_mb": total_size / (1024 * 1024),
         }
+
+    def create_sequence_end_message(self, sequence_id: str) -> Dict[str, Any]:
+        """Erstelle Sequenz-Ende-Message."""
+        msg = {
+            "type": "tts_sequence_end",
+            "sequence_id": sequence_id,
+            "timestamp": time.time(),
+        }
+        logger.debug("STAGED_TTS::sequence_end | seq=%s", sequence_id)
+        return msg
+
+
+# --- staged_tts safety patch: ensure create_sequence_end_message exists ---
+def _staged__create_sequence_end_message(self, sequence_id: str) -> dict:
+    msg = {
+        "type": "tts_sequence_end",
+        "sequence_id": sequence_id,
+        "timestamp": time.time(),
+    }
+    logger.debug("STAGED_TTS::sequence_end | seq=%s", sequence_id)
+    return msg
+
+try:
+    _has = hasattr(StagedTTSProcessor, "create_sequence_end_message")
+except Exception:
+    _has = False
+if not _has:
+    try:
+        StagedTTSProcessor.create_sequence_end_message = _staged__create_sequence_end_message  # type: ignore[attr-defined]
+        logger.info("STAGED_TTS::patch | create_sequence_end_message attached at runtime")
+    except Exception as _e:
+        logger.error("STAGED_TTS::patch_failed | %s", _e)
+

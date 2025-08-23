@@ -1939,7 +1939,61 @@
           <body>
             <h1>System-Info</h1>
             <pre>Version: ${info.version}\nPlattform: ${info.platform}\nVerbindung: ${info.connection}\nBrowser: ${info.browser}\nFeatures: ${info.features}</pre>
-          </body>
+          
+  <section id="tts-plan-panel" style="position:fixed;right:12px;bottom:12px;background:#1118;padding:12px 14px;border-radius:12px;font:14px/1.2 system-ui,sans-serif;color:#e6e6e6;backdrop-filter:blur(4px);z-index:9999">
+    <div style="margin-bottom:6px;font-weight:600;">Staged TTS Plan</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label>Intro</label>
+      <select id="intro-engine">
+        <option value="auto" selected>auto</option>
+        <option value="piper">piper</option>
+        <option value="zonos">zonos</option>
+        <option value="none">none</option>
+      </select>
+      <label>Main</label>
+      <select id="main-engine">
+        <option value="auto" selected>auto</option>
+        <option value="zonos">zonos</option>
+        <option value="piper">piper</option>
+        <option value="none">none</option>
+      </select>
+      <button id="apply-tts-plan" style="margin-left:8px;">Übernehmen</button>
+      <span id="tts-plan-status" style="margin-left:8px;opacity:.8"></span>
+    </div>
+  </section>
+  <script>
+  (function(){
+    const introSel = document.getElementById('intro-engine');
+    const mainSel  = document.getElementById('main-engine');
+    const applyBtn = document.getElementById('apply-tts-plan');
+    const statusEl = document.getElementById('tts-plan-status');
+    if (!introSel || !mainSel || !applyBtn) return;
+
+    const LSKEY = 'tts-plan';
+    try {
+      const prev = JSON.parse(localStorage.getItem(LSKEY) || '{}');
+      if (prev.intro) introSel.value = prev.intro;
+      if (prev.main)  mainSel.value  = prev.main;
+    } catch {}
+
+    applyBtn.addEventListener('click', async () => {
+      const intro = introSel.value, main = mainSel.value;
+      localStorage.setItem(LSKEY, JSON.stringify({ intro, main }));
+      statusEl.textContent = '…schreibe .env & starte neu';
+      try {
+        if (window.ttsPlan && window.ttsPlan.setPlan) {
+          const res = await window.ttsPlan.setPlan(intro, main);
+          statusEl.textContent = (res && res.ok) ? 'Neustart…' : ('Fehler: ' + (res && res.error || 'unbekannt'));
+        } else {
+          statusEl.textContent = 'IPC nicht verfügbar';
+          alert('IPC nicht verfügbar – bitte manuell .env setzen.');
+        }
+      } catch(e){ statusEl.textContent = 'Fehler: ' + e; }
+    });
+  })();
+  </script>
+
+</body>
         </html>`;
 
       const win = window.open('', 'systemInfo', 'width=400,height=300');
@@ -2244,5 +2298,59 @@ Modulares Design mit WebSocket-Verbindung
       }
     });
   </script>
+
+  <section id="tts-plan-panel" style="position:fixed;right:12px;bottom:12px;background:#1118;padding:12px 14px;border-radius:12px;font:14px/1.2 system-ui,sans-serif;color:#e6e6e6;backdrop-filter:blur(4px);z-index:9999">
+    <div style="margin-bottom:6px;font-weight:600;">Staged TTS Plan</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label>Intro</label>
+      <select id="intro-engine">
+        <option value="auto" selected>auto</option>
+        <option value="piper">piper</option>
+        <option value="zonos">zonos</option>
+        <option value="none">none</option>
+      </select>
+      <label>Main</label>
+      <select id="main-engine">
+        <option value="auto" selected>auto</option>
+        <option value="zonos">zonos</option>
+        <option value="piper">piper</option>
+        <option value="none">none</option>
+      </select>
+      <button id="apply-tts-plan" style="margin-left:8px;">Übernehmen</button>
+      <span id="tts-plan-status" style="margin-left:8px;opacity:.8"></span>
+    </div>
+  </section>
+  <script>
+  (function(){
+    const introSel = document.getElementById('intro-engine');
+    const mainSel  = document.getElementById('main-engine');
+    const applyBtn = document.getElementById('apply-tts-plan');
+    const statusEl = document.getElementById('tts-plan-status');
+    if (!introSel || !mainSel || !applyBtn) return;
+
+    const LSKEY = 'tts-plan';
+    try {
+      const prev = JSON.parse(localStorage.getItem(LSKEY) || '{}');
+      if (prev.intro) introSel.value = prev.intro;
+      if (prev.main)  mainSel.value  = prev.main;
+    } catch {}
+
+    applyBtn.addEventListener('click', async () => {
+      const intro = introSel.value, main = mainSel.value;
+      localStorage.setItem(LSKEY, JSON.stringify({ intro, main }));
+      statusEl.textContent = '…schreibe .env & starte neu';
+      try {
+        if (window.ttsPlan && window.ttsPlan.setPlan) {
+          const res = await window.ttsPlan.setPlan(intro, main);
+          statusEl.textContent = (res && res.ok) ? 'Neustart…' : ('Fehler: ' + (res && res.error || 'unbekannt'));
+        } else {
+          statusEl.textContent = 'IPC nicht verfügbar';
+          alert('IPC nicht verfügbar – bitte manuell .env setzen.');
+        }
+      } catch(e){ statusEl.textContent = 'Fehler: ' + e; }
+    });
+  })();
+  </script>
+
 </body>
 </html>

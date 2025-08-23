@@ -181,6 +181,18 @@ class PiperTTSEngine(BaseTTSEngine):
         """Synthesiere Text mit Piper TTS"""
         start_time = time.time()
         
+        try:
+            from ws_server.tts.staged_tts.chunking import sanitize_for_tts
+            text = sanitize_for_tts(text)
+        except Exception:
+            pass
+                # HARDCORE CEDILLA FIX
+        import unicodedata
+        text = unicodedata.normalize('NFD', text)
+        text = ''.join(char for char in text if unicodedata.category(char) != 'Mn')
+        text = text.replace(chr(0x0327), '')
+        text = unicodedata.normalize('NFC', text)
+        
         # Validierung
         is_valid, error_msg = self.validate_text(text)
         if not is_valid:

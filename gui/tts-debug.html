@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8"/>
+<title>Staged‑TTS Debug</title>
+<style>body{font:14px system-ui,Segoe UI,Roboto,Arial;padding:16px} .log{white-space:pre-wrap;border:1px solid #ccc;padding:8px;border-radius:8px;max-height:40vh;overflow:auto} button{padding:.6em 1em;border-radius:10px;border:1px solid #888;background:#f7f7f7;cursor:pointer}</style>
+<h1>Staged‑TTS Debug</h1>
+<p>WS: <code>ws://127.0.0.1:48231/?token=devsecret</code></p>
+<input id="text" style="width:100%;padding:.5em" value="Hallo! Dies ist ein Staged‑TTS Test mit Intro und Hauptteil. Bitte etwas länger, damit mehrere Chunks entstehen."/>
+<p>
+  <button id="connect">Verbinden</button>
+  <button id="speak">Speak</button>
+</p>
+<div class="log" id="log"></div>
+<script>
+const log = (...a)=>{const el=document.getElementById('log'); el.textContent += a.join(' ')+"\n"; el.scrollTop=el.scrollHeight;}
+let ws; let seqBuffers = new Map();
+
+function playDataUrl(dataUrl){
+  const a = new Audio();
+  a.src = dataUrl.startsWith('data:') ? dataUrl : `data:audio/wav;base64,${dataUrl}`;
+  a.preload = 'auto';
+  a.oncanplaythrough = ()=> a.play().catch(()=>{});
+  a.load();
+}
+
+document.getElementById('connect').onclick = () => {
+  ws = new WebSocket("ws://127.0.0.1:48231/?token=devsecret");
+  ws.onopen = () => {
+    log("WS open");
+    ws.send(JSON.stringify({op:"hello",version:2,device:"debug-html",capabilities:{binaryAudio:false}}));
+  };
+  ws.onmessage = (ev) => {
+    let msg;
+    try{ msg = JSON.parse(ev.data); }catch{ return; }
+    if (msg.op==="ready"){ 
+      log("READY", JSON.stringify(msg));
+      ws.send(JSON.stringify({type:"start_audio_stream",stream_id:"debug"}));
+      return;
+    }
+    if (msg.type==="audio_stream_started"){ log("AUDIO_STREAM_STARTED"); return; }
+    if (msg.type==="pong"){ log("PONG", msg.client_timestamp); return; }
+
+    if (msg.type==="tts_chunk"){
+      log(`CHUNK ${msg.index+1}/${msg.total} engine=${msg.engine}`);
+      playDataUrl(msg.audio);
+      // optional: Queue pro sequence_id
+      const id = msg.sequence_id || "default";
+      const arr = seqBuffers.get(id) || [];
+      arr[msg.index] = msg.audio;
+      seqBuffers.set(id, arr);
+      return;
+    }
+    if (msg.type==="tts_sequence_end"){
+      log("SEQUENCE_END", msg.sequence_id);
+      return;
+    }
+  };
+  ws.onclose = (e)=>log("WS close", e.code, e.reason||"");
+};
+
+document.getElementById('speak').onclick = () => {
+  if (!ws || ws.readyState!==WebSocket.OPEN){ log("WS not open"); return; }
+  const text = document.getElementById('text').value.trim();
+  if (!text){ return; }
+  // Ping (optional)
+  ws.send(JSON.stringify({type:"ping",timestamp:Date.now()}));
+  // Text -> Staged‑TTS
+  ws.send(JSON.stringify({type:"text",content:text}));
+  log("TEXT sent.");
+};
+</script>
