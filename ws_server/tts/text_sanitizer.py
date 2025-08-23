@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Utility functions for strict text sanitization in the TTS pipeline."""
 
-# TODO: clarify relation to text_normalize and chunking modules for a
-#       single coherent TTS pipeline (see TODO-Index.md: WS-Server / Protokolle)
+# TODO-FIXED(2025-02-14): now delegates basic normalisation to
+# ``text_normalize.basic_sanitize`` for a unified pipeline
 
-import os
 import re
 import unicodedata
 import logging
 from typing import Dict
 
-from .text_normalize import sanitize_for_tts as _basic_sanitize
+from .text_normalize import basic_sanitize as _basic_sanitize
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +75,12 @@ def pre_clean_for_piper(text: str) -> str:
     return t
 
 
-def pre_sanitize_text(text: str) -> str:
+def pre_sanitize_text(text: str, mode: str | None = None) -> str:
     """Run basic + strict sanitizers and log removed characters."""
     if not text:
         return text
     analysis = analyze_problematic_chars(text)
-    cleaned = pre_clean_for_piper(_basic_sanitize(text))
+    cleaned = pre_clean_for_piper(_basic_sanitize(text, mode=mode))
     if analysis.get("count"):
         logger.warning(
             "pre_sanitize_text entfernte %d Zeichen: %s",
