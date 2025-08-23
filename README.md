@@ -616,6 +616,9 @@ nslookup raspi4-stt.headscale
 ping raspi4-stt.headscale
 ```
 
+### TTS Phoneme Issues
+Siehe [TTS Sanitizer & Phoneme Troubleshooting](docs/TTS-TROUBLESHOOTING.md) für Hinweise zu fehlenden Phonemen und Unicode-Bereinigung.
+
 ## 📊 Roadmap
 
 ### Version 2.2.0 (Q2 2025)
