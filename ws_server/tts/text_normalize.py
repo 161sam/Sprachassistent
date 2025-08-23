@@ -13,7 +13,17 @@ TYPO_MAP = {
     '…': '...',
     '\u00A0': ' ',
     'ç': 'c', 'Ç': 'C',
+    'á': 'a', 'à': 'a', 'â': 'a', 'Á': 'A', 'À': 'A', 'Â': 'A',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', 'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'Ó': 'O', 'Ò': 'O', 'Ô': 'O',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'Ú': 'U', 'Ù': 'U', 'Û': 'U',
+    'ñ': 'n', 'Ñ': 'N',
 }
+
+ALLOWED_CHARS = set(
+    "abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜß0123456789 .,!?;:-'\"()"
+)
 _warned: set[str] = set()
 
 def _warn_once(ch: str, reason: str) -> None:
@@ -38,6 +48,9 @@ def sanitize_for_tts(text: str, mode: str | None = None) -> str:
         cat = unicodedata.category(ch)
         if drop_orphans and cat == 'Mn':
             _warn_once(ch, "kombinierende Markierung entfernt")
+            continue
+        if ord(ch) > 127 and ch not in ALLOWED_CHARS:
+            _warn_once(ch, "nicht im Zeichensatz")
             continue
         out.append(ch)
     text = ''.join(out)
