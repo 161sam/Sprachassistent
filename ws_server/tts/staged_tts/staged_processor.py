@@ -43,6 +43,8 @@ class StagedTTSConfig:
     enable_caching: bool = True
     cache_size: int = 256
     crossfade_duration_ms: int = 100
+    # TODO: make crossfade duration configurable for UX experiments
+    #       (see TODO-Index.md: WS-Server / Protokolle)
 
 
 @dataclass

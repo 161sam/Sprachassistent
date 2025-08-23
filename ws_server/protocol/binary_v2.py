@@ -9,6 +9,9 @@ from ws_server.metrics.collector import collector
 
 logger = logging.getLogger(__name__)
 
+# TODO: verify PCM format and sample rate before processing
+#       (see TODO-Index.md: WS-Server / Protokolle)
+
 
 @dataclass
 class BinaryFrame:
