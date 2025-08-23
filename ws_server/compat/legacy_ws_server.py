@@ -473,6 +473,8 @@ class AudioStreamManager:
             self._queue_task = loop.create_task(self._process_audio_queue())
         except RuntimeError:
             # wird in VoiceServer.initialize() gestartet
+            # TODO: log missing event loop instead of silent pass
+            #       (see TODO-Index.md: WS-Server / Legacy compatibility)
             pass
 
     async def start_stream(self, client_id: str, response_callback) -> str:
@@ -1237,6 +1239,8 @@ class VoiceServer:
             try:
                 await websocket.close(code=4408, reason="handshake timeout")
             except Exception:
+                # TODO: handle close error instead of silent pass
+                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
                 pass
         except websockets.exceptions.ConnectionClosed as e:
             logger.info(f"Client {client_id} connection closed: {e.code} {e.reason}")
@@ -1245,6 +1249,8 @@ class VoiceServer:
             try:
                 await websocket.close(code=1011, reason="server error")
             except Exception:
+                # TODO: handle server close error instead of silent pass
+                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
                 pass
         finally:
             await self.connection_manager.unregister(client_id)
@@ -1745,6 +1751,8 @@ class VoiceServer:
                 import torch
                 gpu_available = torch.cuda.is_available()
             except ImportError:
+                # TODO: log missing torch dependency instead of pass
+                #       (see TODO-Index.md: WS-Server / Legacy compatibility)
                 pass
             
             # Hardware-optimized recommendations
