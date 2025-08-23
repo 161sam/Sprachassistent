@@ -144,6 +144,7 @@ class ZonosTTSEngine(BaseTTSEngine):
             text = unicodedata.normalize('NFD', text)
             text = ''.join(ch for ch in text if unicodedata.category(ch) != 'Mn')
             text = text.replace(chr(0x0327), '')
+            text = text.replace(chr(0x00B8), '')
             text = unicodedata.normalize('NFC', text)
 
             voice = voice_id or self._active_voice
