@@ -1,6 +1,7 @@
 import struct
 import json
 import logging
+import audioop
 from typing import Dict, Any, Optional
 import time
 from dataclasses import dataclass
@@ -9,8 +10,10 @@ from ws_server.metrics.collector import collector
 
 logger = logging.getLogger(__name__)
 
-# TODO: verify PCM format and sample rate before processing
+# TODO-FIXED(2025-02-15): verify PCM format and sample rate before processing
 #       (see TODO-Index.md: WS-Server / Protokolle)
+
+SUPPORTED_SAMPLE_RATES = {16000, 44100, 48000}
 
 
 @dataclass
@@ -120,12 +123,32 @@ class BinaryAudioHandler:
             expected_sr = getattr(stt_processor, "sample_rate", 16000)
             expected_ch = getattr(stt_processor, "channels", 1)
 
+            # Ensure declared sample rate is supported
+            if expected_sr not in SUPPORTED_SAMPLE_RATES:
+                await self._send_error(
+                    websocket,
+                    "unsupported_sample_rate",
+                    f"Nicht unterstützte Abtastrate: {expected_sr}",
+                )
+                return
+
             # Validate PCM frame size (16-bit samples)
             if len(frame.audio_data) % (2 * expected_ch) != 0:
                 await self._send_error(
                     websocket,
                     "invalid_pcm_length",
                     "Ungültige PCM-Framelänge",
+                )
+                return
+
+            # Verify PCM format using audioop
+            try:
+                audioop.rms(frame.audio_data, 2)
+            except audioop.error:
+                await self._send_error(
+                    websocket,
+                    "invalid_pcm_format",
+                    "Ungültiges PCM-Format",
                 )
                 return
 
