@@ -11,8 +11,6 @@
  * - GPU-accelerated audio processing via WebAudio API
  */
 
-// TODO-FIXED(2025-08-23): shared auth token via ws-utils
-//       (see TODO-Index.md: Frontend)
 // TODO: unify with VoiceAssistantCore.js to avoid duplicate streaming logic
 //       (see TODO-Index.md: Frontend/Streaming)
 
