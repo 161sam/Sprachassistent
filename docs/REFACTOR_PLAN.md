@@ -19,4 +19,9 @@ focused commit.
 - [x] Sprint 14 — CI pipeline & "no duplicates" gate
 - [x] Sprint 15 — Desktop playback sequencer polish
 - [x] Sprint 16 — Docs & release notes
+- [ ] Sprint 17 — Unite client SDKs and TTS engines
+    - merge VoiceAssistant clients into single SDK
+    - keep engines only under `ws_server/tts/engines/`
+    - introduce centralized TextPipeline (sanitize→normalize→tokenize→phonemize)
+    - consolidate `tts.json`/`.env` into one config source
 

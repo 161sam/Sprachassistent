@@ -16,6 +16,7 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     Returns:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
+    text = sanitize_for_tts_strict(sanitize_basic(text))
     try:
         text = unicodedata.normalize('NFC', text)
     except Exception:
