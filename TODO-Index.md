@@ -29,9 +29,9 @@
 - **archive/legacy_ws_server/skills/__init__.py**: implement BaseSkill methods or remove legacy skill module. ✅ Done in commit `remove legacy skills module`. _Prio: Niedrig_
 
 ## Config
-- **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. _Prio: Niedrig_
-- **config/tts.json**: align with `voice_aliases.py` to remove duplication. _Prio: Niedrig_
-- **env.example**: consolidate TTS defaults with `config/tts.json` to prevent drift. _Prio: Niedrig_
+- **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
+- **config/tts.json**: align with `voice_aliases.py` to remove duplication. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
+- **env.example**: consolidate TTS defaults with `config/tts.json` to prevent drift. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
 
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. ✅ Done in commit `docs true streaming stubs`. _Prio: Niedrig_

@@ -1,43 +1,35 @@
-# TODO Plan
+# TODO Work Plan
 
-A prioritized roadmap derived from `TODO-Index.md`.
-For each item we list file path, domain, priority, dependencies, and open questions.
+## Overview
+Tasks prioritized by urgency and dependency.
 
-## Medium Priority
-1. **Merge streaming logic**  
-   - **Files:** `voice-assistant-apps/shared/core/VoiceAssistantCore.js`, `voice-assistant-apps/shared/core/AudioStreamer.js`, `gui/enhanced-voice-assistant.js`  
+1. **Merge VoiceAssistantCore & AudioStreamer**  
+   - **Priority:** Medium  
    - **Domain:** Frontend  
-   - **Deps:** clarify whether `VoiceAssistantCore` and `AudioStreamer` can be unified or one retired.  
-   - **Open:** Are both modules needed or can functionality be merged?  
+   - **Dependencies:** Requires analyzing shared streaming logic; prerequisite for GUI consolidation.  
+   - **Rationale:** Eliminates duplicated client streaming code, simplifying maintenance.
 
-## Low Priority
-1. **Real dependency modules**  
-   - **Files:** `torch.py`, `torchaudio.py`, `soundfile.py`, `piper/__init__.py`  
-   - **Domain:** Backend  
-   - **Deps:** availability of actual libraries or creation of test mocks.  
-   - **Open:** Are the stub modules still necessary once real libraries are installed?  
-2. **FastAPI transport adapter**  
-   - **File:** `ws_server/transport/fastapi_adapter.py`  
-   - **Domain:** WS-Server  
-   - **Deps:** none.  
-3. **Unified text pipeline**  
-   - **Files:** `ws_server/tts/text_sanitizer.py`, `ws_server/tts/text_normalize.py`  
-   - **Domain:** WS-Server  
-   - **Deps:** sanitizer should be unified before adding more TTS features.  
-4. **Voice configuration single source**  
-   - **Files:** `ws_server/tts/voice_aliases.py`, `config/tts.json`, `env.example`  
-   - **Domain:** Config  
-   - **Deps:** choose canonical config source.  
-5. **GUI layout and design refresh**  
-   - **Files:** `gui/*`  
+2. **Consolidate GUI with Shared Core**  
+   - **Priority:** Medium  
    - **Domain:** Frontend  
-   - **Deps:** none.  
-6. **GUI animations**  
-   - **Files:** `gui/*`  
-   - **Domain:** Frontend  
-   - **Deps:** depends on layout refresh.  
-7. **Legacy skill cleanup** ✅ Done  
-   - **Files:** `archive/legacy_ws_server/skills/`  
-   - **Domain:** WS-Server  
-   - **Deps:** confirm no active references.  
+   - **Dependencies:** Depends on Task 1 to provide unified streaming module.  
+   - **Rationale:** Avoids redundant GUI logic and ensures consistent behavior.
+
+3. **Unify Voice Alias Configuration**  
+   - **Priority:** Low  
+   - **Domain:** Config / Backend  
+   - **Dependencies:** None.  
+   - **Rationale:** Prevents drift between `ws_server/tts/voice_aliases.py`, `config/tts.json`, and environment defaults.
+
+4. **Replace Stubbed Audio Dependencies**  
+   - **Priority:** Low  
+   - **Domain:** Backend / Dependencies  
+   - **Dependencies:** Availability of real `torch`, `torchaudio`, `soundfile`, and `piper` packages.  
+   - **Rationale:** Removes temporary stubs, enabling real audio processing and cleaner tests.
+
+5. **GUI Layout and Animation Refresh**  
+   - **Priority:** Low  
+   - **Domain:** Frontend / UX  
+   - **Dependencies:** None, but best tackled after core consolidation to avoid conflicts.  
+   - **Rationale:** Modernizes the interface and improves user feedback.
 
