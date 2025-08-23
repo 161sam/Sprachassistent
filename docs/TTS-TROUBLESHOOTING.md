@@ -22,6 +22,15 @@ TTS_UNICODE_NORMALIZATION=NFKC  # or NFC
 TTS_DROP_ORPHAN_COMBINING=true
 ```
 
+### Missing phoneme from id map
+
+The warning *"Missing phoneme from id map"* usually stems from stray
+combining marks (for example the cedilla `\u0327`) or characters outside the
+model's alphabet. The sanitizer now normalizes input, strips orphan combining
+marks, and removes unknown symbols while logging a warning. Feeding texts like
+`façade`, `garçon`, `çedilla`, `übermäßig` or `naïve` no longer produces this
+warning.
+
 ## Fallback Strategy
 Unknown phonemes are dropped or mapped once per symbol with a warning. Logs stay readable and synthesis continues.
 
