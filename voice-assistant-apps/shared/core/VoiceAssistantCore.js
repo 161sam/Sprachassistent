@@ -4,7 +4,8 @@
  */
 
 class VoiceAssistantCore {
-  constructor() {
+  constructor(opts = {}) {
+    this.opts = opts;
     this.isInitialized = false;
     this.platform = this.detectPlatform();
     this.ws = null;
@@ -13,6 +14,7 @@ class VoiceAssistantCore {
     this.audioWorklet = null;
     this.currentStream = null;
     this.streamId = null;
+    this.audioStreamer = opts.audioStreamer || null;
 
     this.llmModels = [];
     this.currentLlmModel = null;
@@ -115,6 +117,11 @@ class VoiceAssistantCore {
     try {
       // Initialize audio context early
       await this.initializeAudioContext();
+
+      // Ensure an AudioStreamer exists for staged TTS playback
+      if (!this.audioStreamer && typeof AudioStreamer !== 'undefined') {
+        this.audioStreamer = new AudioStreamer();
+      }
       
       // Platform-specific initialization
       await this.initializePlatformFeatures();
@@ -291,6 +298,20 @@ class VoiceAssistantCore {
             tts_engine: localStorage.getItem('ttsEngine') || this.settings.ttsEngine
           }));
 
+          // Subscribe to staged TTS stream for low-latency feedback
+          try {
+            const subMsg = {
+              op: 'audio_subscribe',
+              stream: 'staged_tts',
+              format: 'f32',
+              sampleRate: 48000
+            };
+            this.ws.send(JSON.stringify(subMsg));
+            console.log('[VA-Core] subscribed staged_tts');
+          } catch (e) {
+            console.warn('[VA-Core] subscribe failed', e);
+          }
+
           // Reset reconnection attempts after a successful connection
           this.metrics.reconnections = 0;
         } catch (e) {
@@ -400,8 +421,22 @@ class VoiceAssistantCore {
 
   handleWebSocketMessage(event) {
     try {
+      if (typeof event.data !== 'string') {
+        this.audioStreamer?.handleBinaryFrame?.(event.data);
+        return;
+      }
+
       const data = JSON.parse(event.data);
-      
+
+      if (data.op === 'staged_tts_chunk') {
+        this.audioStreamer?.handleStagedChunkJSON?.(data);
+        return;
+      }
+      if (data.op === 'staged_tts_end') {
+        this.audioStreamer?.handleStagedEnd?.();
+        return;
+      }
+
       switch (data.type) {
         case 'connected':
           this.handleConnected(data);

@@ -118,6 +118,11 @@ class AudioStreamer {
         this.onVadStateChange = null;     // NEW: For VAD feedback
         this.onTtsChunk = null;           // NEW: Handle staged TTS chunks
         this.onTtsSequenceEnd = null;     // NEW: Handle end of TTS sequence
+
+        // Staged TTS playback
+        this.playbackNode = null;
+        this.playbackPort = null;
+        this.playbackReady = false;
         
         this.init();
     }
@@ -216,7 +221,7 @@ class AudioStreamer {
                     try {
                         // Handle both binary and text messages
                         if (event.data instanceof ArrayBuffer) {
-                            this.handleBinaryMessage(event.data);
+                            this.handleBinaryFrame(event.data);
                             return;
                         }
                         
@@ -294,25 +299,107 @@ class AudioStreamer {
         }, this.config.pingInterval);
     }
     
-    handleBinaryMessage(arrayBuffer) {
-        // Handle binary messages from server (future: binary TTS audio)
-        console.log('📦 Received binary message:', arrayBuffer.byteLength, 'bytes');
-        
-        // For now, just log - could be used for binary TTS audio in future
-        if (this.onResponse) {
-            this.onResponse({
-                type: 'binary_audio_response',
-                data: arrayBuffer,
-                format: 'binary'
-            });
+    handleBinaryFrame(arrayBuffer) {
+        if (!arrayBuffer) return;
+        this._ensurePlayback().then(() => {
+            if (this.playbackPort) {
+                const bytes = new Uint8Array(arrayBuffer);
+                let split = -1;
+                for (let i = 1; i < bytes.length; i++) {
+                    if (bytes[i - 1] === 10 && bytes[i] === 10) { // \n\n
+                        split = i + 1;
+                        break;
+                    }
+                }
+                if (split > 0) {
+                    const headerText = new TextDecoder('utf-8').decode(bytes.slice(0, split));
+                    try {
+                        const meta = JSON.parse(headerText.trim());
+                        if (meta && meta.op === 'staged_tts_chunk') {
+                            const sr = meta.sampleRate || 48000;
+                            const f32 = new Float32Array(arrayBuffer, split);
+                            this._enqueueFloat32(f32, sr);
+                            if (this.onTtsChunk) this.onTtsChunk(meta);
+                            return;
+                        }
+                    } catch (_) {
+                        // ignore parse errors
+                    }
+                }
+            }
+
+            // Fallback: forward as generic binary response
+            if (this.onResponse) {
+                this.onResponse({
+                    type: 'binary_audio_response',
+                    data: arrayBuffer,
+                    format: 'binary'
+                });
+            }
+        });
+    }
+
+    async handleStagedChunkJSON(msg) {
+        if (!msg || msg.op !== 'staged_tts_chunk') return;
+        await this._ensurePlayback();
+        const sr = msg.sampleRate || 48000;
+        const fmt = (msg.format || 'f32').toLowerCase();
+        if (fmt !== 'f32') return;
+        const pcm = this._b64ToFloat32(msg.pcm);
+        this._enqueueFloat32(pcm, sr);
+        if (this.onTtsChunk) this.onTtsChunk(msg);
+    }
+
+    handleStagedEnd() {
+        if (this.playbackPort) {
+            this.playbackPort.postMessage({ type: 'flush' });
         }
+        if (this.onTtsSequenceEnd) {
+            this.onTtsSequenceEnd({ op: 'staged_tts_end' });
+        }
+    }
+
+    async _ensurePlayback() {
+        if (this.playbackReady) return;
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
+        }
+        try {
+            if (!this.playbackNode) {
+                await this.audioContext.audioWorklet.addModule('/shared/workers/audio-streaming-worklet.js');
+                this.playbackNode = new AudioWorkletNode(this.audioContext, 'audio-streaming-worklet');
+                this.playbackPort = this.playbackNode.port;
+                this.playbackNode.connect(this.audioContext.destination);
+            }
+            this.playbackReady = true;
+            console.log('[AudioStreamer] playback ready');
+        } catch (e) {
+            console.warn('AudioWorklet init failed', e);
+        }
+    }
+
+    _enqueueFloat32(f32, sampleRate) {
+        if (!this.playbackPort) return;
+        if (this.audioContext.sampleRate !== sampleRate) {
+            this.playbackPort.postMessage({ type: 'config', sampleRate });
+        }
+        this.playbackPort.postMessage({ type: 'audio', format: 'f32', data: f32 }, [f32.buffer]);
+    }
+
+    _b64ToFloat32(b64) {
+        const bin = atob(b64);
+        const len = bin.length;
+        const buf = new ArrayBuffer(len);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i < len; i++) view[i] = bin.charCodeAt(i);
+        return new Float32Array(buf);
     }
     
     handleWebSocketMessage(event) {
         try {
             // Binary messages handled separately
             if (event.data instanceof ArrayBuffer) {
-                this.handleBinaryMessage(event.data);
+                this.handleBinaryFrame(event.data);
                 return;
             }
             
