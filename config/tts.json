@@ -1,13 +1,31 @@
 {
-  // TODO: align with ws_server/tts/voice_aliases.py to avoid duplicated voice settings
-  //       (see TODO-Index.md: Config)
+  // TODO-FIXED(2025-08-23): unified with ws_server/tts/voice_aliases.py
   "default_engine": "piper",
   "engines": ["piper", "zonos"],
   "voice_map": {
-    "de-thorsten-low": { "piper": "de-thorsten-low" },
+    "de-thorsten-low": {
+      "piper": {
+        "model_path": "models/piper/de-thorsten-low.onnx",
+        "language": "de",
+        "sample_rate": 22050
+      },
+      "zonos": {
+        "voice_id": "thorsten",
+        "language": "de",
+        "sample_rate": 48000
+      }
+    },
     "de_DE-thorsten-low": {
-      "piper": "de_DE-thorsten-low",
-      "zonos": "thorsten"
+      "piper": {
+        "model_path": "models/piper/de-thorsten-low.onnx",
+        "language": "de",
+        "sample_rate": 22050
+      },
+      "zonos": {
+        "voice_id": "thorsten",
+        "language": "de",
+        "sample_rate": 48000
+      }
     }
   },
   "playback": {
