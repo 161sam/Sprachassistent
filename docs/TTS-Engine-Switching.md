@@ -150,6 +150,10 @@ Das TTS Control Panel erscheint automatisch in der GUI und bietet:
 
 ## Konfiguration
 
+Die Datei `.env` hat Vorrang vor `config/tts.json` für aktive Engine,
+Voice und Timeout-Werte. `config/tts.json` definiert die Voice-Mapping- und
+Wiedergabe-Defaults.
+
 ### TTS-Engines konfigurieren
 
 #### Piper TTS

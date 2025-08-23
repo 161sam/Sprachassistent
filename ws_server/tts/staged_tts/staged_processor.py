@@ -38,6 +38,7 @@ class StagedTTSConfig:
     enabled: bool = True
     max_response_length: int = 500
     max_intro_length: int = 120
+    intro_timeout_seconds: int = 5
     chunk_timeout_seconds: int = 10
     max_chunks: int = 3
     enable_caching: bool = True
@@ -47,13 +48,31 @@ class StagedTTSConfig:
     @classmethod
     def from_env(cls) -> "StagedTTSConfig":
         import os
-        value = os.getenv("STAGED_TTS_CROSSFADE_MS")
         cfg = cls()
-        if value:
+        val = os.getenv("STAGED_TTS_CROSSFADE_MS")
+        if val:
             try:
-                cfg.crossfade_duration_ms = int(value)
+                cfg.crossfade_duration_ms = int(val)
             except ValueError:
-                logger.warning("Ungültiger Wert für STAGED_TTS_CROSSFADE_MS: %s", value)
+                logger.warning("Ungültiger Wert für STAGED_TTS_CROSSFADE_MS: %s", val)
+        val = os.getenv("STAGED_TTS_MAX_INTRO_LENGTH")
+        if val:
+            try:
+                cfg.max_intro_length = int(val)
+            except ValueError:
+                logger.warning("Ungültiger Wert für STAGED_TTS_MAX_INTRO_LENGTH: %s", val)
+        val = os.getenv("STAGED_TTS_INTRO_TIMEOUT")
+        if val:
+            try:
+                cfg.intro_timeout_seconds = int(val)
+            except ValueError:
+                logger.warning("Ungültiger Wert für STAGED_TTS_INTRO_TIMEOUT: %s", val)
+        val = os.getenv("STAGED_TTS_CHUNK_TIMEOUT")
+        if val:
+            try:
+                cfg.chunk_timeout_seconds = int(val)
+            except ValueError:
+                logger.warning("Ungültiger Wert für STAGED_TTS_CHUNK_TIMEOUT: %s", val)
         return cfg
 
 
@@ -100,6 +119,7 @@ class StagedTTSProcessor:
         intro_text, main_chunks = create_intro_chunk(chunks, self.config.max_intro_length)
         sequence_id = uuid.uuid4().hex[:8]
         plan = self._resolve_plan(canonical_voice)
+        self.plan = plan
 
         # Wenn ein Intro-Text vorhanden ist, aber keine Intro-Engine verfügbar,
         # wird der Text als regulärer Haupt-Chunk behandelt.
@@ -151,10 +171,15 @@ class StagedTTSProcessor:
             start_time = time.time()
             if engine == "piper":
                 text = pre_clean_for_piper(text)
+            timeout = (
+                self.config.intro_timeout_seconds
+                if engine == getattr(self.plan, "intro_engine", None) and index == 0
+                else self.config.chunk_timeout_seconds
+            )
             try:
                 result = await asyncio.wait_for(
                     self.tts_manager.synthesize(text, engine=engine, voice=voice),
-                    timeout=self.config.chunk_timeout_seconds,
+                    timeout=timeout,
                 )
             except asyncio.TimeoutError:
                 logger.warning("%s TTS Timeout für chunk %s", engine.capitalize(), index)
@@ -258,12 +283,16 @@ class StagedTTSProcessor:
         }
 
     def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
+        from ws_server.tts.voice_utils import canonicalize_voice
+
         try:
             engines = getattr(self.tts_manager, "engines", {})
-            if engine not in engines:
+            engine_obj = engines.get(engine)
+            if not engine_obj or not getattr(engine_obj, "is_initialized", True):
                 return False
+            v = canonicalize_voice(voice)
             if hasattr(self.tts_manager, "engine_allowed_for_voice"):
-                return bool(self.tts_manager.engine_allowed_for_voice(engine, voice))
+                return bool(self.tts_manager.engine_allowed_for_voice(engine, v))
             return True
         except Exception:
             return False
@@ -280,7 +309,15 @@ class StagedTTSProcessor:
         if main in ("none", ""): main = None
 
         if intro and not self._engine_available_for_voice(intro, canonical_voice):
-            logger.warning("Intro engine '%s' not available for voice '%s'", intro, canonical_voice)
+            logger.info(
+                "Intro via %s nicht verfügbar → Intro entfällt, alles %s",
+                intro.capitalize(),
+                (main or "zonos").capitalize(),
+            )
+            try:
+                collector.tts_intro_engine_unavailable_total.labels(engine=intro).inc()
+            except Exception:
+                pass
             intro = None
         if main and not self._engine_available_for_voice(main, canonical_voice):
             logger.warning("Main engine '%s' not available for voice '%s'", main, canonical_voice)

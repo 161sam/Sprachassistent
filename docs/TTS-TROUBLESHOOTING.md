@@ -53,3 +53,9 @@ aliases via `voice_aliases.py`; ensure the environment variable
 `TTS_MODEL_DIR` points to the directory containing the `piper` folder or leave
 it unset to use the repository default.
 
+## Piper Modellpfad doppelt geprefixt
+
+Erscheint im Log ein Pfad wie `models/models/piper/...`, ist der
+`model_path` bereits relativ zu `TTS_MODEL_DIR` angegeben. Entferne einen der
+Präfixe oder verwende einen absoluten Pfad, damit Piper das Modell findet.
+

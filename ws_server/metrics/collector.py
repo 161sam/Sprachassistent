@@ -133,6 +133,12 @@ class MetricsCollector:
             ["engine"],
             registry=self.registry,
         )
+        self.tts_intro_engine_unavailable_total = Counter(
+            "tts_intro_engine_unavailable_total",
+            "Number of times an intro TTS engine was unavailable",
+            ["engine"],
+            registry=self.registry,
+        )
 
         # Audio throughput counters
         self.audio_in_bytes_total = Counter(
