@@ -171,7 +171,7 @@ sprint-5(tts): unify engine sources, add lazy loading and robust fallback
 
 * Convert STT ingestion to in‑memory buffers (`bytes` → `np.int16`), remove WAV temp files and subprocesses.
 * Keep current behavior and quality.
-* TODO (true streaming):
+* TODO (true streaming): <!-- see TODO-Index.md: Documentation -->
   - incremental Whisper chunking
   - forward partial transcripts to intent routing
   - stream TTS answers without full buffering

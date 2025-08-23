@@ -58,6 +58,8 @@ class BaseTTSEngine(ABC):
     @abstractmethod
     async def initialize(self) -> bool:
         """Initialisiere die TTS-Engine"""
+        # TODO: raise NotImplementedError instead of pass
+        #       (see TODO-Index.md: Backend/Base TTS Engine)
         pass
         
     @abstractmethod
@@ -73,11 +75,15 @@ class BaseTTSEngine(ABC):
         Returns:
             TTSResult mit Audio-Daten und Metadaten
         """
+        # TODO: raise NotImplementedError instead of pass
+        #       (see TODO-Index.md: Backend/Base TTS Engine)
         pass
         
     @abstractmethod
     async def cleanup(self):
         """Cleanup-Ressourcen der Engine"""
+        # TODO: raise NotImplementedError instead of pass
+        #       (see TODO-Index.md: Backend/Base TTS Engine)
         pass
         
     @abstractmethod
@@ -88,6 +94,8 @@ class BaseTTSEngine(ABC):
     @abstractmethod
     def get_engine_info(self) -> Dict[str, Any]:
         """Gib Engine-Informationen zurück"""
+        # TODO: raise NotImplementedError instead of pass
+        #       (see TODO-Index.md: Backend/Base TTS Engine)
         pass
         
     def validate_text(self, text: str) -> tuple[bool, str]:

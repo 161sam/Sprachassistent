@@ -6,6 +6,7 @@
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **piper/__init__.py**: replace stub with real piper dependency. ✅ Done in commit `remove audio stubs`. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
+- **backend/tts/base_tts_engine.py**: replace `pass` in abstract methods with `raise NotImplementedError` for clearer contracts. _Prio: Niedrig_
 
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
@@ -27,6 +28,7 @@
 - **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. ✅ Done in commit `staged tts crossfade env`. _Prio: Niedrig_
 - **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. ✅ Done in commit `remove legacy ws backup`. _Prio: Niedrig_
 - **archive/legacy_ws_server/skills/__init__.py**: implement BaseSkill methods or remove legacy skill module. ✅ Done in commit `remove legacy skills module`. _Prio: Niedrig_
+- **ws_server/compat/legacy_ws_server.py**: replace silent `pass` blocks in exception handlers with logging or explicit error handling. _Prio: Mittel_
 
 ## Config
 - **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. ✅ Done in commit `unify voice aliases`. _Prio: Niedrig_
@@ -36,6 +38,7 @@
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. ✅ Done in commit `docs true streaming stubs`. _Prio: Niedrig_
 - **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. ✅ Done in commit `gui todo merged`. _Prio: Niedrig_
+- **docs/Refaktorierungsplan.md**: flesh out true streaming section with concrete milestones. _Prio: Mittel_
 
 ## Tools & Scripts
 - **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. ✅ Done in commit `startup error handling`. _Prio: Niedrig_
@@ -43,3 +46,4 @@
 ## ❓ Offene Fragen
 - **VoiceAssistantCore & AudioStreamer**: modules have distinct roles and remain separate. ✅ Decision documented in `reports/notes/core-audiostreamer-assessment.md`.
 - **legacy_ws_server compat layer**: still required because `ws_server/transport/server.py` imports it. ✅ Decision documented in `reports/notes/legacy-compat-layer.md`.
+- ❓ **ws_server/compat/legacy_ws_server.py**: is the embedded `DummyTTSManager` still needed or should a dedicated mock be used? _Prio: Niedrig_
