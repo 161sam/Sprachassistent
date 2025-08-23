@@ -5,15 +5,19 @@ import time
 import uuid
 import base64
 import logging
+import re
+COMBINING_RE = re.compile(r'[\u0300-\u036F]')
 INTRO_MAX_CHARS = 160  # added by patch: begrenze Intro-Länge
 INTRO_TIMEOUT_MS = 8000
 
 logger = logging.getLogger(__name__)
 import hashlib
 from typing import List, Dict, Any, Optional
+from ws_server.tts.text_sanitizer import sanitize_for_tts as sanitize_for_tts_strict
 from dataclasses import dataclass
 from collections import OrderedDict
 from ws_server.metrics.collector import collector
+from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +132,10 @@ class StagedTTSProcessor:
         Returns:
             Liste von TTSChunk-Objekten in der richtigen Reihenfolge
         """
+        # Hard sanitization gate
+        text = sanitize_for_tts_strict(text)
+        # Vorab: aggressive Sanitization (kombinierende Zeichen raus)
+        text = sanitize_basic(text)
         from .chunking import _limit_and_chunk, create_intro_chunk, optimize_for_prosody
         
         # Text optimieren und chunken
@@ -224,6 +232,7 @@ class StagedTTSProcessor:
             # TTS-Synthese mit Timeout
             start_time = time.time()
             try:
+                text = COMBINING_RE.sub('', text)
                 result = await asyncio.wait_for(
                     self.tts_manager.synthesize(text, engine=engine, voice=voice),
                     timeout=self.config.chunk_timeout_seconds,

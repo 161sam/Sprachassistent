@@ -1993,6 +1993,34 @@
   })();
   </script>
 
+
+  <section id="assistant-text-panel" style="position:fixed;left:12px;bottom:12px;background:#1118;padding:10px 12px;border-radius:12px;font:14px/1.35 system-ui,sans-serif;color:#e6e6e6;max-width:40vw;backdrop-filter:blur(4px);z-index:9998">
+    <div style="font-weight:600;margin-bottom:6px;">Antwort</div>
+    <div id="assistant-text" style="white-space:pre-wrap;word-wrap:break-word;opacity:.95;max-height:30vh;overflow:auto"></div>
+  </section>
+  <script>
+  (function(){
+    const el = document.getElementById('assistant-text');
+    const OrigWS = window.WebSocket;
+    window.WebSocket = function(url, proto){
+      const ws = new OrigWS(url, proto);
+      ws.addEventListener('message', (ev)=>{
+        try{
+          const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : null;
+          if (!data) return;
+          if (data.type === 'assistant_text' && data.text){ el.textContent = data.text; }
+          else if (data.type === 'final_text' && data.text){ el.textContent = data.text; }
+          else if (data.type === 'text_delta' && data.delta){ el.textContent += data.delta; }
+          else if (data.text && !data.type){ el.textContent = data.text; }
+        }catch{}
+      });
+      return ws;
+    };
+    Object.setPrototypeOf(window.WebSocket, OrigWS);
+    window.WebSocket.prototype = OrigWS.prototype;
+  })();
+  </script>
+
 </body>
         </html>`;
 
@@ -2349,6 +2377,34 @@ Modulares Design mit WebSocket-Verbindung
         }
       } catch(e){ statusEl.textContent = 'Fehler: ' + e; }
     });
+  })();
+  </script>
+
+
+  <section id="assistant-text-panel" style="position:fixed;left:12px;bottom:12px;background:#1118;padding:10px 12px;border-radius:12px;font:14px/1.35 system-ui,sans-serif;color:#e6e6e6;max-width:40vw;backdrop-filter:blur(4px);z-index:9998">
+    <div style="font-weight:600;margin-bottom:6px;">Antwort</div>
+    <div id="assistant-text" style="white-space:pre-wrap;word-wrap:break-word;opacity:.95;max-height:30vh;overflow:auto"></div>
+  </section>
+  <script>
+  (function(){
+    const el = document.getElementById('assistant-text');
+    const OrigWS = window.WebSocket;
+    window.WebSocket = function(url, proto){
+      const ws = new OrigWS(url, proto);
+      ws.addEventListener('message', (ev)=>{
+        try{
+          const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : null;
+          if (!data) return;
+          if (data.type === 'assistant_text' && data.text){ el.textContent = data.text; }
+          else if (data.type === 'final_text' && data.text){ el.textContent = data.text; }
+          else if (data.type === 'text_delta' && data.delta){ el.textContent += data.delta; }
+          else if (data.text && !data.type){ el.textContent = data.text; }
+        }catch{}
+      });
+      return ws;
+    };
+    Object.setPrototypeOf(window.WebSocket, OrigWS);
+    window.WebSocket.prototype = OrigWS.prototype;
   })();
   </script>
 

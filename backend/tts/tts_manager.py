@@ -14,6 +14,18 @@ from enum import Enum
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
+import re
+try:
+    from ws_server.tts.text_sanitizer import sanitize_for_tts as _sanitize_for_tts_strict
+except Exception:
+    def _sanitize_for_tts_strict(t: str) -> str:
+        import unicodedata
+        t = unicodedata.normalize('NFKC', t)
+        t = ''.join(c for c in unicodedata.normalize('NFD', t) if unicodedata.category(c) != 'Mn')
+        t = t.replace('\u00A0',' ')
+        return ' '.join(t.split())
+COMBINING_GUARD_RE = re.compile(r'[\u0300-\u036F]')
+
 from ws_server.core.config import get_tts_engine_default
 
 logger = logging.getLogger(__name__)
@@ -155,6 +167,10 @@ class TTSManager:
 
     async def synthesize(self, text: str, engine: str = None, voice: str = None, **kwargs) -> TTSResult:
         """Synthesiere Text mit gewünschter Engine"""
+        # Manager-level hard sanitization
+        text = _sanitize_for_tts_strict(text)
+        if COMBINING_GUARD_RE.search(text):
+            text = COMBINING_GUARD_RE.sub('', text)
         target_engine = engine or self.default_engine
         canonical_voice = voice or os.getenv("TTS_VOICE", "de-thorsten-low")
 

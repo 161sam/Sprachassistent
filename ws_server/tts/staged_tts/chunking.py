@@ -3,11 +3,8 @@
 import re
 import unicodedata
 from typing import List
-
-from ws_server.tts.text_normalize import sanitize_for_tts
-
-
-
+from ws_server.tts.text_sanitizer import sanitize_for_tts as sanitize_for_tts_strict
+from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.
@@ -95,7 +92,7 @@ def optimize_for_prosody(text: str) -> str:
     Returns:
         Optimierter Text mit besserer Zeichensetzung
     """
-    text = sanitize_for_tts(text)
+    text = sanitize_for_tts_strict(text)
 
     # Zahlen in Wortform umwandeln (vereinfacht)
     number_replacements = {
