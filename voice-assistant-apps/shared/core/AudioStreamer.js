@@ -11,8 +11,17 @@
  * - GPU-accelerated audio processing via WebAudio API
  */
 
-// TODO: merge with VoiceAssistantCore to share streaming logic
+// TODO-FIXED(2025-08-23): shared auth token via ws-utils
 //       (see TODO-Index.md: Frontend)
+
+let getAuthToken;
+try {
+    ({ getAuthToken } = require('./ws-utils'));
+} catch (_) {
+    if (typeof window !== 'undefined' && window.wsUtils) {
+        getAuthToken = window.wsUtils.getAuthToken;
+    }
+}
 
 class AudioStreamer {
     constructor(config = {}) {
@@ -161,20 +170,9 @@ class AudioStreamer {
         }
     }
 
-    async getAuthToken() {
-        // Reuse token from localStorage or fall back to the development token.
-        const token =
-            (typeof localStorage !== 'undefined' &&
-             (localStorage.getItem('voice_auth_token') ||
-              localStorage.getItem('wsToken'))) ||
-            'devsecret';
-        try { localStorage.setItem('wsToken', token); } catch (_) {}
-        return token;
-    }
-
     async connect(wsUrl) {
         // Ensure a valid token is always appended
-        const token = await this.getAuthToken();
+        const token = await getAuthToken();
         if (typeof wsUrl === 'string' && wsUrl.indexOf('token=') === -1) {
             wsUrl += (wsUrl.indexOf('?') > -1 ? '&' : '?') + 'token=' + encodeURIComponent(token);
         }

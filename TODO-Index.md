@@ -8,8 +8,8 @@
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
 
 ## Frontend
-- **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. _Prio: Mittel_
-- **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. _Prio: Mittel_
+- **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
+- **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
 - **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. _Prio: Mittel_
 - **gui layout and design refresh**: reorganize GUI elements (status page, input placement, icon-only round buttons). _Prio: Niedrig_
 - **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. _Prio: Niedrig_

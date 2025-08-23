@@ -2,9 +2,18 @@
  * Voice Assistant Core with Audio Streaming & Mobile-First Design
  * Designed for low latency, real-time audio streaming, and mobile UX
  *
- * TODO: consolidate with AudioStreamer to avoid duplicate streaming logic
+ * TODO-FIXED(2025-08-23): consolidated auth token logic via shared ws-utils
  *       (see TODO-Index.md: Frontend)
  */
+
+let getAuthToken;
+try {
+  ({ getAuthToken } = require('./ws-utils'));
+} catch (_) {
+  if (typeof window !== 'undefined' && window.wsUtils) {
+    getAuthToken = window.wsUtils.getAuthToken;
+  }
+}
 
 class VoiceAssistantCore {
   constructor(opts = {}) {
@@ -277,7 +286,7 @@ class VoiceAssistantCore {
   async initializeWebSocket() {
     // Retrieve token and append it to the WebSocket URL so the backend can
     // authenticate the connection before the handshake completes.
-    const token = await this.getAuthToken();
+    const token = await getAuthToken();
     const wsUrl = `${this.getWebSocketURL()}?token=${encodeURIComponent(token)}`;
     console.log('🔌 Connecting to:', wsUrl);
 
@@ -372,7 +381,7 @@ class VoiceAssistantCore {
 
   async authenticate() {
     // Generate or retrieve auth token
-    const token = await this.getAuthToken();
+    const token = await getAuthToken();
     
     this.sendMessage({
       type: 'auth',
@@ -846,25 +855,6 @@ class VoiceAssistantCore {
     const port = localStorage.getItem('wsPort') || this.settings.wsPort;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${host}:${port}`;
-  }
-
-  async getAuthToken() {
-    // Generate or retrieve JWT token.  The token is also stored under
-    // "wsToken" so other components (e.g. AudioStreamer) can reuse
-    // it when establishing their own WebSocket connections.
-    // Prefer an existing token from localStorage (either a previously stored
-    // voice_auth_token or wsToken).  Fallback to the development token
-    // "devsecret" so that desktop and web clients behave consistently during
-    // local testing.
-    const token =
-      localStorage.getItem('voice_auth_token') ||
-      localStorage.getItem('wsToken') ||
-      'devsecret';
-
-    // Expose the token under "wsToken" so other components (e.g. the
-    // AudioStreamer) can append it automatically to their WebSocket URLs.
-    try { localStorage.setItem('wsToken', token); } catch (_) {}
-    return token;
   }
 
   getMetrics() {
