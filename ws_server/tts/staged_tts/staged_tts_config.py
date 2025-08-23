@@ -272,8 +272,8 @@ class StagedTTSManager:
         """Bereinigt Text für TTS-Verarbeitung"""
         # Import hier um zirkuläre Abhängigkeiten zu vermeiden
         try:
-            from .text_sanitizer import sanitize_for_tts
-            return sanitize_for_tts(text, 'piper')  # Konservativer Ansatz
+            from .text_sanitizer import sanitize_for_tts_strict
+            return sanitize_for_tts_strict(text)
         except ImportError:
             # Fallback: Einfache Bereinigung
             import re

@@ -3,7 +3,7 @@
 import re
 import unicodedata
 from typing import List
-from ws_server.tts.text_sanitizer import sanitize_for_tts as sanitize_for_tts_strict
+from ws_server.tts.text_sanitizer import sanitize_for_tts_strict
 from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
@@ -102,14 +102,6 @@ def optimize_for_prosody(text: str) -> str:
         '10.000': 'zehntausend',
         '100.000': 'hunderttausend',
     }
-
-    # HARDCORE FIX: Cedilla und alle diakritischen Zeichen entfernen
-    text = ''.join(
-        char for char in unicodedata.normalize('NFD', text)
-        if unicodedata.category(char) != 'Mn'
-    )
-    # Spezielle Behandlung für Cedilla
-    text = text.replace(chr(0x0327), '')  # Combining cedilla
 
     result = text
     for num, word in number_replacements.items():
