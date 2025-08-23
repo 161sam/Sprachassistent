@@ -4,6 +4,7 @@
 - **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. _Prio: Niedrig_
 - **ws_server/tts/engines/piper.py**: keep implementation in sync with backend wrapper. _Prio: Niedrig_
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. _Prio: Niedrig_
+- **piper/__init__.py**: replace stub with real piper dependency. _Prio: Niedrig_
 
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. _Prio: Mittel_
@@ -21,6 +22,7 @@
 - **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. _Prio: Hoch_
 - **ws_server/metrics/collector.py**: track memory usage and network throughput metrics. _Prio: Mittel_
 - **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. _Prio: Niedrig_
+- **ws_server/compat/legacy_ws_server.py.backup.int_fix**: remove outdated backup file or merge changes into main compat module. _Prio: Niedrig_
 
 ## Config
 - **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. _Prio: Niedrig_
@@ -36,3 +38,4 @@
 - ❓ Is the legacy WS server still required, or can the compat layer be dropped?
 - ❓ Are the torch/torchaudio/soundfile stubs still necessary once real libraries are installed?
 - ❓ Is `gui/enhanced-voice-assistant.js` still required or can its features be merged into the shared core modules?
+- ❓ Can `ws_server/compat/legacy_ws_server.py.backup.int_fix` be removed after verifying no changes are needed?

@@ -1,3 +1,6 @@
+# TODO: replace this piper stub with the real dependency when available
+#       (see TODO-Index.md: Backend)
+
 class PiperVoice:
     def __init__(self, model_path: str = ""):
         self.model_path = model_path
