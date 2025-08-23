@@ -28,7 +28,8 @@ def test_piper_placeholder_performance():
 
 def test_piper_fallback_sample_rate(monkeypatch):
     """Piper engine should fall back to voice.sample_rate if config sample_rate is missing."""
-    from backend.tts.piper_tts_engine import PiperTTSEngine, TTSConfig
+    from ws_server.tts.engines.piper import PiperTTSEngine
+    from backend.tts.base_tts_engine import TTSConfig
 
     class FakeChunk:
         audio_int16_bytes = b"\x00\x01" * 10
@@ -45,7 +46,7 @@ def test_piper_fallback_sample_rate(monkeypatch):
             yield FakeChunk()
 
     monkeypatch.setattr(
-        "backend.tts.piper_tts_engine.PiperVoice.load", lambda path: FakeVoice()
+        "ws_server.tts.engines.piper.PiperVoice.load", lambda path: FakeVoice()
     )
 
     engine = PiperTTSEngine(TTSConfig())

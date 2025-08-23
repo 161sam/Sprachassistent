@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 TTS_ENGINE = get_tts_engine_default()
 
 ENGINE_IMPORTS: Dict[str, tuple[str, str]] = {
-    "piper": ("backend.tts.piper_tts_engine", "PiperTTSEngine"),
+    "piper": ("ws_server.tts.engines.piper", "PiperTTSEngine"),
     "kokoro": ("backend.tts.kokoro_tts_engine", "KokoroTTSEngine"),
     "zonos": ("backend.tts.engine_zonos", "ZonosTTSEngine"),
 }
@@ -189,9 +189,26 @@ class TTSManager:
         try:
             ev = self._resolve_engine_voice(target_engine, canonical_voice)
             if target_engine == "piper":
-                result = await self.engines[target_engine].synthesize(
-                    text, voice=canonical_voice, model_path=ev.model_path, **kwargs
+                raw = await self.engines[target_engine].synthesize(
+                    text, voice=canonical_voice, cfg={"model_path": ev.model_path, **kwargs}
                 )
+                if isinstance(raw, dict) and "wav_bytes" in raw:
+                    audio = raw.get("wav_bytes")
+                    sr = raw.get("sample_rate", 0)
+                    fmt = raw.get("format", "wav")
+                    err = raw.get("error")
+                    success = audio is not None and not err
+                    if success:
+                        audio, sr = self._postprocess_audio(audio, sr)
+                    return TTSResult(
+                        audio_data=audio,
+                        success=success,
+                        error_message=err,
+                        engine_used="piper",
+                        sample_rate=sr,
+                        audio_format=fmt,
+                    )
+                result = raw
             elif target_engine == "zonos":
                 result = await self.engines[target_engine].synthesize(
                     text, voice_id=ev.voice_id, **kwargs

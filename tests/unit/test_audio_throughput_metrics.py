@@ -41,6 +41,7 @@ def test_audio_out_bytes_metric():
         text="hi",
         audio_data=b"12345678",
         success=True,
+        sample_rate=22050,
     )
     proc = StagedTTSProcessor(object())
     proc.create_chunk_message(chunk)

@@ -15,6 +15,8 @@ class OnlyPiperManager:
             audio_data = b"x"
             engine_used = engine
             error_message = None
+            sample_rate = 22050
+            audio_format = "wav"
 
         await asyncio.sleep(0)
         return R()
@@ -51,6 +53,8 @@ class TimeoutManager:
             audio_data = b"x"
             engine_used = engine
             error_message = None
+            sample_rate = 22050
+            audio_format = "wav"
 
         if engine == "piper":
             await asyncio.sleep(0)
