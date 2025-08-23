@@ -36,7 +36,7 @@
 - **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. _Prio: Niedrig_
 
 ## Tools & Scripts
-- **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. _Prio: Niedrig_
+- **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. ✅ Done in commit `startup error handling`. _Prio: Niedrig_
 
 ## ❓ Offene Fragen
 - ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?

@@ -59,8 +59,8 @@ def kill_processes_on_ports(ports):
                                     time.sleep(0.5)
                                     try:
                                         os.kill(int(pid), signal.SIGKILL)
-                                    except Exception:
-                                        pass  # TODO: handle kill failure explicitly (see TODO-Index.md: Tools & Scripts)
+                                    except Exception as kill_err:
+                                        print(f"   Failed to force kill PID {pid}: {kill_err}")  # TODO-FIXED(2025-08-23): handle kill failure explicitly
                             except Exception as pe:
                                 print(f"   PID extraction failed: {pe}")
         except Exception as e:
@@ -86,8 +86,8 @@ def kill_processes_on_ports(ports):
                                     os.kill(int(pid), signal.SIGTERM)
                                     time.sleep(0.2)
                                     os.kill(int(pid), signal.SIGKILL)
-                                except Exception:
-                                    pass  # TODO: handle kill failure explicitly (see TODO-Index.md: Tools & Scripts)
+                                except Exception as kill_err:
+                                    print(f"   lsof: Failed to kill PID {pid}: {kill_err}")  # TODO-FIXED(2025-08-23): handle kill failure explicitly
         except Exception as e:
             print(f"   lsof method failed: {e}")
 
@@ -184,8 +184,8 @@ def start_voice_assistant():
                             print("   ✅ TTS Manager ready!")
                         elif "STT model" in line and "loaded" in line:
                             print("   ✅ STT Model ready!")
-            except Exception:
-                pass  # TODO: log subprocess read errors (see TODO-Index.md: Tools & Scripts)
+            except Exception as read_err:
+                print(f"   Error reading server output: {read_err}")  # TODO-FIXED(2025-08-23): log subprocess read errors
             
             # Test endpoints every 5 seconds after 15s
             if i > 15 and i % 5 == 0:
