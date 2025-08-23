@@ -44,8 +44,9 @@ def sanitize_for_tts_strict(text: str) -> str:
     t = t.translate(_FALLBACK_TRANSLATION)
     cleaned: list[str] = []
     for ch in t:
-        if ord(ch) > 127 and ch not in _ALLOWED:
-            logger.warning("Entferne unbekanntes Zeichen %r (U+%04X)", ch, ord(ch))
+        if ch not in _ALLOWED:
+            if not ch.isspace():
+                logger.warning("Entferne unbekanntes Zeichen %r (U+%04X)", ch, ord(ch))
             continue
         cleaned.append(ch)
     t = "".join(cleaned)
@@ -86,10 +87,14 @@ def pre_sanitize_text(text: str) -> str:
     return cleaned
 
 def analyze_problematic_chars(text: str) -> Dict[str, any]:
-    """Return a summary of non-ASCII or combining characters."""
+    """Return a summary of characters outside the allowed set."""
     if not text:
         return {}
-    unknown = [ch for ch in text if (ord(ch) > 127 and ch not in "äöüÄÖÜß") or unicodedata.category(ch) == "Mn"]
+    unknown = [
+        ch
+        for ch in text
+        if ch not in _ALLOWED and unicodedata.category(ch)[0] != "C"
+    ]
     return {"unique": sorted(set(unknown)), "count": len(unknown)}
 
 
