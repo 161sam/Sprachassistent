@@ -24,3 +24,34 @@ def test_piper_placeholder_performance():
     start = time.time()
     time.sleep(0.1)
     assert time.time() - start < 5
+
+
+def test_piper_fallback_sample_rate(monkeypatch):
+    """Piper engine should fall back to voice.sample_rate if config sample_rate is missing."""
+    from backend.tts.piper_tts_engine import PiperTTSEngine, TTSConfig
+
+    class FakeChunk:
+        audio_int16_bytes = b"\x00\x01" * 10
+
+    class FakeVoice:
+        def __init__(self):
+            class Config:
+                sample_rate = 0
+
+            self.config = Config()
+            self.sample_rate = 16000
+
+        def synthesize(self, text, syn_config=None):
+            yield FakeChunk()
+
+    monkeypatch.setattr(
+        "backend.tts.piper_tts_engine.PiperVoice.load", lambda path: FakeVoice()
+    )
+
+    engine = PiperTTSEngine(TTSConfig())
+
+    audio, sr = engine._piper_synthesis_sync(
+        "Hallo", "de-test", {}, model_path="dummy.onnx"
+    )
+    assert sr == 16000
+    assert isinstance(audio, bytes)

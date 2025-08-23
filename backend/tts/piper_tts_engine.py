@@ -262,14 +262,25 @@ class PiperTTSEngine(BaseTTSEngine):
 
         syn_cfg = SynthesisConfig(length_scale=1.0 / speed, volume=volume)
 
+        # Sample-Rate aus Stimme ermitteln
+        sample_rate = (
+            getattr(getattr(voice_obj, "config", None), "sample_rate", None)
+            or getattr(voice_obj, "sample_rate", None)
+        )
+        if not sample_rate or sample_rate <= 0:
+            logger.warning(
+                "Piper-Stimme ohne gültige Sample-Rate – benutze 22050 Hz als Standard"
+            )
+            sample_rate = 22050
+
         # WAV in Memory schreiben
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
             wf.setnchannels(1)
             wf.setsampwidth(2)
-            wf.setframerate(voice_obj.config.sample_rate)
+            wf.setframerate(sample_rate)
             for chunk in voice_obj.synthesize(text, syn_config=syn_cfg):
                 wf.writeframes(chunk.audio_int16_bytes)
 
-        return buf.getvalue(), voice_obj.config.sample_rate
+        return buf.getvalue(), sample_rate
 
