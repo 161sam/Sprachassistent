@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 # TODO-FIXED(2025-02-14): moved core logic into ``basic_sanitize`` and
 # delegated public ``sanitize_for_tts`` to ``text_sanitizer`` for a unified
 # pipeline
+# TODO: consolidate with text_sanitizer to avoid overlapping duties
+#       (see TODO-Index.md: WS-Server / Protokolle)
 
 ZERO_WIDTH = dict.fromkeys(map(ord, "\u200B\u200C\u200D\u200E\u200F\u2060\uFEFF"), None)
 TYPO_MAP = {
