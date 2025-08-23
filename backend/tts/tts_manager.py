@@ -198,7 +198,9 @@ class TTSManager:
 
         Accepts alias voices and resolves them to canonical form."""
         canonical_voice = canonicalize_voice(voice)
-        mapping = VOICE_ALIASES.get(canonical_voice, {})
+        mapping = VOICE_ALIASES.get(canonical_voice) or VOICE_ALIASES.get(voice)
+        if not mapping:
+            return False
         ev = mapping.get(engine)
         return bool(ev and (ev.voice_id or ev.model_path))
 
