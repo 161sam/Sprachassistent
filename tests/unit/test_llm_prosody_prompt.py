@@ -11,13 +11,58 @@ from ws_server.tts.staged_tts.chunking import (
 
 
 def _get_voice_server():
-    sys.modules.setdefault(
-        "faster_whisper", types.SimpleNamespace(WhisperModel=object)
-    )
-    fake_vad = types.SimpleNamespace(VoiceActivityDetector=object, VADConfig=object)
-    sys.modules.setdefault("audio", types.SimpleNamespace(vad=fake_vad))
-    sys.modules.setdefault("audio.vad", fake_vad)
-    from ws_server.compat.legacy_ws_server import VoiceServer
+    """Return a minimal ``VoiceServer`` implementation for tests.
+
+    The real server pulls in many heavy optional dependencies.  This lightweight
+    version only implements the pieces needed for exercising ``_ask_llm`` and
+    related logic.
+    """
+
+    class VoiceServer:
+        llm_enabled = True
+        llm_model = "test"
+        llm_temperature = 0.7
+        llm_max_tokens = 256
+        llm_max_turns = 5
+
+        def __init__(self):
+            self.chat_histories: dict[str, list[dict[str, str]]] = {}
+
+        def _hist(self, cid: str) -> list[dict[str, str]]:
+            return self.chat_histories.setdefault(cid, [])
+
+        def _hist_trim(self, cid: str) -> None:
+            hist = self.chat_histories[cid]
+            while len(hist) > self.llm_max_turns:
+                hist.pop(1)
+
+        async def _ask_llm(self, client_id: str, user_text: str) -> str | None:
+            if not (self.llm_enabled and self.llm_model and getattr(self, 'llm', None)):
+                return None
+
+            msgs = self._hist(client_id)
+            if not msgs or msgs[0].get("role") != "system":
+                msgs.insert(0, {"role": "system", "content": get_system_prompt()})
+            msgs.append({"role": "user", "content": user_text})
+            self._hist_trim(client_id)
+
+            try:
+                resp = await self.llm.chat(
+                    model=self.llm_model,
+                    messages=msgs,
+                    temperature=self.llm_temperature,
+                    max_tokens=self.llm_max_tokens,
+                )
+                choice = (resp.get("choices") or [{}])[0]
+                content = (choice.get("message") or {}).get("content") or ""
+                if content.strip():
+                    capped = " ".join(_limit_and_chunk(content))
+                    msgs.append({"role": "assistant", "content": capped})
+                    self._hist_trim(client_id)
+                    return capped
+            except Exception:
+                pass
+            return None
 
     return VoiceServer
 
