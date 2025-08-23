@@ -16,7 +16,7 @@ from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
 import re
 try:
-    from ws_server.tts.text_sanitizer import sanitize_for_tts_strict as _sanitize_for_tts_strict
+    from ws_server.tts.text_sanitizer import sanitize_for_tts_strict as _sanitize_for_tts_strict, pre_clean_for_piper
 except Exception:
     def _sanitize_for_tts_strict(t: str) -> str:
         import unicodedata
@@ -24,7 +24,9 @@ except Exception:
         t = ''.join(c for c in unicodedata.normalize('NFD', t) if unicodedata.category(c) != 'Mn')
         t = t.replace('\u00A0',' ')
         return ' '.join(t.split())
-COMBINING_GUARD_RE = re.compile(r'[\u0300-\u036F]')
+    def pre_clean_for_piper(t: str) -> str:
+        return t
+COMBINING_GUARD_RE = re.compile(r"[̀-ͯ]")
 
 from ws_server.core.config import get_tts_engine_default
 
@@ -173,6 +175,8 @@ class TTSManager:
             text = COMBINING_GUARD_RE.sub('', text)
         target_engine = engine or self.default_engine
         canonical_voice = voice or os.getenv("TTS_VOICE", "de-thorsten-low")
+        if target_engine == "piper":
+            text = pre_clean_for_piper(text)
 
         if not target_engine or target_engine not in self.engines:
             return TTSResult(

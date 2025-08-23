@@ -16,7 +16,7 @@ _TYPOMAP = {
     "\u2026": "...",
     "\u00A0": " ",
 }
-_COMBINING_RE = re.compile(r"[\u0300-\u036F]")
+_COMBINING_RE = re.compile(r"[̀-ͯ]")
 
 
 def sanitize_for_tts_strict(text: str) -> str:
@@ -49,7 +49,7 @@ def pre_clean_for_piper(text: str) -> str:
     t = _COMBINING_RE.sub("", t)
     if os.getenv("PIPELINE_DEBUG_SANITIZE") and t != original:
         removed = len(original) - len(t)
-        logger.debug("PIPELINE_SANITIZE removed=%d", removed)
+        logger.debug("PIPELINE_SANITIZE entfernt=%d", removed)
     return t
 
 

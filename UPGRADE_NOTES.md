@@ -33,3 +33,4 @@
 ## Piper TTS sanitization
 - Text for Piper is sanitized with a final guard.
 - All combining marks (U+0300–U+036F) are removed before synthesis to prevent "Missing phoneme from id map" warnings.
+- Optional debug logging via `PIPELINE_DEBUG_SANITIZE=1` shows how many Zeichen entfernt wurden.

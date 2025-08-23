@@ -123,6 +123,7 @@ Das System unterstützt jetzt flexibles Text-to-Speech mit Echtzeitwechsel zwisc
 - **Offline-Verarbeitung** ohne Cloud-Abhängigkeit
 - **ARM-optimiert** für Raspberry Pi
 - **Final guard** entfernt kombinierende Zeichen (U+0300–U+036F) vor der Synthese
+- **Debug**: `PIPELINE_DEBUG_SANITIZE=1` protokolliert entfernte Zeichen
 
 #### 🌍 Kokoro TTS (Mehrsprachig)
 - **Kompakte Engine** (~80MB quantisiert) mit schneller Inferenz
