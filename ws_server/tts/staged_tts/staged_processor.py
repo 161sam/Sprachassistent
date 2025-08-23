@@ -233,6 +233,13 @@ class StagedTTSProcessor:
         if intro in ("none", ""): intro = None
         if main in ("none", ""): main = None
 
+        if intro and not self._engine_available_for_voice(intro, canonical_voice):
+            logger.warning("Intro engine '%s' not available for voice '%s'", intro, canonical_voice)
+            intro = None
+        if main and not self._engine_available_for_voice(main, canonical_voice):
+            logger.warning("Main engine '%s' not available for voice '%s'", main, canonical_voice)
+            main = None
+
         plan = StagedPlan(intro_engine=intro or "auto", main_engine=main or "auto", fast_start=True)
 
         def pick_intro() -> Optional[str]:
