@@ -41,5 +41,5 @@
 - **start_voice_assistant.py**: replace silent `pass` blocks with explicit error handling. ✅ Done in commit `startup error handling`. _Prio: Niedrig_
 
 ## ❓ Offene Fragen
-- ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
-- ❓ Is the legacy WS server still required, or can the compat layer be dropped?
+- **VoiceAssistantCore & AudioStreamer**: modules have distinct roles and remain separate. ✅ Decision documented in `reports/notes/core-audiostreamer-assessment.md`.
+- **legacy_ws_server compat layer**: still required because `ws_server/transport/server.py` imports it. ✅ Decision documented in `reports/notes/legacy-compat-layer.md`.

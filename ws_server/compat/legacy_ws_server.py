@@ -19,8 +19,7 @@ Features integrated from previous versions:
 * Intent routing with optional Flowise/n8n calls (``aiohttp``)
 * Metrics API und TTS-Engine-Switching
 
-# TODO: clarify whether this legacy compat layer is still needed
-#       (see TODO-Index.md: ❓ Offene Fragen)
+# TODO-FIXED(2025-08-23): compat layer still required; transport server imports this module
 
 # Hinweis: Der TTS-Wechsel wird vom ``TTSManager`` verwaltet und
 # die Authentifizierung erfolgt über ``auth.token_utils``. Weitere

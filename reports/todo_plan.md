@@ -1,28 +1,20 @@
 # TODO Work Plan
 
+## WS-Server
+1. **Clarify need for legacy compat layer**
+   - **Files:** `ws_server/compat/legacy_ws_server.py`, `ws_server/transport/server.py`
+   - **Priority:** High
+   - **Domain:** Backend / WS
+   - **Dependencies:** None
+   - **Rationale:** Determine if `legacy_ws_server` remains necessary or can be removed.
+
 ## Frontend
-1. **Unify GUI client with shared core modules**
-   - **Files:** `gui/enhanced-voice-assistant.js`, `gui/index.html`, `gui/app.js`
+1. **Assess merging of VoiceAssistantCore and AudioStreamer**
+   - **Files:** `voice-assistant-apps/shared/core/VoiceAssistantCore.js`, `voice-assistant-apps/shared/core/AudioStreamer.js`
    - **Priority:** Medium
    - **Domain:** Frontend
    - **Dependencies:** None
-   - **Rationale:** Avoid duplication by loading shared core modules directly.
+   - **Rationale:** Decide if streaming logic can be unified or modules kept separate.
 
-2. **GUI layout and design refresh**
-   - **Files:** `gui/` assets
-   - **Priority:** Low
-   - **Domain:** Frontend
-   - **Dependencies:** Task 1 provides stable base
-   - **Rationale:** Improve visual structure and usability.
-
-3. **GUI animations (matrix-rain, avatar pulse, message flash)**
-   - **Files:** `gui/` assets
-   - **Priority:** Low
-   - **Domain:** Frontend
-   - **Dependencies:** Task 2 finalizes layout foundation
-   - **Rationale:** Enhance visual feedback and engagement.
-
-## Open Questions
-- Are VoiceAssistantCore and AudioStreamer both needed or can they be fully merged?
-- Is the legacy WS server still required, or can the compat layer be dropped?
-- Is `gui/enhanced-voice-assistant.js` still required once the shared core is used?
+## Notes
+All other TODO entries in `TODO-Index.md` are already marked as completed.
