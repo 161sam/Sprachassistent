@@ -1,75 +1,26 @@
-# TODO Index
+# 📌 Zentrale TODO-Übersicht
 
-Diese Datei listet alle TODO-Kommentare, die sich auf die Anpassungen aus [docs/GUI-TODO.md](docs/GUI-TODO.md) beziehen.
+## Backend
+- **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. _Prio: Niedrig_
 
-| Datei | Zeile | Kommentar | Status |
-|-------|------:|-----------|-----------|
-| gui/app.js | 1-6 | Grundlegende Aufgaben zur neuen Web-GUI | **erledigt** |
-| gui/index.html | 568 | Buttons rund gestalten | **erledigt** |
-| gui/index.html | 799 | Container transparenter gestalten | **erledigt** |
-| gui/index.html | 1136 | Status-Anzeigen sollen ein neues Fenster öffnen | **erledigt** |
-| gui/index.html | 1383 | Status-Anzeigen auf eigene Seite auslagern | **erledigt** |
-| gui/index.html | 1396 | Texteingabe und Senden-Button unten fixieren | **erledigt** |
-| gui/index.html | 1407 | Neues Icon verwenden und Beschriftung entfernen | **erledigt** |
-| gui/index.html | 1430 | Antworttext als Matrix-Regen einblenden | **erledigt** |
-| gui/index.html | 1439 | Sprachaufnahme-Button neben Senden-Button | **erledigt** |
-| gui/index.html | 1443 | Neue minimalistische Icons | **erledigt** |
-| gui/index.html | 1859 | Status-Anzeigen auf separater Seite darstellen | **erledigt** |
-| voice-assistant-apps/shared/app.js | 3 | GUI-Anpassungen berücksichtigen | **erledigt** |
-| voice-assistant-apps/shared/app.js | 486 | Matrix-Regen Animation implementieren | **erledigt** |
-| voice-assistant-apps/shared/index.html | 568 | Buttons rund gestalten | **erledigt** |
-| voice-assistant-apps/shared/index.html | 799 | Antwort-Container transparenter | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1382 | Status-Anzeigen über Menü erreichbar | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1394 | Texteingabe und Senden-Button unten | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1405 | Neues Icon verwenden | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1428 | Matrix-Stil Antwortanimation | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1437 | Sprachaufnahme-Button verschieben | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1441 | Icon ersetzen, Beschriftung entfernen | **erledigt** |
-| voice-assistant-apps/shared/index.html | 1857 | Status-Seite über Menü | **erledigt** |
-| voice-assistant-apps/desktop/src/index.html | 4 | GUI anpassen laut TODO-Liste | **erledigt** |
-| voice-assistant-apps/desktop/src/desktop-app.js | 2 | Umsetzung der GUI-TODOs | **erledigt** |
+## Frontend
+- **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: consolidate with AudioStreamer to avoid duplicate streaming logic. _Prio: Mittel_
+- **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. _Prio: Mittel_
 
-Eine Übersicht aller mit `TODO` gekennzeichneten Stellen im Projekt.
+## WS-Server / Protokolle
+- **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. _Prio: Hoch_
+- **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio. _Prio: Mittel_
+- **ws_server/routing/skills.py**: flesh out skill interface and routing logic. _Prio: Hoch_
+- **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_
+- **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
 
-- **README.md**
-  - Zeile 636: docs/hardware-setup.md erstellen oder Link anpassen **erledigt**
-  - Zeile 639: docs/development.md erstellen oder Link entfernen **erledigt**
-- **docs/skill-system.md**
-  - Zeile 1: Dokumentation des Skill-Systems ergänzen **erledigt**
-- **docs/hardware-setup.md**
-  - Zeile 1: Anleitung zum Hardware-Setup erstellen **erledigt**
-- **docs/development.md**
-  - Zeile 1: Ausführlichen Development Guide verfassen **erledigt**
-- **docs/Build-Anleitung.md**
-  - Zeile 58: Quelle der Vorlagen angeben **erledigt**
-  - Zeile 139: Template-Pfad dokumentieren **erledigt**
-- **.gitignore**
-  - Pfade für mobile Build-Artefakte korrigiert
-- **voice-assistant-apps/shared/index.html**
-  - Dateiname korrigiert
-- **voice-assistant-apps/desktop/src/index.html**
-  - Tippfehler behoben
-- **gui/app.js**
-  - Zeilen 1–6: Web-GUI Logik und Animationen implementieren **erledigt**
-- **gui/index.html**
-  - Diverse TODOs ab Zeile 568 für Design- und Layoutanpassungen
-- **scripts/start-stt.sh**
-  - Startskript vorhanden
-- **scripts/start-tts.sh**
-  - Beispielskript implementiert
-- **scripts/ws-server/install.sh**
-  - Service-Datei wird nun installiert
-- **scripts/install_all_nodes.sh**
-  - Pfad korrigiert
-- **ws-server/ws-server.py**
-  - Erste lokale Skill-Implementierung eingebunden
-- **scripts/install-piper.sh**
-  - Installationsschritte implementiert
-- **scripts/setup-headscale.sh**
-  - Grundlegendes Setup-Skript erstellt
-- **docs/headscale-setup.md**
-  - Anleitung zum systemd-Service ergänzt
-- **docs/architecture.md**
-  - Verweis auf headscale-setup.md aktualisiert
-- **docs/GUI-TODO.md**
-  - Zeile 20: Weitere Animationsideen ergänzen **erledigt**
+## Config
+- **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. _Prio: Niedrig_
+- **config/tts.json**: align with `voice_aliases.py` to remove duplication. _Prio: Niedrig_
+
+## Dokumentation
+- **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. _Prio: Niedrig_
+
+## ❓ Offene Fragen
+- ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
+- ❓ Is the legacy WS server still required, or can the compat layer be dropped?

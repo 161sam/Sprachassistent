@@ -1,6 +1,9 @@
 /**
  * Voice Assistant Core with Audio Streaming & Mobile-First Design
  * Designed for low latency, real-time audio streaming, and mobile UX
+ *
+ * TODO: consolidate with AudioStreamer to avoid duplicate streaming logic
+ *       (see TODO-Index.md: Frontend)
  */
 
 class VoiceAssistantCore {

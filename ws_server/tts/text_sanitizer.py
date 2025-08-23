@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Utility functions for strict text sanitization in the TTS pipeline."""
 
+# TODO: clarify relation to text_normalize and chunking modules for a
+#       single coherent TTS pipeline (see TODO-Index.md: WS-Server / Protokolle)
+
 import os
 import re
 import unicodedata

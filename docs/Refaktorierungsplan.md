@@ -170,7 +170,8 @@ sprint-5(tts): unify engine sources, add lazy loading and robust fallback
 **Tasks**
 
 * Convert STT ingestion to in‑memory buffers (`bytes` → `np.int16`), remove WAV temp files and subprocesses.
-* Keep current behavior and quality; add TODO stubs for true streaming.
+* Keep current behavior and quality; add TODO stubs for true streaming
+  (see TODO-Index.md: Dokumentation).
 
 **Acceptance**
 

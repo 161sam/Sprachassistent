@@ -11,6 +11,9 @@
  * - GPU-accelerated audio processing via WebAudio API
  */
 
+// TODO: merge with VoiceAssistantCore to share streaming logic
+//       (see TODO-Index.md: Frontend)
+
 class AudioStreamer {
     constructor(config = {}) {
         this.config = {
