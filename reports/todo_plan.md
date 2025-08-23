@@ -53,3 +53,6 @@ Prioritized plan derived from TODO-Index.md. High priorities already completed; 
 
 ## Notes
 - Open questions from TODO-Index remain regarding module consolidation, legacy server removal, and stub dependencies. These require further clarification before implementation.
+
+## This iteration
+- Completed tasks 2 and 3 (Piper wrapper removal and sample-rate error handling).

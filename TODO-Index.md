@@ -1,8 +1,8 @@
 # 📌 Zentrale TODO-Übersicht
 
 ## Backend
-- **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. _Prio: Niedrig_
-- **ws_server/tts/engines/piper.py**: keep implementation in sync with backend wrapper; handle sample rate read errors explicitly. _Prio: Niedrig_
+- **backend/tts/piper_tts_engine.py**: remove deprecated wrapper for Piper engine. ✅ Done in commit `remove piper wrapper`. _Prio: Niedrig_
+- **ws_server/tts/engines/piper.py**: handle sample rate read errors explicitly; backend wrapper removed. ✅ Done in commit `piper sample rate errors`. _Prio: Niedrig_
 - **torch.py / torchaudio.py / soundfile.py**: replace stub modules with real dependencies or dedicated mocks. _Prio: Niedrig_
 - **piper/__init__.py**: replace stub with real piper dependency. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: replace silent exception passes with explicit error handling for sanitizer import and speed conditioning. ✅ Done in commit `zonos error handling`. _Prio: Niedrig_
