@@ -7,6 +7,9 @@ from ws_server.tts.text_sanitizer import (
     sanitize_for_tts_strict,
     pre_sanitize_text,
 )
+
+# TODO: add unit tests for chunking and intro creation
+#       (see TODO-Index.md: Tests)
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.

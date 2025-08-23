@@ -12,7 +12,11 @@
 - **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio. _Prio: Mittel_
 - **ws_server/routing/skills.py**: flesh out skill interface and routing logic. _Prio: Hoch_
 - **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_
-- **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
+- **ws_server/tts/text_sanitizer.py & ws_server/tts/text_normalize.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
+- **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. _Prio: Mittel_
+
+## WS-Server / Metrics
+- **ws_server/metrics/collector.py**: track peak memory usage and network throughput. _Prio: Mittel_
 
 ## Config
 - **ws_server/tts/voice_aliases.py**: unify voice alias config with `config/tts.json` and environment. _Prio: Niedrig_
@@ -21,6 +25,10 @@
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. _Prio: Niedrig_
 
+## Tests
+- **ws_server/tts/staged_tts/chunking.py**: add unit tests for chunking and intro creation. _Prio: Mittel_
+
 ## ❓ Offene Fragen
 - ❓ Are VoiceAssistantCore and AudioStreamer both needed or can they be merged?
 - ❓ Is the legacy WS server still required, or can the compat layer be dropped?
+- ❓ How can binary_v2 verify the true PCM sample rate without additional metadata?

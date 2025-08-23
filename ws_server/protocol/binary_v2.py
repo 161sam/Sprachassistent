@@ -114,6 +114,8 @@ class BinaryAudioHandler:
                 return
 
             # Determine expected PCM parameters from STT processor or defaults
+            # TODO: verify PCM format and sample rate before processing
+            #       (see TODO-Index.md: WS-Server / Protokolle)
             expected_sr = getattr(stt_processor, "sample_rate", 16000)
             expected_ch = getattr(stt_processor, "channels", 1)
 

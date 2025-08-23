@@ -6,6 +6,9 @@ active connections, message counts and basic latency histograms.  It is
 intentionally lightweight to avoid blocking the event loop.
 """
 
+# TODO: track peak memory usage and network throughput for better monitoring
+#       (see TODO-Index.md: WS-Server / Metrics)
+
 from __future__ import annotations
 
 import asyncio
