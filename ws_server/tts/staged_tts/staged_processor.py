@@ -184,9 +184,25 @@ class StagedTTSProcessor:
 
     def create_chunk_message(self, chunk: TTSChunk) -> Dict[str, Any]:
         audio_b64 = ""
+        pcm_b64 = ""
         try:
             if chunk.audio_data:
                 audio_b64 = base64.b64encode(chunk.audio_data).decode("ascii")
+                try:
+                    import io
+                    import soundfile as sf
+
+                    pcm, _sr = sf.read(io.BytesIO(chunk.audio_data), dtype="float32")
+                    if pcm.ndim > 1:
+                        pcm = pcm.mean(axis=1)
+                    pcm_b64 = base64.b64encode(pcm.tobytes()).decode("ascii")
+                except Exception as e:  # pragma: no cover - optional
+                    logger.debug(
+                        "STAGED_TTS::pcm_encode_failed | seq=%s idx=%s err=%s",
+                        chunk.sequence_id,
+                        chunk.index,
+                        e,
+                    )
         except Exception as e:  # pragma: no cover - logging only
             logger.warning(
                 "STAGED_TTS::encode_failed | seq=%s idx=%s err=%s",
@@ -201,14 +217,18 @@ class StagedTTSProcessor:
             except Exception:  # pragma: no cover
                 pass
         msg = {
+            "op": "staged_tts_chunk",
             "type": "tts_chunk",
             "sequence_id": chunk.sequence_id,
             "index": chunk.index,
             "total": chunk.total,
             "engine": chunk.engine,
             "text": chunk.text,
+            "pcm": pcm_b64 or None,
+            "format": "f32",
             "audio": f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
             "sample_rate": chunk.sample_rate,
+            "sampleRate": chunk.sample_rate,
             "success": chunk.success,
             "error": chunk.error_message,
             "timestamp": time.time(),
