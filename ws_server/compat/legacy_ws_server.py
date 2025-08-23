@@ -59,6 +59,7 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 # ------------------------------------------
 from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.voice_validation import validate_voice_assets
+from ws_server.tts.voice_aliases import VOICE_ALIASES
 from ws_server.tts.staged_tts import StagedTTSProcessor, limit_and_chunk
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
@@ -124,6 +125,31 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
     except Exception as exc:
         logger.error("Kokoro voice detection failed: %s", exc)
     return out
+
+
+def _build_piper_config(config) -> TTSConfig | None:
+    """Erstelle Piper-Konfiguration nur wenn ein Modell vorhanden ist."""
+    alias = VOICE_ALIASES.get(config.default_tts_voice, {}).get("piper")
+    model = alias.model_path if alias else None
+    if not model:
+        logger.warning("Piper-Stimme nicht konfiguriert – überspringe Initialisierung")
+        return None
+    mp = Path(model)
+    if not mp.is_absolute():
+        mp = Path(config.tts_model_dir) / mp
+    if not mp.exists():
+        logger.warning("Piper-Modell fehlt: %s – überspringe Initialisierung", mp)
+        return None
+    return TTSConfig(
+        engine_type="piper",
+        model_path=str(mp),
+        voice=config.default_tts_voice,
+        speed=config.default_tts_speed,
+        volume=config.default_tts_volume,
+        language="de",
+        sample_rate=22050,
+        model_dir=config.tts_model_dir,
+    )
 
 # --- Minimal LM Studio client -------------------------------------------------
 class LMClient:
@@ -976,17 +1002,8 @@ class VoiceServer:
         logger.info("✅ STT Engine initialisiert")
         
         # Initialize TTS Manager
-        # Standard-Konfigurationen für beide Engines
-        piper_config = TTSConfig(
-            engine_type="piper",
-            model_path="",  # Wird automatisch ermittelt
-            voice=config.default_tts_voice,
-            speed=config.default_tts_speed,
-            volume=config.default_tts_volume,
-            language="de",
-            sample_rate=22050,
-            model_dir=config.tts_model_dir
-        )
+        # Piper nur laden, wenn ein Modell vorhanden ist
+        piper_config = _build_piper_config(config)
 
         kokoro_config = TTSConfig(
             engine_type="kokoro",
@@ -1012,15 +1029,17 @@ class VoiceServer:
         )
         
         # Bestimme Standard-Engine
-        _de=(config.default_tts_engine or 'piper').lower()
-        if _de=='piper':
-            default_engine=TTSEngineType.PIPER
-        elif _de=='kokoro':
-            default_engine=TTSEngineType.KOKORO
-        elif _de=='zonos':
-            default_engine=TTSEngineType.ZONOS
+        _de = (config.default_tts_engine or 'piper').lower()
+        if _de == 'piper' and piper_config is None:
+            _de = 'zonos'
+        if _de == 'piper':
+            default_engine = TTSEngineType.PIPER
+        elif _de == 'kokoro':
+            default_engine = TTSEngineType.KOKORO
+        elif _de == 'zonos':
+            default_engine = TTSEngineType.ZONOS
         else:
-            default_engine=TTSEngineType.PIPER
+            default_engine = TTSEngineType.PIPER
         
         logger.info("🎧 Starte TTS-Manager Initialisierung...")
         success = await self.tts_manager.initialize(piper_config, kokoro_config, zonos_config, default_engine=default_engine)
