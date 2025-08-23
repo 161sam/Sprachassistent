@@ -6,8 +6,6 @@ representation.  The engine reads the sample rate from the accompanying
 model JSON file and always returns proper WAV bytes.
 """
 
-# TODO: keep in sync with backend/tts/piper_tts_engine.py to avoid drift
-#       (see TODO-Index.md: Backend)
 
 from __future__ import annotations
 
@@ -128,13 +126,16 @@ class PiperTTSEngine(BaseTTSEngine):
         json_path = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
         try:
             data = json.loads(json_path.read_text())
-            sr = int(data.get("sample_rate", 0))
-            if sr > 0:
-                return sr
-        except Exception:
-            # TODO: handle sample rate JSON read errors explicitly instead of
-            #       silent pass (see TODO-Index.md: Backend)
-            pass
+        except Exception as e:
+            logger.error("piper: sample_rate JSON read failed for %s: %s", json_path, e)
+            raise TTSInitializationError(
+                f"piper: sample_rate JSON read error for model {model_path}"
+            ) from e
+
+        sr = int(data.get("sample_rate", 0))
+        if sr > 0:
+            return sr
+        # TODO-FIXED(2024-11-21): handle sample rate JSON read errors explicitly
         if "de_DE-thorsten-low" in model_path:
             logger.warning("piper: sample_rate missing – fallback 22050 Hz")
             return 22050

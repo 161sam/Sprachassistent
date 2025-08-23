@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Ensure repository root on path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from backend.tts.piper_tts_engine import PiperTTSEngine  # type: ignore
+from ws_server.tts.engines.piper import PiperTTSEngine  # type: ignore
 from backend.tts.base_tts_engine import TTSConfig  # type: ignore
 
 load_dotenv()
