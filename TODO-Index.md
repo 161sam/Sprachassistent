@@ -19,9 +19,10 @@
 - **ws_server/transport/fastapi_adapter.py**: add tests and consider merging into core transport server. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: streamline integration with `text_sanitizer`/`text_normalize` to reduce pipeline complexity. _Prio: Mittel_
 - **ws_server/tts/text_sanitizer.py** & **ws_server/tts/text_normalize.py**: clarify and consolidate responsibilities to avoid overlapping sanitization steps. _Prio: Mittel_
+- **ws_server/tts/staged_tts/staged_processor.py**: unify sanitizer and normalizer pipeline to reduce duplicate processing. _Prio: Mittel_
 
 ## Config
-- **backend/tts/voice_aliases.py**: merge with `ws_server/tts/voice_aliases.py` to avoid configuration drift. _Prio: Mittel_
+- **backend/tts/voice_aliases.py** & **ws_server/tts/voice_aliases.py**: merge to avoid configuration drift. _Prio: Mittel_
 - **config/tts.json**: deduplicate voice_map keys `de-thorsten-low` and `de_DE-thorsten-low`. _Prio: Niedrig_
 - **env.example**: deduplicate TTS defaults with `config/tts.json` to avoid confusion. _Prio: Niedrig_
 
