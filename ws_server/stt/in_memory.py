@@ -1,6 +1,8 @@
 """In-memory audio utilities for STT processing."""
 from __future__ import annotations
 
+from typing import Iterable, Iterator
+
 import numpy as np
 
 
@@ -22,5 +24,25 @@ def pcm16_bytes_to_float32(data: bytes) -> np.ndarray:
     samples /= 32768.0
     return samples
 
-# TODO: Streaming support for chunked STT without buffering entire audio
-#       (see TODO-Index.md: WS-Server / Protokolle)
+
+def iter_pcm16_stream(chunks: Iterable[bytes]) -> Iterator[np.ndarray]:
+    """Yield float32 sample arrays for a stream of PCM16 byte chunks.
+
+    The generator keeps leftover bytes between iterations so that samples
+    are only produced when a full 16-bit frame is available. This allows
+    streaming STT pipelines to process audio incrementally without
+    buffering the entire payload.
+    """
+    buffer = bytearray()
+    for chunk in chunks:
+        if not chunk:
+            continue
+        buffer.extend(chunk)
+        # only convert full samples (2 bytes per int16)
+        length = len(buffer) - (len(buffer) % 2)
+        if length:
+            yield pcm16_bytes_to_float32(bytes(buffer[:length]))
+            del buffer[:length]
+    # leftover byte (if any) is discarded silently; it cannot form a sample
+
+# TODO-FIXED(2025-08-23): add streaming support for chunked STT without buffering entire audio

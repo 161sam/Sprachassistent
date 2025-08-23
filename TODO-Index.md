@@ -13,7 +13,7 @@
 - **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. _Prio: Mittel_
 
 ## WS-Server / Protokolle
-- **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. _Prio: Hoch_
+- **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. ✅ Done in commit `stt streaming`. _Prio: Hoch_
 - **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio; log Kokoro voice detection errors instead of silent pass. _Prio: Mittel_
 - **ws_server/routing/skills.py**: flesh out skill interface and routing logic. _Prio: Hoch_
 - **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_

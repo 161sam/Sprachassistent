@@ -1,25 +1,36 @@
-# TODO Reduction Plan
+# TODO Plan
 
-## Prioritized Tasks
+## Overview
+This plan lists TODOs from `TODO-Index.md` ordered by priority and grouped by domain. Dependencies between tasks are noted to help schedule work.
 
-1. **ws_server/protocol/binary_v2.py** – verify PCM format and sample rate before processing. *Priority: High; Domain: WS-Server/Protocol*. Independent; ensures audio validity early.
-2. **ws_server/stt/in_memory.py** – add streaming support without full buffering. *Priority: High; Domain: WS-Server/STT*. Independent; improves latency.
-3. **ws_server/routing/skills.py** – flesh out skill interface and routing logic. *Priority: High; Domain: WS-Server/Routing*. Independent; needed for scalable skill system.
-4. **ws_server/compat/legacy_ws_server.py** – stream chunk-wise and log Kokoro voice detection errors. *Priority: Medium; Domain: WS-Server/Compat*. Depends on task 2 to reuse streaming utilities.
-5. **ws_server/metrics/collector.py** – track memory usage and network throughput. *Priority: Medium; Domain: WS-Server/Metrics*. Independent; adds observability.
-6. **voice-assistant-apps/shared/core/VoiceAssistantCore.js & AudioStreamer.js** – consolidate duplicated streaming logic. *Priority: Medium; Domain: Frontend*. Grouped because of tight coupling; answers open question about merging modules.
-7. **gui/enhanced-voice-assistant.js** – merge with shared core modules to avoid duplication. *Priority: Medium; Domain: Frontend*. Follows task 6 to reuse unified core.
-8. **ws_server/tts/staged_tts/chunking.py** – review overlap with sanitizer/normalizer. *Priority: Medium; Domain: WS-Server/TTS*. Blocked by low-priority sanitizer unification tasks.
+## High Priority
+1. **ws_server/stt/in_memory.py** – implement streaming support without buffering entire audio. Domain: WS-Server/STT. No blockers.
+2. **ws_server/routing/skills.py** – flesh out skill interface and routing logic. Domain: WS-Server/Routing. Requires decisions on skill interface design.
+3. **ws_server/protocol/binary_v2.py** – PCM format and sample rate validation. Already completed.
 
-### Low Priority Tasks
+## Medium Priority
+1. **voice-assistant-apps/shared/core/VoiceAssistantCore.js** & **AudioStreamer.js** – consolidate shared streaming logic. Domain: Frontend. Interdependent: merge logic between modules.
+2. **gui/enhanced-voice-assistant.js** – consolidate with shared core modules after the above merge.
+3. **ws_server/compat/legacy_ws_server.py** – stream chunk-wise without buffering; log Kokoro voice detection errors. Depends on clarifying need for legacy server.
+4. **ws_server/tts/staged_tts/chunking.py** – review overlap with sanitizer/normalizer for unified pipeline. Blocked by sanitizer unification.
+5. **ws_server/metrics/collector.py** – track memory usage and network throughput.
 
-- Backend TTS stubs and wrappers clean-up.
-- FastAPI transport adapter.
-- Text sanitizer/normalizer unification and related config alignment.
-- Documentation updates and removal of legacy backups.
-- Tools script error handling.
+## Low Priority
+1. Backend cleanup (piper engine wrapper, real dependencies for torch/torchaudio/soundfile, stub replacements).
+2. Config consolidation (`voice_aliases.py`, `config/tts.json`, `env.example`).
+3. Documentation updates (`docs/Refaktorierungsplan.md`, `docs/GUI-TODO.md`).
+4. Additional WS-Server items (FastAPI adapter, text sanitizer unification, text_normalize responsibilities, staged TTS crossfade config, removal of backups/legacy skills).
+5. Tools & scripts error handling (`start_voice_assistant.py`).
 
-## Notes
-- Tasks grouped to keep commits atomic and reviewable.
-- Sanitizer/normalizer unification (low priority) must precede chunking review (task 8).
-- Consolidation of VoiceAssistantCore and AudioStreamer (task 6) informs decision on GUI module (task 7).
+## Dependency Map
+- Unifying sanitizer (`ws_server/tts/text_sanitizer.py`) precedes reviewing chunking overlap (`ws_server/tts/staged_tts/chunking.py`) and clarifying responsibilities (`ws_server/tts/text_normalize.py`).
+- Merging `VoiceAssistantCore` and `AudioStreamer` is a prerequisite before de-duplicating `gui/enhanced-voice-assistant.js`.
+- Config consolidation across `voice_aliases.py`, `config/tts.json`, and `env.example` should happen together to avoid drift.
+
+## Planned Execution Order
+1. Implement streaming STT in `ws_server/stt/in_memory.py`.
+2. Define skill interface in `ws_server/routing/skills.py`.
+3. Consolidate frontend streaming modules (`VoiceAssistantCore`, `AudioStreamer`, GUI).
+4. Address legacy WS server improvements and metrics collector.
+5. Progress through low priority cleanup and documentation tasks.
+
