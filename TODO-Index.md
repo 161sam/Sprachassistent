@@ -23,7 +23,6 @@
 
 ## Config
 - **backend/tts/voice_aliases.py** & **ws_server/tts/voice_aliases.py**: merge to avoid configuration drift. _Prio: Mittel_
-- **config/tts.json**: deduplicate voice_map keys `de-thorsten-low` and `de_DE-thorsten-low`. _Prio: Niedrig_
 - **env.example**: deduplicate TTS defaults with `config/tts.json` to avoid confusion. _Prio: Niedrig_
 
 ## Dokumentation

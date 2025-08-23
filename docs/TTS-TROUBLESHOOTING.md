@@ -56,6 +56,12 @@ it unset to use the repository default.
 ## Piper Modellpfad doppelt geprefixt
 
 Erscheint im Log ein Pfad wie `models/models/piper/...`, ist der
-`model_path` bereits relativ zu `TTS_MODEL_DIR` angegeben. Entferne einen der
-Präfixe oder verwende einen absoluten Pfad, damit Piper das Modell findet.
+`model_path` bereits relativ zu `TTS_MODEL_DIR` angegeben.
+
+Checkliste:
+
+1. In `config/tts.json` darf `model_path` nur einmal relativ zum
+   Modellspeicher angegeben sein.
+2. Wenn `TTS_MODEL_DIR` gesetzt ist, kein weiteres `models/` voranstellen.
+3. Alternativ einen absoluten Pfad zum Modell verwenden.
 

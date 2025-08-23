@@ -3,7 +3,7 @@ from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor, Staged
 
 
 class OnlyZonosManager:
-    engines = {"zonos": object()}
+    engines = {"zonos": type("E", (), {"is_initialized": True})()}
 
     async def synthesize(self, text, engine=None, voice=None):
         if engine != "zonos":

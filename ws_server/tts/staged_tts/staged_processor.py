@@ -288,7 +288,7 @@ class StagedTTSProcessor:
         try:
             engines = getattr(self.tts_manager, "engines", {})
             engine_obj = engines.get(engine)
-            if not engine_obj or not getattr(engine_obj, "is_initialized", True):
+            if not engine_obj or not getattr(engine_obj, "is_initialized", False):
                 return False
             v = canonicalize_voice(voice)
             if hasattr(self.tts_manager, "engine_allowed_for_voice"):

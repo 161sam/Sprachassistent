@@ -36,7 +36,9 @@ Clients may override any of the settings by including them in the request:
 
 ## Piper+Zonos (Staged)
 
-With *staged* playback the assistant can stream a short **Piper** intro while
-generating the main response with **Zonos**. Configure via
-`STAGED_TTS_INTRO_ENGINE` and `STAGED_TTS_MAIN_ENGINE`. When Piper is not
-available the system falls back to Zonos for the entire response.
+With *staged* playback the assistant streams a short **Piper** intro while the
+main answer is generated with **Zonos** in the background.  Set
+`STAGED_TTS_INTRO_ENGINE=piper` and `STAGED_TTS_MAIN_ENGINE=zonos` in your
+environment to force this combination.  The processor checks that each engine
+is loaded for the requested voice; if Piper is unavailable the intro is
+skipped and Zonos handles the whole response.
