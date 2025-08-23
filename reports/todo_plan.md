@@ -15,10 +15,7 @@ This plan consolidates outstanding items from `TODO-Index.md`. Tasks are ordered
 3. **Improve legacy WebSocket server** – stream chunk-wise and log Kokoro voice detection errors in `ws_server/compat/legacy_ws_server.py`. ✅ Completed
    - Domain: WS‑Server / Compat
    - Dependencies: decision whether legacy server remains supported
-4. **Unify TTS pipeline pieces** – review overlap in `ws_server/tts/staged_tts/chunking.py` once sanitizer and normalizer responsibilities are clarified.
-   - Domain: WS‑Server / TTS
-   - Dependencies: outcome of sanitizer/normalizer unification
-5. **Extend metrics collector** – track system memory usage and network throughput in `ws_server/metrics/collector.py`.
+4. **Extend metrics collector** – track system memory usage and network throughput in `ws_server/metrics/collector.py`.
    - Domain: Metrics
    - Dependencies: none
 
@@ -40,6 +37,5 @@ This plan consolidates outstanding items from `TODO-Index.md`. Tasks are ordered
    - Dependencies: none
 
 ## Dependency Notes
-- Sanitizer/normalizer unification must precede TTS chunking review.
 - Merging `VoiceAssistantCore` and `AudioStreamer` is required before removing GUI duplication.
 - Config files should be updated in lockstep to avoid drift.

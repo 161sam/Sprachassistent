@@ -1,15 +1,15 @@
 """Text-Chunking und Sanitizing für sprechgerechte TTS-Ausgabe."""
 
 import re
-import unicodedata
 from typing import List
 from ws_server.tts.text_sanitizer import (
     sanitize_for_tts_strict,
     pre_sanitize_text,
 )
-# TODO: review overlap with text_sanitizer and text_normalize modules for a
-#       unified pipeline (see TODO-Index.md: WS-Server / Protokolle)
-def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
+
+# TODO-FIXED(2024-06-01): rely solely on `pre_sanitize_text` for normalization
+# and expose public `limit_and_chunk` API to unify pipeline with sanitizer
+def limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
     Begrenze und segmentiere Text für staged TTS.
     
@@ -21,7 +21,6 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
     text = pre_sanitize_text(text)
-    text = unicodedata.normalize("NFC", text)
     # Text begrenzen auf max_length
     text = text.strip()
     if len(text) > max_length:

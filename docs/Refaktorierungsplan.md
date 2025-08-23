@@ -213,7 +213,7 @@ sprint-7(protocol): handshake negotiation; add binary audio ingress alongside JS
 
 **Tasks**
 
-* `_limit_and_chunk(text)` (≤500 chars; target 80–180 per chunk).
+* `limit_and_chunk(text)` (≤500 chars; target 80–180 per chunk).
 * `_tts_staged()`:
 
   * Stage A: short Piper intro (CPU) first.
@@ -326,7 +326,7 @@ sprint-12(models): voice aliasing, asset discovery, and validation CLI
 **Tasks**
 
 * Add system prompt promoting short, punctuated sentences (≤500 chars).
-* Server‑side hard cap post‑gen via `_limit_and_chunk`.
+* Server‑side hard cap post‑gen via `limit_and_chunk`.
 
 **Acceptance**
 
@@ -412,7 +412,7 @@ sprint-16(docs): unify docs, upgrade notes, and final deprecations list
   * Binary frames parsed and routed; JSON base64 fallback still works.
 * **TTS/STT**
 
-  * `_limit_and_chunk` unit tests: boundaries (120/180/500).
+  * `limit_and_chunk` unit tests: boundaries (120/180/500).
   * Staged TTS emits `tts_chunk` then `tts_sequence_end` even on Zonos timeout.
   * Engine fallback when model missing.
 * **Routing**

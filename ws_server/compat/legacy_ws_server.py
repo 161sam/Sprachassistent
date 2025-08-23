@@ -60,7 +60,7 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 # ------------------------------------------
 from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.voice_validation import validate_voice_assets
-from ws_server.tts.staged_tts import StagedTTSProcessor, _limit_and_chunk
+from ws_server.tts.staged_tts import StagedTTSProcessor, limit_and_chunk
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
 from ws_server.audio.vad import VoiceActivityDetector, VADConfig
@@ -1112,7 +1112,7 @@ class VoiceServer:
             msg = choice.get("message") or {}
             content = msg.get("content") or ""
             if content.strip():
-                capped = " ".join(_limit_and_chunk(content))
+                capped = " ".join(limit_and_chunk(content))
                 msgs.append({"role": "assistant", "content": capped})
                 self._hist_trim(client_id)
                 return capped

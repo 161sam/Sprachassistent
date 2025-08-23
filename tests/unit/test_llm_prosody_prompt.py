@@ -5,7 +5,7 @@ import pytest
 from ws_server.core.prompt import get_system_prompt
 from ws_server.tts.staged_tts.chunking import (
     optimize_for_prosody,
-    _limit_and_chunk,
+    limit_and_chunk,
     create_intro_chunk,
 )
 
@@ -56,7 +56,7 @@ def _get_voice_server():
                 choice = (resp.get("choices") or [{}])[0]
                 content = (choice.get("message") or {}).get("content") or ""
                 if content.strip():
-                    capped = " ".join(_limit_and_chunk(content))
+                    capped = " ".join(limit_and_chunk(content))
                     msgs.append({"role": "assistant", "content": capped})
                     self._hist_trim(client_id)
                     return capped
@@ -85,16 +85,16 @@ def test_optimize_for_prosody_strips_markdown():
     assert "\n" not in result
 
 
-def test_limit_and_chunk_bounds_and_length():
+def test_chunk_bounds_and_length():
     text = "Dies ist ein sehr langer Text. " * 20
-    chunks = _limit_and_chunk(text, max_length=400)
+    chunks = limit_and_chunk(text, max_length=400)
     assert sum(len(c) for c in chunks) <= 400
     assert all(80 <= len(c) <= 180 for c in chunks[:-1])
 
 
-def test_limit_and_chunk_respects_500_char_limit():
+def test_chunk_respects_500_char_limit():
     text = "Dies ist ein sehr langer Text. " * 40
-    chunks = _limit_and_chunk(text)
+    chunks = limit_and_chunk(text)
     assert sum(len(c) for c in chunks) <= 500
     assert all(80 <= len(c) <= 180 for c in chunks[:-1])
 
