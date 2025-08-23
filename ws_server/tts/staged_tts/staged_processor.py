@@ -29,6 +29,7 @@ class TTSChunk:
     text: str
     audio_data: Optional[bytes]
     success: bool
+    sample_rate: int
     error_message: Optional[str] = None
 
 
@@ -67,7 +68,7 @@ class StagedTTSProcessor:
         self.plan = StagedPlan()
         self.tts_manager = tts_manager
         self.config = config or StagedTTSConfig()
-        self._cache: "OrderedDict[str, bytes]" = OrderedDict()
+        self._cache: "OrderedDict[str, tuple[bytes, int]]" = OrderedDict()
 
     async def process_staged_tts(self, text: str, canonical_voice: str) -> List[TTSChunk]:
         """Sanitize, chunk and synthesize text in stages."""
@@ -117,9 +118,9 @@ class StagedTTSProcessor:
             cache_key = f"{engine}:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
             if self.config.enable_caching and cache_key in self._cache:
                 logger.debug("Cache hit für %s chunk %s", engine, index)
-                audio = self._cache.pop(cache_key)
-                self._cache[cache_key] = audio
-                return TTSChunk(sequence_id, index, total, engine, text, audio, True)
+                audio, sr = self._cache.pop(cache_key)
+                self._cache[cache_key] = (audio, sr)
+                return TTSChunk(sequence_id, index, total, engine, text, audio, True, sr)
 
             start_time = time.time()
             if engine == "piper":
@@ -132,20 +133,20 @@ class StagedTTSProcessor:
             except asyncio.TimeoutError:
                 logger.warning("%s TTS Timeout für chunk %s", engine.capitalize(), index)
                 collector.tts_sequence_timeout_total.labels(engine=engine).inc()
-                return TTSChunk(sequence_id, index, total, engine, text, None, False, "timeout")
+                return TTSChunk(sequence_id, index, total, engine, text, None, False, 0, "timeout")
 
             processing_time = time.time() - start_time
             logger.debug("%s TTS chunk %s: %.2fs", engine.capitalize(), index, processing_time)
 
             if result.success and result.audio_data:
                 if self.config.enable_caching:
-                    self._cache[cache_key] = result.audio_data
+                    self._cache[cache_key] = (result.audio_data, result.sample_rate)
                     if len(self._cache) > self.config.cache_size:
                         self._cache.popitem(last=False)
-                return TTSChunk(sequence_id, index, total, engine, text, result.audio_data, True)
+                return TTSChunk(sequence_id, index, total, engine, text, result.audio_data, True, result.sample_rate)
 
             logger.warning("%s TTS fehlgeschlagen für chunk %s: %s", engine.capitalize(), index, result.error_message)
-            return TTSChunk(sequence_id, index, total, engine, text, None, False, result.error_message)
+            return TTSChunk(sequence_id, index, total, engine, text, None, False, result.sample_rate, result.error_message)
         except Exception as e:
             logger.error("Fehler bei %s TTS chunk %s: %s", engine, index, e)
             # Engine-Ausfälle für Monitoring mitzählen
@@ -153,7 +154,7 @@ class StagedTTSProcessor:
                 collector.tts_engine_unavailable_total.labels(engine=engine).inc()
             except Exception:  # pragma: no cover - Metriken optional
                 pass
-            return TTSChunk(sequence_id, index, total, engine, text, None, False, str(e))
+            return TTSChunk(sequence_id, index, total, engine, text, None, False, 0, str(e))
 
     def create_chunk_message(self, chunk: TTSChunk) -> Dict[str, Any]:
         audio_b64 = ""
@@ -181,6 +182,7 @@ class StagedTTSProcessor:
             "engine": chunk.engine,
             "text": chunk.text,
             "audio": f"data:audio/wav;base64,{audio_b64}" if audio_b64 else None,
+            "sample_rate": chunk.sample_rate,
             "success": chunk.success,
             "error": chunk.error_message,
             "timestamp": time.time(),
