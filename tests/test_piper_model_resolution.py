@@ -1,21 +1,20 @@
+import os
 from pathlib import Path
 
-from backend.tts.base_tts_engine import TTSConfig
-from ws_server.tts.engines.piper import PiperTTSEngine
+from ws_server.tts.engines.piper import resolve_voice
 
 
-def test_resolve_voice_symlink(tmp_path, monkeypatch):
-    models_dir = tmp_path / "models" / "piper"
-    models_dir.mkdir(parents=True)
-    canonical = models_dir / "de_DE-thorsten-low.onnx"
+def test_resolve_voice_symlink(monkeypatch, tmp_path):
+    model_dir = tmp_path / "piper"
+    model_dir.mkdir(parents=True)
+    canonical = model_dir / "de_DE-thorsten-low.onnx"
     canonical.write_bytes(b"0")
-    (models_dir / "de_DE-thorsten-low.onnx.json").write_text("{\"sample_rate\":22050}")
-    alias = models_dir / "de-thorsten-low.onnx"
-    alias.symlink_to(canonical.name)
-    (models_dir / "de-thorsten-low.onnx.json").symlink_to("de_DE-thorsten-low.onnx.json")
+    (model_dir / "de-thorsten-low.onnx").symlink_to(canonical.name)
+    meta = model_dir / "de_DE-thorsten-low.onnx.json"
+    meta.write_text('{"sample_rate": 22050}')
+    (model_dir / "de-thorsten-low.onnx.json").symlink_to(meta.name)
 
-    monkeypatch.setenv("TTS_MODEL_DIR", str(models_dir))
-    cfg = TTSConfig(engine_type="piper", voice="de-thorsten-low")
-    engine = PiperTTSEngine(cfg)
-    path = engine._resolve_model_path("de-thorsten-low")
-    assert Path(path).resolve() == canonical.resolve()
+    monkeypatch.setenv("TTS_MODEL_DIR", str(tmp_path))
+    path, sr = resolve_voice("de-thorsten-low")
+    assert path == canonical.resolve()
+    assert sr == 22050

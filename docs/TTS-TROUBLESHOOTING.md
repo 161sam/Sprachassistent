@@ -53,3 +53,14 @@ aliases via `voice_aliases.py`; ensure the environment variable
 `TTS_MODEL_DIR` points to the directory containing the `piper` folder or leave
 it unset to use the repository default.
 
+**Fehlerbild:**
+```
+Piper TTS Initialisierung fehlgeschlagen: Kein Piper-Modell gefunden (voice='de-thorsten-low')
+```
+
+**Lösung:**
+* Alias in `voice_aliases.py` prüfen (`de-thorsten-low`).
+* Symlink mit `ls -l models/piper` kontrollieren.
+* Zu jedem Modell muss eine `*.onnx.json` mit `sample_rate` existieren.
+* Pfad über `TTS_MODEL_DIR` oder `MODELS_DIR` angeben, falls Modelle extern liegen.
+

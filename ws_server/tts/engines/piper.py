@@ -16,7 +16,7 @@ import os
 import wave
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 try:  # pragma: no cover - optional dependency is monkeypatched in tests
     from piper import PiperVoice, SynthesisConfig  # type: ignore
@@ -39,6 +39,62 @@ except Exception:  # pragma: no cover - fallback for tests
         return text
 
 logger = logging.getLogger(__name__)
+
+
+def _read_sample_rate(model_path: Path) -> int:
+    """Read sample rate from accompanying JSON metadata."""
+    json_path = model_path.with_suffix(model_path.suffix + ".json")
+    try:
+        data = json.loads(json_path.read_text())
+        sr = int(data.get("sample_rate", 0))
+        if sr > 0:
+            return sr
+    except Exception:
+        pass
+    raise TTSInitializationError(
+        f"piper: sample_rate missing for model {model_path}"
+    )
+
+
+def resolve_voice(voice: str) -> Tuple[Path, int]:
+    """Resolve a voice alias to an absolute model path and sample rate."""
+    normalized = voice.replace("de_DE-", "de-")
+    alias = VOICE_ALIASES.get(normalized, {}).get("piper")
+
+    model_candidates = []
+    if alias and alias.model_path:
+        model_candidates.append(Path(alias.model_path).name)
+    model_candidates.append(f"{normalized}.onnx")
+    if normalized.startswith("de-") and not normalized.startswith("de_DE-"):
+        model_candidates.append(f"de_DE-{normalized[3:]}.onnx")
+
+    base_from_env = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
+    project_root = Path(__file__).resolve().parents[2]
+    base_abs = (
+        Path(base_from_env)
+        if os.path.isabs(base_from_env)
+        else (project_root / base_from_env)
+    ).resolve()
+
+    search_paths = []
+    for name in model_candidates:
+        search_paths.extend(
+            [
+                base_abs / name,
+                base_abs / "piper" / name,
+                Path.home() / ".local/share/piper" / name,
+                Path("/usr/share/piper") / name,
+                Path(name),
+            ]
+        )
+
+    for path in search_paths:
+        if path.exists():
+            resolved = path.resolve()
+            sr = _read_sample_rate(resolved)
+            return resolved, sr
+
+    raise TTSInitializationError(f"Kein Piper-Modell gefunden (voice='{voice}')")
 
 
 class PiperTTSEngine(BaseTTSEngine):
@@ -65,18 +121,6 @@ class PiperTTSEngine(BaseTTSEngine):
             "en-amy-low",
         ]
         self.supported_languages = ["de", "de-DE", "en", "en-US"]
-        self.voice_model_mapping: Dict[str, str] = {
-            "de-thorsten-low": "de_DE-thorsten-low.onnx",
-            "de-thorsten-medium": "de_DE-thorsten-medium.onnx",
-            "de-thorsten-high": "de_DE-thorsten-high.onnx",
-            "de-kerstin-low": "de_DE-kerstin-low.onnx",
-            "de-kerstin-medium": "de_DE-kerstin-medium.onnx",
-            "de-eva_k-low": "de_DE-eva_k-low.onnx",
-            "de-eva_k-medium": "de_DE-eva_k-medium.onnx",
-            "de-ramona-low": "de_DE-ramona-low.onnx",
-            "de-karlsson-low": "de_DE-karlsson-low.onnx",
-            "en-amy-low": "en_US-amy-low.onnx",
-        }
         if self.config.voice:
             self.config.voice = self._normalize_voice(self.config.voice)
 
@@ -86,54 +130,6 @@ class PiperTTSEngine(BaseTTSEngine):
 
     def supports_voice(self, voice: str) -> bool:  # type: ignore[override]
         return self._normalize_voice(voice) in self.supported_voices
-
-    def _resolve_model_path(self, voice: str) -> str:
-        if self.config.model_path and os.path.exists(self.config.model_path):
-            return str(Path(self.config.model_path).resolve())
-
-        normalized = self._normalize_voice(voice)
-        alias = VOICE_ALIASES.get(normalized, {}).get("piper")
-        if alias and alias.model_path:
-            model_filename = Path(alias.model_path).name
-        else:
-            model_filename = self.voice_model_mapping.get(normalized, f"{voice}.onnx")
-
-        base_from_env = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
-        project_root = Path(__file__).resolve().parents[2]
-        base_abs = Path(base_from_env) if os.path.isabs(base_from_env) else project_root / base_from_env
-        base_abs = base_abs.resolve()
-
-        candidates = [
-            base_abs / model_filename,
-            base_abs / "piper" / model_filename,
-            Path.home() / ".local/share/piper" / model_filename,
-            Path("/usr/share/piper") / model_filename,
-            Path(model_filename),
-        ]
-        for path in candidates:
-            if path.exists():
-                return str(path.resolve())
-
-        fallback = Path.home() / ".local/share/piper/de-thorsten-low.onnx"
-        if fallback.exists():
-            logger.warning("Verwende Fallback-Modell: %s", fallback)
-            return str(fallback.resolve())
-
-        raise TTSInitializationError(f"Kein Piper-Modell gefunden (voice='{voice}', model='{model_filename}')")
-
-    def _read_sample_rate(self, model_path: str) -> int:
-        json_path = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
-        try:
-            data = json.loads(json_path.read_text())
-            sr = int(data.get("sample_rate", 0))
-            if sr > 0:
-                return sr
-        except Exception:
-            pass
-        if "de_DE-thorsten-low" in model_path:
-            logger.warning("piper: sample_rate missing – fallback 22050 Hz")
-            return 22050
-        raise TTSInitializationError(f"piper: sample_rate missing for model {model_path}")
 
     # ---------------------------------------------------------------- info API
     def get_available_voices(self) -> list[str]:  # type: ignore[override]
@@ -150,22 +146,21 @@ class PiperTTSEngine(BaseTTSEngine):
     # ---------------------------------------------------------------- lifecycle
     async def initialize(self) -> bool:
         try:
-            model_path = self._resolve_model_path(self.config.voice or "de-thorsten-low")
-            self.sample_rate = self._read_sample_rate(model_path)
+            model_path, self.sample_rate = resolve_voice(self.config.voice or "de-thorsten-low")
             loop = asyncio.get_event_loop()
-            voice_obj = await loop.run_in_executor(self.executor, PiperVoice.load, model_path)
+            voice_obj = await loop.run_in_executor(self.executor, PiperVoice.load, str(model_path))
             self.voice_cache[self.config.voice or "de-thorsten-low"] = voice_obj
-            self.config.model_path = model_path
+            self.config.model_path = str(model_path)
             self.is_initialized = True
             logger.info(
                 "Voice alias '%s' resolved to model '%s' (sr=%dHz)",
                 self.config.voice or "de-thorsten-low",
-                Path(model_path).name,
+                model_path.name,
                 self.sample_rate,
             )
             return True
         except Exception as e:  # pragma: no cover - logging only
-            logger.error("Piper TTS Initialisierung fehlgeschlagen: %s", e)
+            logger.warning("Piper TTS Initialisierung fehlgeschlagen: %s", e)
             self.is_initialized = False
             return False
 
@@ -250,11 +245,20 @@ class PiperTTSEngine(BaseTTSEngine):
         model_path: Optional[str] = None,
     ) -> bytes:
         voice_obj = None if model_path else self.voice_cache.get(voice)
+        mp: Path
         if voice_obj is None:
-            mp = model_path or self._resolve_model_path(voice)
-            voice_obj = PiperVoice.load(mp)
-            if model_path is None:
-                self.voice_cache[voice] = voice_obj
+            if model_path:
+                mp = Path(model_path).resolve()
+                if self.sample_rate == 0:
+                    try:
+                        self.sample_rate = _read_sample_rate(mp)
+                    except Exception:
+                        pass
+            else:
+                mp, sr = resolve_voice(voice)
+                self.sample_rate = sr
+            voice_obj = PiperVoice.load(str(mp))
+            self.voice_cache[voice] = voice_obj
 
         speed = options.get("speed", getattr(self.config, "speed", 1.0))
         volume = options.get("volume", getattr(self.config, "volume", 1.0))
@@ -278,5 +282,5 @@ class PiperTTSEngine(BaseTTSEngine):
         return buf.getvalue()
 
 
-__all__ = ["PiperTTSEngine"]
+__all__ = ["PiperTTSEngine", "resolve_voice"]
 

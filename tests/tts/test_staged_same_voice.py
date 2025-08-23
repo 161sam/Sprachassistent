@@ -7,6 +7,12 @@ from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor, Staged
 
 
 class DummyManager:
+    def __init__(self, piper_ok: bool = True):
+        self.engines = {
+            "piper": type("E", (), {"is_initialized": piper_ok})(),
+            "zonos": type("E", (), {"is_initialized": True})(),
+        }
+
     async def synthesize(self, text, engine=None, voice=None):
         sr = 22050 if engine == 'piper' else 16000
         buf = io.BytesIO()
@@ -22,7 +28,7 @@ class DummyManager:
 
 
 def test_intro_piper_main_zonos_sr_ok():
-    mgr = DummyManager()
+    mgr = DummyManager(piper_ok=True)
     proc = StagedTTSProcessor(mgr, StagedTTSConfig(enable_caching=False))
     chunks = asyncio.run(proc.process_staged_tts("Hallo Welt", "de-thorsten-low"))
     assert chunks[0].engine == 'piper'
@@ -30,3 +36,14 @@ def test_intro_piper_main_zonos_sr_ok():
     with wave.open(io.BytesIO(chunks[0].audio_data), 'rb') as wf:
         assert wf.getframerate() == 22050
         assert wf.getnframes() > 0
+
+
+def test_intro_skipped_if_piper_unavailable():
+    mgr = DummyManager(piper_ok=False)
+    proc = StagedTTSProcessor(
+        mgr, StagedTTSConfig(enable_caching=False, max_intro_length=20)
+    )
+    text = "Hallo Welt. Noch ein Satz."
+    chunks = asyncio.run(proc.process_staged_tts(text, "de-thorsten-low"))
+    assert all(c.engine != 'piper' for c in chunks)
+    assert chunks and chunks[0].engine == 'zonos'
