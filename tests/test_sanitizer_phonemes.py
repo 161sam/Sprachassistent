@@ -26,7 +26,16 @@ def test_nbsp_zero_width_removed():
 def test_phoneme_coverage_subset():
     with open('tests/fixtures/de_DE-thorsten-low.onnx.json', encoding='utf-8') as f:
         model_set = set(json.load(f)['phoneme_id_map'].keys())
-    words = ["façade", "garçon", "çedilla", "übermäßig", "naïve"]
+    words = [
+        "façade",
+        "garçon",
+        "çedilla",
+        "übermäßig",
+        "naïve",
+        "Łódź",
+        "São Paulo",
+        "İstanbul",
+    ]
     for w in words:
         s = sanitize_for_tts(w)
         for ch in s:
@@ -34,8 +43,8 @@ def test_phoneme_coverage_subset():
                 assert ch in model_set
 
 
-def test_non_latin_removed():
-    raw = "東京"
+@pytest.mark.parametrize("raw", ["東京", "Москва"])
+def test_non_latin_removed(raw: str):
     assert sanitize_for_tts(raw) == ""
 
 

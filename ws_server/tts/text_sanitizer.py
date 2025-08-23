@@ -16,6 +16,13 @@ _TYPOMAP = {
     "\u2026": "...",
     "\u00A0": " ",
 }
+_FALLBACK_MAP = {
+    "ł": "l", "Ł": "L",
+    "đ": "d", "Đ": "D",
+    "ø": "o", "Ø": "O",
+    "ð": "d", "Ð": "D",
+}
+_FALLBACK_TRANSLATION = str.maketrans(_FALLBACK_MAP)
 _COMBINING_RE = re.compile(r"[̀-ͯ]")
 _ALLOWED = set("abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜß0123456789 .,!?;:-'\"()")
 
@@ -32,6 +39,7 @@ def sanitize_for_tts_strict(text: str) -> str:
     t = unicodedata.normalize("NFD", t)
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
     t = t.translate(str.maketrans(_TYPOMAP))
+    t = t.translate(_FALLBACK_TRANSLATION)
     cleaned: list[str] = []
     for ch in t:
         if ord(ch) > 127 and ch not in _ALLOWED:
@@ -55,6 +63,7 @@ def pre_clean_for_piper(text: str) -> str:
     t = sanitize_for_tts_strict(text)
     t = t.replace("\u0327", "")  # combining cedilla
     t = _COMBINING_RE.sub("", t)
+    t = unicodedata.normalize("NFC", t)
     if t != original:
         removed = len(original) - len(t)
         logger.warning("pre_clean_for_piper entfernte %d Zeichen", removed)

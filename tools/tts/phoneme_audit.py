@@ -15,6 +15,10 @@ PROBLEM_TEXTS = [
     "fa̧cade",
     "übermäßig",
     "naïve",
+    "Łódź",
+    "São Paulo",
+    "İstanbul",
+    "Москва",
     "東京",
 ]
 
