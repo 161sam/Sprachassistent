@@ -395,8 +395,9 @@ class TTSManager:
         
         self.engines.clear()
         logger.info("TTS-Manager cleanup abgeschlossen")
-
 # Dummy TTS Manager für Fallback
+# TODO: replace with dedicated mock or remove if real engines are always available
+#       (see TODO-Index.md: Backend/TTS Manager)
 class DummyTTSManager:
     """Dummy TTS Manager wenn echte Engines nicht verfügbar"""
     

@@ -4,6 +4,7 @@
 - **backend/tts/engine_zonos.py**: log voice directory scan errors instead of silent pass. _Prio: Niedrig_
 - **backend/tts/engine_zonos.py**: log cleanup errors instead of silent pass. _Prio: Niedrig_
 - **backend/tts/base_tts_engine.py**: raise `NotImplementedError` in abstract methods for clearer contracts. _Prio: Niedrig_
+- **backend/tts/tts_manager.py**: replace `DummyTTSManager` fallback with dedicated mock or remove it. _Prio: Mittel_
 - **ws_server/tts/engines/piper.py**: relocate implementation to `backend/tts` to keep engines centralized. _Prio: Niedrig_
 
 ## Frontend
@@ -28,4 +29,5 @@
 
 ## ❓ Offene Fragen
 - ❓ **ws_server/compat/legacy_ws_server.py**: is the embedded `DummyTTSManager` still needed or should a dedicated mock be used? _Prio: Niedrig_
+- ❓ **backend/tts/tts_manager.py**: is `DummyTTSManager` sufficient as a fallback or should a proper mock be used? _Prio: Niedrig_
 
