@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # ruff: noqa: E402
+# TODO: remove this backup file or merge its changes into
+#       legacy_ws_server.py
+#       (see TODO-Index.md: WS-Server / Protokolle)
 from __future__ import annotations
 import os
 WS_HOST = os.getenv('WS_HOST','127.0.0.1')
