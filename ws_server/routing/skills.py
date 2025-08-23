@@ -5,21 +5,26 @@ from pathlib import Path
 from typing import List, Optional
 
 import pkgutil
- 
+from abc import ABC, abstractmethod
 
-class BaseSkill:
-    """Basis-Interface für alle Skills."""
+
+class BaseSkill(ABC):
+    """Base interface for all skills."""
+
     intent_name: str = "base"
 
+    @abstractmethod
     def can_handle(self, text: str) -> bool:
-        # TODO: implement intent matching logic in subclasses
-        #       (see TODO-Index.md: WS-Server / Protokolle)
-        raise NotImplementedError
+        """Return ``True`` if this skill can handle the given text."""
+        # TODO-FIXED(2024-11-24): enforce explicit intent matching contract
+        ...
 
+    @abstractmethod
     def handle(self, text: str) -> str:
-        # TODO: implement handler that returns skill response
-        #       (see TODO-Index.md: WS-Server / Protokolle)
-        raise NotImplementedError
+        """Process the text and return a response string."""
+        # TODO-FIXED(2024-11-24): enforce explicit handler contract
+        ...
+
 
 def _discover_modules(path: Path) -> List[str]:
     return [name for _, name, _ in pkgutil.iter_modules([str(path)])]
