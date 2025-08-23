@@ -139,7 +139,6 @@ class ZonosTTSEngine(BaseTTSEngine):
                 from ws_server.tts.text_normalize import sanitize_for_tts
                 text = sanitize_for_tts(text)
             except Exception as e:
-                # TODO-FIXED(2025-08-23): log missing sanitizer instead of silent pass
                 logger.warning("Zonos: Textsanitizer nicht verfügbar: %s", e)
 
             voice = voice_id or self._active_voice
@@ -168,7 +167,6 @@ class ZonosTTSEngine(BaseTTSEngine):
                 try:
                     conditioning["rate"] = float(speed)
                 except Exception as e:
-                    # TODO-FIXED(2025-08-23): warn on invalid speed instead of silent pass
                     logger.warning("Zonos: Ungültiger Geschwindigkeitswert %s: %s", speed, e)
 
             use_fp16 = (self.device == 'cuda')

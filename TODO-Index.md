@@ -6,13 +6,14 @@
 - **backend/tts/base_tts_engine.py**: raise `NotImplementedError` in abstract methods for clearer contracts. _Prio: Niedrig_
 - **backend/tts/tts_manager.py**: replace `DummyTTSManager` fallback with dedicated mock or remove it. _Prio: Mittel_
 - **ws_server/tts/engines/piper.py**: relocate implementation to `backend/tts` to keep engines centralized. _Prio: Niedrig_
+- **backend/tts/kokoro_tts_engine.py**: load voices from shared config to avoid duplication. _Prio: Niedrig_
 
 ## Frontend
 - **voice-assistant-apps/shared/core/VoiceAssistantCore.js**: deduplicate streaming logic with `AudioStreamer.js`. _Prio: Mittel_
 - **voice-assistant-apps/shared/core/AudioStreamer.js**: unify with `VoiceAssistantCore.js` to avoid duplicate streaming logic. _Prio: Mittel_
 
 ## WS-Server / Protokolle
-- **ws_server/compat/legacy_ws_server.py**: legacy compatibility – log missing event loop, handle cleanup/close errors, and replace `DummyTTSManager` stub. _Prio: Mittel_
+- **ws_server/compat/legacy_ws_server.py**: legacy compatibility – log missing event loop, handle missing torch dependency, cleanup/close errors, and replace `DummyTTSManager` stub. _Prio: Mittel_
 - **ws_server/compat/legacy_ws_server.py**: legacy compatibility – plan migration away from this layer once transport server is updated. _Prio: Niedrig_
 - **ws_server/transport/fastapi_adapter.py**: add tests and consider merging into core transport server. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: streamline integration with `text_sanitizer`/`text_normalize` to reduce pipeline complexity. _Prio: Mittel_
@@ -31,4 +32,5 @@
 ## ❓ Offene Fragen
 - ❓ **ws_server/compat/legacy_ws_server.py**: is the embedded `DummyTTSManager` still needed or should a dedicated mock be used? _Prio: Niedrig_
 - ❓ **backend/tts/tts_manager.py**: is `DummyTTSManager` sufficient as a fallback or should a proper mock be used? _Prio: Niedrig_
+- ❓ **docs/Code-und-Dokumentationsreview.md**: clarify whether `EnhancedVoiceAssistant.js` is still required or fully replaced by `VoiceAssistantCore`. _Prio: Niedrig_
 

@@ -52,6 +52,8 @@ class KokoroTTSEngine(BaseTTSEngine):
             # Weitere internationale Stimmen
             "bf_emma", "bf_isabella", "am_adam", "am_daniel"
         ]
+        # TODO: load voices from shared config to avoid duplication
+        #       (see TODO-Index.md: Backend/Kokoro engine)
         
         self.supported_languages = ["en", "en-US", "de", "de-DE", "multi"]
         

@@ -2,8 +2,6 @@
  * Voice Assistant Core with Audio Streaming & Mobile-First Design
  * Designed for low latency, real-time audio streaming, and mobile UX
  *
- * TODO-FIXED(2025-08-23): consolidated auth token logic via shared ws-utils
- *       (see TODO-Index.md: Frontend)
  * TODO: deduplicate streaming logic with AudioStreamer.js
  *       (see TODO-Index.md: Frontend/Streaming)
  */
