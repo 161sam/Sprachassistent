@@ -27,9 +27,9 @@ TTS_DROP_ORPHAN_COMBINING=true
 The warning *"Missing phoneme from id map"* usually stems from stray
 combining marks (for example the cedilla `\u0327`) or characters outside the
 model's alphabet. The pre-sanitizer now normalizes text (NFKC→NFD→NFC), drops
-or replaces unknown symbols and logs a warning instead of raising an error.
-Feeding texts like `façade`, `garçon`, `çedilla`, `übermäßig` or `naïve`
-no longer produces this warning.
+or replaces unknown symbols (e.g. `Ł`→`L`, `đ`→`d`) and logs a warning instead
+of raising an error. Feeding texts like `façade`, `garçon`, `çedilla`,
+`übermäßig`, `Łódź`, `İstanbul` or `naïve` no longer produces this warning.
 
 ## Fallback Strategy
 Unknown phonemes are dropped or mapped once per symbol with a warning. Logs stay readable and synthesis continues.

@@ -1,9 +1,8 @@
 """Text-Chunking und Sanitizing für sprechgerechte TTS-Ausgabe."""
 
 import re
-import unicodedata
 from typing import List
-from ws_server.tts.text_sanitizer import sanitize_for_tts_strict
+from ws_server.tts.text_sanitizer import sanitize_for_tts_strict, pre_clean_for_piper
 from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
 def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     """
@@ -16,11 +15,7 @@ def _limit_and_chunk(text: str, max_length: int = 500) -> List[str]:
     Returns:
         Liste von Text-Chunks (80-180 Zeichen pro Chunk)
     """
-    text = sanitize_for_tts_strict(sanitize_basic(text))
-    try:
-        text = unicodedata.normalize('NFC', text)
-    except Exception:
-        pass
+    text = pre_clean_for_piper(sanitize_basic(text))
     # Text begrenzen auf max_length
     text = text.strip()
     if len(text) > max_length:
