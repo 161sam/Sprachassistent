@@ -5,6 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# TODO: unify responsibilities with text_sanitizer and chunking for a single
+#       coherent pipeline (see TODO-Index.md: WS-Server / Protokolle)
+
 ZERO_WIDTH = dict.fromkeys(map(ord, "\u200B\u200C\u200D\u200E\u200F\u2060\uFEFF"), None)
 TYPO_MAP = {
     '‘': "'", '’': "'", '‚': ',', '‛': "'",

@@ -6,6 +6,9 @@ representation.  The engine reads the sample rate from the accompanying
 model JSON file and always returns proper WAV bytes.
 """
 
+# TODO: keep in sync with backend/tts/piper_tts_engine.py to avoid drift
+#       (see TODO-Index.md: Backend)
+
 from __future__ import annotations
 
 import asyncio

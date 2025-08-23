@@ -1,4 +1,6 @@
 {
+  // TODO: align with ws_server/tts/voice_aliases.py to avoid duplicated voice settings
+  //       (see TODO-Index.md: Config)
   "default_engine": "piper",
   "engines": ["piper", "zonos"],
   "voice_map": {
