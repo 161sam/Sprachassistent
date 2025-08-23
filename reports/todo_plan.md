@@ -12,7 +12,7 @@ This plan consolidates outstanding items from `TODO-Index.md`. Tasks are ordered
 2. **Deduplicate GUI helper** – adjust `gui/enhanced-voice-assistant.js` after core consolidation.
    - Domain: Frontend
    - Dependencies: depends on consolidation above
-3. **Improve legacy WebSocket server** – stream chunk-wise and log Kokoro voice detection errors in `ws_server/compat/legacy_ws_server.py`.
+3. **Improve legacy WebSocket server** – stream chunk-wise and log Kokoro voice detection errors in `ws_server/compat/legacy_ws_server.py`. ✅ Completed
    - Domain: WS‑Server / Compat
    - Dependencies: decision whether legacy server remains supported
 4. **Unify TTS pipeline pieces** – review overlap in `ws_server/tts/staged_tts/chunking.py` once sanitizer and normalizer responsibilities are clarified.
