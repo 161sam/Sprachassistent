@@ -20,6 +20,8 @@ Features integrated from previous versions:
 * Metrics API und TTS-Engine-Switching
 
 # TODO-FIXED(2025-08-23): compat layer still required; transport server imports this module
+# TODO: plan migration away from legacy compat layer once a new transport server
+#       exists (see TODO-Index.md: WS-Server / Protokolle)
 
 # Hinweis: Der TTS-Wechsel wird vom ``TTSManager`` verwaltet und
 # die Authentifizierung erfolgt über ``auth.token_utils``. Weitere
