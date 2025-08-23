@@ -92,8 +92,17 @@ class PiperTTSEngine(BaseTTSEngine):
         return self._normalize_voice(voice) in self.supported_voices
 
     def _resolve_model_path(self, voice: str) -> str:
-        if self.config.model_path and os.path.exists(self.config.model_path):
-            return str(Path(self.config.model_path).resolve())
+        if self.config.model_path:
+            p = Path(self.config.model_path)
+            if not p.is_absolute():
+                model_dir = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
+                project_root = Path(__file__).resolve().parents[2]
+                if str(p).startswith(f"{model_dir}/"):
+                    p = project_root / p
+                else:
+                    p = project_root / model_dir / p
+            if p.exists():
+                return str(p.resolve())
 
         normalized = self._normalize_voice(voice)
         alias = VOICE_ALIASES.get(normalized, {}).get("piper")

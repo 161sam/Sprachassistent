@@ -14,6 +14,7 @@ from enum import Enum
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
+from ws_server.tts.voice_utils import canonicalize_voice
 import re
 try:
     from ws_server.tts.text_sanitizer import sanitize_for_tts_strict as _sanitize_for_tts_strict, pre_clean_for_piper
@@ -95,9 +96,6 @@ class TTSManager:
         if zonos_config:
             engine_configs["zonos"] = zonos_config
 
-        if "piper" not in engine_configs:
-            engine_configs["piper"] = TTSConfig(engine_type="piper", voice="default", language="de")
-
         engine_priority: List[str] = []
         if target_engine_name in engine_configs:
             engine_priority.append(target_engine_name)
@@ -174,7 +172,7 @@ class TTSManager:
         if COMBINING_GUARD_RE.search(text):
             text = COMBINING_GUARD_RE.sub('', text)
         target_engine = engine or self.default_engine
-        canonical_voice = voice or os.getenv("TTS_VOICE", "de-thorsten-low")
+        canonical_voice = canonicalize_voice(voice or os.getenv("TTS_VOICE", "de-thorsten-low"))
         if target_engine == "piper":
             text = pre_clean_for_piper(text)
 

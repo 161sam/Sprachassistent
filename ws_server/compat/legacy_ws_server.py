@@ -60,6 +60,7 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.voice_validation import validate_voice_assets
 from ws_server.tts.voice_aliases import VOICE_ALIASES
+from ws_server.tts.voice_utils import canonicalize_voice
 from ws_server.tts.staged_tts import StagedTTSProcessor, limit_and_chunk
 from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
@@ -129,21 +130,35 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
 
 def _build_piper_config(config) -> TTSConfig | None:
     """Erstelle Piper-Konfiguration nur wenn ein Modell vorhanden ist."""
-    alias = VOICE_ALIASES.get(config.default_tts_voice, {}).get("piper")
+    import os
+
+    voice = canonicalize_voice(os.getenv("TTS_VOICE", config.default_tts_voice))
+    alias = VOICE_ALIASES.get(voice, {}).get("piper")
     model = alias.model_path if alias else None
     if not model:
-        logger.warning("Piper-Stimme nicht konfiguriert – überspringe Initialisierung")
+        logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
         return None
+
     mp = Path(model)
+    model_dir = os.getenv("TTS_MODEL_DIR", config.tts_model_dir)
     if not mp.is_absolute():
-        mp = Path(config.tts_model_dir) / mp
+        if str(mp).startswith(f"{model_dir}/"):
+            mp = Path(str(mp))
+        else:
+            mp = Path(model_dir) / mp
+
     if not mp.exists():
-        logger.warning("Piper-Modell fehlt: %s – überspringe Initialisierung", mp)
-        return None
+        home = Path.home() / ".local/share/piper" / mp.name
+        if home.exists():
+            mp = home
+        else:
+            logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
+            return None
+
     return TTSConfig(
         engine_type="piper",
         model_path=str(mp),
-        voice=config.default_tts_voice,
+        voice=voice,
         speed=config.default_tts_speed,
         volume=config.default_tts_volume,
         language="de",

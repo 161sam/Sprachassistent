@@ -40,4 +40,4 @@ def test_tts_manager_passes_voice(monkeypatch):
     p_cfg = TTSConfig(engine_type="piper")
     asyncio.run(mgr.initialize(piper_config=p_cfg, default_engine=TTSEngineType.PIPER))
     asyncio.run(mgr.synthesize("hi", voice="de_DE-thorsten-low"))
-    assert mgr.engines["piper"].calls[-1] == "de_DE-thorsten-low"
+    assert mgr.engines["piper"].calls[-1] == "de-thorsten-low"

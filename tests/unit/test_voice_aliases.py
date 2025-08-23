@@ -9,6 +9,6 @@ spec.loader.exec_module(voice_aliases)  # type: ignore
 resolve_voice_alias = voice_aliases.resolve_voice_alias
 
 def test_resolve_voice_alias():
-    assert resolve_voice_alias("de-thorsten-low") == "de_DE-thorsten-low"
-    assert resolve_voice_alias("de_DE-thorsten-low") == "de_DE-thorsten-low"
+    assert resolve_voice_alias("de-thorsten-low") == "de-thorsten-low"
+    assert resolve_voice_alias("de_DE-thorsten-low") == "de-thorsten-low"
     assert resolve_voice_alias("unknown") == "unknown"

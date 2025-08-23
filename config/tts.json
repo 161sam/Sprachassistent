@@ -1,22 +1,8 @@
 {
-  // TODO: deduplicate voice keys 'de-thorsten-low' and 'de_DE-thorsten-low'
-  //       (see TODO-Index.md: Config)
   "default_engine": "piper",
   "engines": ["piper", "zonos"],
   "voice_map": {
     "de-thorsten-low": {
-      "piper": {
-        "model_path": "models/piper/de-thorsten-low.onnx",
-        "language": "de",
-        "sample_rate": 22050
-      },
-      "zonos": {
-        "voice_id": "thorsten",
-        "language": "de",
-        "sample_rate": 48000
-      }
-    },
-    "de_DE-thorsten-low": {
       "piper": {
         "model_path": "models/piper/de-thorsten-low.onnx",
         "language": "de",

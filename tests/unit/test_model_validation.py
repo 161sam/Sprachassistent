@@ -33,8 +33,8 @@ def test_broken_symlink_warns(tmp_path, caplog):
 def test_list_voices_with_aliases(tmp_path):
     piper_dir = tmp_path / "piper"
     piper_dir.mkdir()
-    (piper_dir / "de_DE-thorsten-low.onnx").write_bytes(b"0")
-    (piper_dir / "de_DE-thorsten-low.onnx.json").write_text("{}")
+    (piper_dir / "de-thorsten-low.onnx").write_bytes(b"0")
+    (piper_dir / "de-thorsten-low.onnx.json").write_text("{}")
     aliases = list_voices_with_aliases(str(tmp_path))
-    assert "de_DE-thorsten-low" in aliases
-    assert "de-thorsten-low" in aliases["de_DE-thorsten-low"]
+    assert "de-thorsten-low" in aliases
+    assert "de_DE-thorsten-low" in aliases["de-thorsten-low"]
