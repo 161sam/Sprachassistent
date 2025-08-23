@@ -19,9 +19,9 @@
 - **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio; log Kokoro voice detection errors instead of silent pass. ✅ Done in commit `legacy ws streaming`. _Prio: Mittel_
 - **ws_server/routing/skills.py**: flesh out skill interface and routing logic. ✅ Done in commit `skill interface abc`. _Prio: Hoch_
 - **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_
-- **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
+- **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. ✅ Done in commit `unify text pipeline`. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: review overlap with sanitizer/normalizer for unified pipeline. ✅ Done in commit `chunking pipeline unify`.
-- **ws_server/tts/text_normalize.py**: clarify responsibilities with other sanitizer components. _Prio: Niedrig_
+- **ws_server/tts/text_normalize.py**: clarify responsibilities with other sanitizer components. ✅ Done in commit `unify text pipeline`. _Prio: Niedrig_
 - **ws_server/protocol/binary_v2.py**: verify PCM format and sample rate before processing. ✅ Done in commit `binary PCM validation`. _Prio: Hoch_
 - **ws_server/metrics/collector.py**: track memory usage and network throughput metrics. ✅ Done in commit `metrics network throughput`. _Prio: Mittel_
 - **ws_server/tts/staged_tts/staged_processor.py**: make crossfade duration configurable. ✅ Done in commit `staged tts crossfade env`. _Prio: Niedrig_

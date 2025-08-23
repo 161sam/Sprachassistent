@@ -5,8 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# TODO: unify responsibilities with text_sanitizer and chunking for a single
-#       coherent pipeline (see TODO-Index.md: WS-Server / Protokolle)
+# TODO-FIXED(2025-02-14): moved core logic into ``basic_sanitize`` and
+# delegated public ``sanitize_for_tts`` to ``text_sanitizer`` for a unified
+# pipeline
 
 ZERO_WIDTH = dict.fromkeys(map(ord, "\u200B\u200C\u200D\u200E\u200F\u2060\uFEFF"), None)
 TYPO_MAP = {
@@ -29,12 +30,15 @@ ALLOWED_CHARS = set(
 )
 _warned: set[str] = set()
 
+
 def _warn_once(ch: str, reason: str) -> None:
     if ch not in _warned:
         logger.warning("Entferne Zeichen %r wegen %s (U+%04X)", ch, reason, ord(ch))
         _warned.add(ch)
 
-def sanitize_for_tts(text: str, mode: str | None = None) -> str:
+
+def basic_sanitize(text: str, mode: str | None = None) -> str:
+    """Light-weight normalisation prior to strict sanitizing."""
     if os.getenv("TTS_SANITIZE_ENABLED", "true").lower() != "true":
         return text
     norm = os.getenv("TTS_UNICODE_NORMALIZATION", "NFC").upper()
@@ -59,3 +63,13 @@ def sanitize_for_tts(text: str, mode: str | None = None) -> str:
     text = ''.join(out)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def sanitize_for_tts(text: str, mode: str | None = None) -> str:  # pragma: no cover - thin wrapper
+    """Public entry point delegating to ``text_sanitizer`` for strict handling."""
+    from .text_sanitizer import pre_sanitize_text
+
+    return pre_sanitize_text(text, mode=mode)
+
+
+__all__ = ["sanitize_for_tts", "basic_sanitize"]
