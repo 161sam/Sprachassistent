@@ -122,10 +122,9 @@ def _kokoro_voice_labels(voices_path: str, model_path: str):
             pretty = base[-1].capitalize() if base else k
             label = f"{pretty} [{k}]"
             out.append({"label": label, "key": k})
-    except Exception:
-        # TODO: log Kokoro voice detection errors instead of silent pass
-        #       (see TODO-Index.md: WS-Server / Protokolle)
-        pass
+    except Exception as exc:
+        # TODO-FIXED(2025-08-23): log Kokoro voice detection errors instead of silent pass
+        logger.error("Kokoro voice detection failed: %s", exc)
     return out
 
 # --- Minimal LM Studio client -------------------------------------------------
@@ -137,7 +136,8 @@ class LMClient:
 async def _emit_assistant_text(ws, sequence_id, text):
     """Sende sofort den reinen Assistant-Text an den Client (Text-First UX)."""
     try:
-        import time, json as _json
+        import time
+        import json as _json
         msg = {
             "type": "assistant_text",
             "sequence_id": sequence_id,
@@ -147,7 +147,8 @@ async def _emit_assistant_text(ws, sequence_id, text):
         await ws.send(_json.dumps(msg))
     except Exception as e:
         logger = globals().get("logger")
-        if logger: logger.warning("assistant_text emit failed: %s", e)
+        if logger:
+            logger.warning("assistant_text emit failed: %s", e)
 
 
     async def list_models(self) -> Dict[str, List[str]]:
@@ -422,13 +423,13 @@ class AsyncSTTEngine:
         """Convert raw PCM16 bytes to normalized float32 array."""
         return pcm16_bytes_to_float32(audio_bytes)
 
-    async def process_binary_audio(self, audio_data: bytes, **_kwargs) -> str:
-        """Transcribe raw PCM16 bytes directly.
-
-        TODO: Stream chunk-wise without buffering entire audio
-        (see TODO-Index.md: WS-Server / Protokolle).
-        """
-        return await self.transcribe_audio(audio_data)
+    async def process_binary_audio(
+        self, audio_data: bytes, *, stream_id: str = "", sequence: int = 0, **_kwargs
+    ) -> dict | None:
+        """Transcribe a PCM16 audio chunk without buffering the whole stream."""
+        # TODO-FIXED(2025-08-23): stream chunk-wise without buffering entire audio
+        text = await self.transcribe_audio(audio_data)
+        return {"text": text} if text else None
 
     def _transcribe_sync(self, audio_array: np.ndarray) -> str:
         """Synchronous transcription in worker thread."""

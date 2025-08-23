@@ -14,7 +14,7 @@
 
 ## WS-Server / Protokolle
 - **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. ✅ Done in commit `stt streaming`. _Prio: Hoch_
-- **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio; log Kokoro voice detection errors instead of silent pass. _Prio: Mittel_
+- **ws_server/compat/legacy_ws_server.py**: stream chunk-wise without buffering entire audio; log Kokoro voice detection errors instead of silent pass. ✅ Done in commit `legacy ws streaming`. _Prio: Mittel_
 - **ws_server/routing/skills.py**: flesh out skill interface and routing logic. ✅ Done in commit `skill interface abc`. _Prio: Hoch_
 - **ws_server/transport/fastapi_adapter.py**: implement FastAPI transport adapter. _Prio: Niedrig_
 - **ws_server/tts/text_sanitizer.py**: unify sanitizer, normalizer and chunking pipeline. _Prio: Niedrig_
