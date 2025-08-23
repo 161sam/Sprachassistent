@@ -5,7 +5,10 @@ from ws_server.metrics.collector import collector
 
 
 class OnlyPiperManager:
-    engines = {"piper": object(), "zonos": object()}
+    engines = {
+        "piper": type("E", (), {"is_initialized": True})(),
+        "zonos": type("E", (), {"is_initialized": True})(),
+    }
 
     async def synthesize(self, text, engine=None, voice=None):
         if engine != "piper":
@@ -46,7 +49,10 @@ def test_fallback_to_piper_only():
 
 
 class TimeoutManager:
-    engines = {"piper": object(), "zonos": object()}
+    engines = {
+        "piper": type("E", (), {"is_initialized": True})(),
+        "zonos": type("E", (), {"is_initialized": True})(),
+    }
 
     async def synthesize(self, text, engine=None, voice=None):
         class R:

@@ -14,9 +14,9 @@ def canonicalize_voice(voice: Optional[str]) -> str:
     """
     if not voice:
         return ""
-    v = voice.strip()
-    if v.startswith("de_DE-"):
-        v = "de-" + v[len("de_DE-") :]
+    v = voice.strip().lower()
+    if v.startswith("de_de-"):
+        v = "de-" + v[len("de_de-") :]
     return v
 
 __all__ = ["canonicalize_voice"]

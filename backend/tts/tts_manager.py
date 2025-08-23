@@ -8,6 +8,7 @@ import asyncio
 import logging
 import os
 import audioop
+from pathlib import Path
 from importlib import import_module
 from typing import Any, Dict, List, Optional
 from enum import Enum
@@ -89,8 +90,12 @@ class TTSManager:
         target_engine_name = default_engine.value if default_engine else TTS_ENGINE
 
         engine_configs: Dict[str, TTSConfig] = {}
+        if piper_config is None:
+            piper_config = self._build_piper_config()
         if piper_config:
             engine_configs["piper"] = piper_config
+        else:
+            logger.info("Piper deaktiviert (kein gültiges Modell)")
         if kokoro_config:
             engine_configs["kokoro"] = kokoro_config
         if zonos_config:
@@ -139,6 +144,41 @@ class TTSManager:
 
         logger.error("❌ Keine TTS-Engine verfügbar!")
         return False
+
+    def _build_piper_config(self) -> TTSConfig | None:
+        """Erstelle Piper-Konfiguration nur wenn ein Modell vorhanden ist."""
+        voice = canonicalize_voice(os.getenv("TTS_VOICE", self.config.voice))
+        alias = VOICE_ALIASES.get(voice, {}).get("piper")
+        model = alias.model_path if alias else None
+        if not model:
+            logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
+            return None
+
+        model_dir = os.getenv("TTS_MODEL_DIR", self.config.model_dir)
+        mp = Path(model)
+        if not mp.is_absolute():
+            if str(mp).startswith(f"{model_dir}/"):
+                mp = Path(str(mp))
+            else:
+                mp = Path(model_dir) / mp
+        if not mp.exists():
+            home = Path.home() / ".local/share/piper" / mp.name
+            if home.exists():
+                mp = home
+            else:
+                logger.info('Piper deaktiviert: kein Modell für voice="%s" gefunden', voice)
+                return None
+
+        return TTSConfig(
+            engine_type="piper",
+            model_path=str(mp),
+            voice=voice,
+            speed=self.config.speed,
+            volume=self.config.volume,
+            language="de",
+            sample_rate=22050,
+            model_dir=self.config.model_dir,
+        )
     
     def _resolve_engine_voice(self, engine: str, canonical_voice: str) -> EngineVoice:
         mapping = VOICE_ALIASES.get(canonical_voice, {})

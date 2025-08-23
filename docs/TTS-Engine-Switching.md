@@ -28,6 +28,12 @@ Das Sprachassistent-System unterstützt jetzt flexibles Text-to-Speech (TTS) mit
 - Live-Anzeige der aktuellen Engine
 - Stimmen-Auswahl und Test-Funktionen
 
+## Configuration priority
+
+Values from `.env` override settings in `config/tts.json`. The JSON file
+defines available voices and playback defaults, while environment variables
+select the active engine, voice and timeout limits at runtime.
+
 ## Installation
 
 ### 1. Piper TTS (bereits vorhanden)

@@ -20,7 +20,10 @@ class DummyManager:
     def engine_allowed_for_voice(self, engine, voice):
         return True
 
-    engines = {"piper": object(), "zonos": object()}
+    engines = {
+        "piper": type("E", (), {"is_initialized": True})(),
+        "zonos": type("E", (), {"is_initialized": True})(),
+    }
 def test_intro_piper_main_zonos_sr_ok():
     mgr = DummyManager()
     proc = StagedTTSProcessor(mgr, StagedTTSConfig(enable_caching=False))
