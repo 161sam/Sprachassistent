@@ -16,7 +16,7 @@ from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
 import re
 try:
-    from ws_server.tts.text_sanitizer import sanitize_for_tts as _sanitize_for_tts_strict
+    from ws_server.tts.text_sanitizer import sanitize_for_tts_strict as _sanitize_for_tts_strict
 except Exception:
     def _sanitize_for_tts_strict(t: str) -> str:
         import unicodedata

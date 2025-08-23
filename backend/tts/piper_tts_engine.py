@@ -31,41 +31,19 @@ from .base_tts_engine import (
 
 logger = logging.getLogger(__name__)
 
-# ---- Harte Vorab-Ersetzungen (zusätzlich zum Sanitizer) -----------------------
-PIPER_PRE_REPLACE_MAP: Dict[str, str] = {
-    "\u0327": "",  # combining cedilla – Hauptquelle des Warnings
-}
 
-# ---- Regex für „alle kombinierenden Zeichen“ (Mn) -----------------------------
-COMBINING_RE = re.compile(r"[\u0300-\u036F]")
-
-def _strip_combining(text: str) -> str:
-    # Sicher: NFD → Mn raus → Whitespace normalisieren
-    t = unicodedata.normalize("NFD", text or "")
-    t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
-    return " ".join(t.split())
-
-# ---- Fallback-Sanitizer (falls zentraler nicht importierbar) ------------------
-def _local_sanitize_for_tts(text: str) -> str:
-    # 1) NFKC
+def _local_pre_clean(text: str) -> str:
     t = unicodedata.normalize("NFKC", text or "")
-    # 2) Typographisches -> ASCII
-    trans = {
-        "\u2018": "'", "\u2019": "'", "\u201A": ",", "\u201B": "'",
-        "\u201C": '"', "\u201D": '"', "\u201E": '"',
-        "\u2013": "-", "\u2014": "-", "\u2212": "-",
-        "\u2026": "...", "\u00A0": " ",
-    }
-    t = t.translate(str.maketrans(trans))
-    # 3) Alle kombinierenden Zeichen entfernen
-    t = _strip_combining(t)
-    return t
+    t = unicodedata.normalize("NFD", t)
+    t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
+    t = t.replace("\u00A0", " ")
+    t = re.sub(r"\s+", " ", t)
+    return t.strip()
 
 try:
-    # Bevorzugt den zentralen Sanitizer aus ws_server nutzen
-    from ws_server.tts.text_sanitizer import sanitize_for_tts as _sanitize_for_tts  # type: ignore
+    from ws_server.tts.text_sanitizer import pre_clean_for_piper as _pre_clean  # type: ignore
 except Exception:  # pragma: no cover
-    _sanitize_for_tts = _local_sanitize_for_tts
+    _pre_clean = _local_pre_clean
 
 
 class PiperTTSEngine(BaseTTSEngine):
@@ -205,10 +183,8 @@ class PiperTTSEngine(BaseTTSEngine):
         started = time.time()
 
         # 1) Last-mile Sanitizer
-        text = _sanitize_for_tts(text)
-        # 2) Pre-Replace (harte Troublemaker)
-        for k, v in PIPER_PRE_REPLACE_MAP.items():
-            text = text.replace(k, v)
+        # Final guard before Piper: strips all combining marks
+        text = _pre_clean(text)
         # 3) Validierung der (bereits gestrippten) Eingabe
         ok, err = self.validate_text(text)
         if not ok:
@@ -259,9 +235,8 @@ class PiperTTSEngine(BaseTTSEngine):
         model_path: Optional[str] = None,
     ) -> tuple[Optional[bytes], int]:
         # Nochmals hart reinigen – selbst wenn Upstream etwas vergessen hat.
-        text = _sanitize_for_tts(text)
-        for k, v in PIPER_PRE_REPLACE_MAP.items():
-            text = text.replace(k, v)
+        # Final guard before Piper: strips all combining marks
+        text = _pre_clean(text)
 
         # Voice laden/cachen
         voice_obj = None if model_path else self.voice_cache.get(voice)

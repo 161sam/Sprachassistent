@@ -122,6 +122,7 @@ Das System unterstützt jetzt flexibles Text-to-Speech mit Echtzeitwechsel zwisc
 - **Verschiedene Stimm-Modelle**: thorsten, kerstin, eva_k, ramona, karlsson
 - **Offline-Verarbeitung** ohne Cloud-Abhängigkeit
 - **ARM-optimiert** für Raspberry Pi
+- **Final guard** entfernt kombinierende Zeichen (U+0300–U+036F) vor der Synthese
 
 #### 🌍 Kokoro TTS (Mehrsprachig)
 - **Kompakte Engine** (~80MB quantisiert) mit schneller Inferenz
