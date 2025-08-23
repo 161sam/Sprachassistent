@@ -35,6 +35,7 @@ from backend.tts.base_tts_engine import (
     TTSInitializationError,
 )
 from ws_server.tts.voice_aliases import VOICE_ALIASES
+from ws_server.tts.voice_utils import canonicalize_voice
 
 try:
     from ws_server.tts.text_sanitizer import pre_clean_for_piper
@@ -82,22 +83,23 @@ class PiperTTSEngine(BaseTTSEngine):
             "en-amy-low": "en_US-amy-low.onnx",
         }
         if self.config.voice:
-            self.config.voice = self._normalize_voice(self.config.voice)
+            self.config.voice = canonicalize_voice(self.config.voice)
 
     # ------------------------------------------------------------------ helpers
     def _normalize_voice(self, voice: str) -> str:
-        return (voice or "").replace("de_DE-", "de-")
+        return canonicalize_voice(voice or "")
 
     def supports_voice(self, voice: str) -> bool:  # type: ignore[override]
-        return self._normalize_voice(voice) in self.supported_voices
+        return canonicalize_voice(voice) in self.supported_voices
 
     def _resolve_model_path(self, voice: str) -> str:
+        voice = canonicalize_voice(voice)
         if self.config.model_path:
             p = Path(self.config.model_path)
             if not p.is_absolute():
                 model_dir = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
                 project_root = Path(__file__).resolve().parents[2]
-                if str(p).startswith(f"{model_dir}/"):
+                if str(p).startswith(f"{model_dir}/") or str(p).startswith(f"{model_dir}\\"):
                     p = project_root / p
                 else:
                     p = project_root / model_dir / p
