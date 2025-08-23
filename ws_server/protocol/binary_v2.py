@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from ws_server.metrics.collector import collector
 
 logger = logging.getLogger(__name__)
-#       (see TODO-Index.md: WS-Server / Protokolle)
 
 SUPPORTED_SAMPLE_RATES = {16000, 44100, 48000}
 

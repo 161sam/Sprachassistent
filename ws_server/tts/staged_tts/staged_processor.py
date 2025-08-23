@@ -84,6 +84,8 @@ class StagedTTSProcessor:
 
     async def process_staged_tts(self, text: str, canonical_voice: str) -> List[TTSChunk]:
         """Sanitize, chunk and synthesize text in stages."""
+        # TODO: unify sanitizer and normalizer steps to avoid duplicate processing
+        #       (see TODO-Index.md: WS-Server / Protokolle)
         text = sanitize_for_tts_strict(text)
         text = sanitize_basic(text)
 

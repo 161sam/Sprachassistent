@@ -1,4 +1,6 @@
 """Voice alias configuration loader."""
+# TODO: merge with backend/tts/voice_aliases.py to avoid configuration drift
+#       (see TODO-Index.md: Config/Voice aliases)
 
 from __future__ import annotations
 
