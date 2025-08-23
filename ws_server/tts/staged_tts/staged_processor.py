@@ -77,10 +77,10 @@ class StagedTTSProcessor:
         text = sanitize_for_tts_strict(text)
         text = sanitize_basic(text)
 
-        from .chunking import _limit_and_chunk, create_intro_chunk, optimize_for_prosody
+        from .chunking import limit_and_chunk, create_intro_chunk, optimize_for_prosody
 
         optimized_text = optimize_for_prosody(text)
-        chunks = _limit_and_chunk(optimized_text, self.config.max_response_length)
+        chunks = limit_and_chunk(optimized_text, self.config.max_response_length)
         if not chunks:
             logger.warning("Keine Text-Chunks generiert")
             return []
