@@ -12,7 +12,7 @@
 - **voice-assistant-apps/shared/core/AudioStreamer.js**: merge with VoiceAssistantCore for shared streaming logic. ✅ Done in commit `shared ws utils`. _Prio: Mittel_
 - **gui/enhanced-voice-assistant.js**: consolidate with shared core modules to avoid duplication. ✅ Done in commit `gui shared core`. _Prio: Mittel_
 - **gui layout and design refresh**: reorganize GUI elements (status page, input placement, icon-only round buttons). _Prio: Niedrig_
-- **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. _Prio: Niedrig_
+- **gui animations**: implement matrix-rain response effect, avatar pulse, message flash. ✅ Done in commit `gui message flash`. _Prio: Niedrig_
 
 ## WS-Server / Protokolle
 - **ws_server/stt/in_memory.py**: implement streaming support without buffering entire audio. ✅ Done in commit `stt streaming`. _Prio: Hoch_
