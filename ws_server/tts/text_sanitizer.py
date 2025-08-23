@@ -17,6 +17,7 @@ _TYPOMAP = {
     "\u00A0": " ",
 }
 _COMBINING_RE = re.compile(r"[̀-ͯ]")
+_ALLOWED = set("abcdefghijklmnopqrstuvwxyzäöüßABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜß0123456789 .,!?;:-'\"()")
 
 
 def sanitize_for_tts_strict(text: str) -> str:
@@ -31,8 +32,15 @@ def sanitize_for_tts_strict(text: str) -> str:
     t = unicodedata.normalize("NFD", t)
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
     t = t.translate(str.maketrans(_TYPOMAP))
-    t = re.sub(r"\s+", " ", t)
-    return t.strip()
+    cleaned: list[str] = []
+    for ch in t:
+        if ord(ch) > 127 and ch not in _ALLOWED:
+            logger.warning("Entferne unbekanntes Zeichen %r (U+%04X)", ch, ord(ch))
+            continue
+        cleaned.append(ch)
+    t = "".join(cleaned)
+    t = re.sub(r"\s+", " ", t).strip()
+    return unicodedata.normalize("NFC", t)
 
 
 def pre_clean_for_piper(text: str) -> str:
@@ -47,9 +55,9 @@ def pre_clean_for_piper(text: str) -> str:
     t = sanitize_for_tts_strict(text)
     t = t.replace("\u0327", "")  # combining cedilla
     t = _COMBINING_RE.sub("", t)
-    if os.getenv("PIPELINE_DEBUG_SANITIZE") and t != original:
+    if t != original:
         removed = len(original) - len(t)
-        logger.debug("PIPELINE_SANITIZE entfernt=%d", removed)
+        logger.warning("pre_clean_for_piper entfernte %d Zeichen", removed)
     return t
 
 

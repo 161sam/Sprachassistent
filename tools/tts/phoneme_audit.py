@@ -12,6 +12,7 @@ PROBLEM_TEXTS = [
     "façade",
     "garçon",
     "çedilla",
+    "fa̧cade",
     "übermäßig",
     "naïve",
     "東京",
