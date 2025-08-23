@@ -25,7 +25,12 @@ except Exception as e:  # pragma: no cover - handled gracefully in __init__
     _PIPER_AVAILABLE = False
     _PIPER_IMPORT_ERROR = e
 
-from backend.tts.base_tts_engine import BaseTTSEngine, TTSConfig, TTSInitializationError
+from backend.tts.base_tts_engine import (
+    BaseTTSEngine,
+    TTSConfig,
+    TTSInitializationError,
+)
+from ws_server.tts.voice_aliases import VOICE_ALIASES
 
 try:
     from ws_server.tts.text_sanitizer import pre_clean_for_piper
@@ -84,15 +89,22 @@ class PiperTTSEngine(BaseTTSEngine):
 
     def _resolve_model_path(self, voice: str) -> str:
         if self.config.model_path and os.path.exists(self.config.model_path):
-            return self.config.model_path
+            return str(Path(self.config.model_path).resolve())
 
-        model_filename = self.voice_model_mapping.get(self._normalize_voice(voice), f"{voice}.onnx")
+        normalized = self._normalize_voice(voice)
+        alias = VOICE_ALIASES.get(normalized, {}).get("piper")
+        if alias and alias.model_path:
+            model_filename = Path(alias.model_path).name
+        else:
+            model_filename = self.voice_model_mapping.get(normalized, f"{voice}.onnx")
+
         base_from_env = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
         project_root = Path(__file__).resolve().parents[2]
         base_abs = Path(base_from_env) if os.path.isabs(base_from_env) else project_root / base_from_env
         base_abs = base_abs.resolve()
 
         candidates = [
+            base_abs / model_filename,
             base_abs / "piper" / model_filename,
             Path.home() / ".local/share/piper" / model_filename,
             Path("/usr/share/piper") / model_filename,
@@ -100,14 +112,14 @@ class PiperTTSEngine(BaseTTSEngine):
         ]
         for path in candidates:
             if path.exists():
-                return str(path)
+                return str(path.resolve())
 
         fallback = Path.home() / ".local/share/piper/de-thorsten-low.onnx"
         if fallback.exists():
             logger.warning("Verwende Fallback-Modell: %s", fallback)
-            return str(fallback)
+            return str(fallback.resolve())
 
-        raise TTSInitializationError(f"Kein Piper-Modell gefunden (voice='{voice}')")
+        raise TTSInitializationError(f"Kein Piper-Modell gefunden (voice='{voice}', model='{model_filename}')")
 
     def _read_sample_rate(self, model_path: str) -> int:
         json_path = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
@@ -145,7 +157,12 @@ class PiperTTSEngine(BaseTTSEngine):
             self.voice_cache[self.config.voice or "de-thorsten-low"] = voice_obj
             self.config.model_path = model_path
             self.is_initialized = True
-            logger.info("Piper init: voice=%s sr=%d", self.config.voice or "de-thorsten-low", self.sample_rate)
+            logger.info(
+                "Voice alias '%s' resolved to model '%s' (sr=%dHz)",
+                self.config.voice or "de-thorsten-low",
+                Path(model_path).name,
+                self.sample_rate,
+            )
             return True
         except Exception as e:  # pragma: no cover - logging only
             logger.error("Piper TTS Initialisierung fehlgeschlagen: %s", e)
@@ -203,6 +220,15 @@ class PiperTTSEngine(BaseTTSEngine):
                 "format": "wav",
                 "error": str(e),
             }
+
+    async def speak(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Compatibility wrapper exposing a uniform speak API."""
+        return await self.synthesize(text, voice, config)
 
     async def _synthesize_with_piper(
         self,

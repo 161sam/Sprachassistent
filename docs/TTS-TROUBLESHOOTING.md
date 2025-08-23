@@ -38,3 +38,18 @@ Unknown phonemes are dropped or mapped once per symbol with a warning. Logs stay
 
 ## Performance & Rollback
 Sanitizing adds negligible overhead (<1µs/character). Disable by setting `TTS_SANITIZE_ENABLED=false` if problems occur.
+
+## Piper model not found
+If startup logs show `Kein Piper-Modell gefunden`, the engine could not
+locate the ONNX model.  Verify the alias and model paths:
+
+```bash
+ls -l models/piper
+```
+
+Symlinks like `de-thorsten-low.onnx -> de_DE-thorsten-low.onnx` must point to
+the real file next to a `*.onnx.json` metadata file.  The manager resolves
+aliases via `voice_aliases.py`; ensure the environment variable
+`TTS_MODEL_DIR` points to the directory containing the `piper` folder or leave
+it unset to use the repository default.
+

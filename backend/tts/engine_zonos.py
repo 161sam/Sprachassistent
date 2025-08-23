@@ -4,7 +4,7 @@ import io
 import os
 import time
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 import numpy as np
 import torch
@@ -197,6 +197,22 @@ class ZonosTTSEngine(BaseTTSEngine):
     async def test_synthesis(self, text: str = "Test der Sprachsynthese") -> TTSResult:
         """Kompatibel zum TTSManager.selftest"""
         return await self.synthesize(text, voice_id=self._active_voice, language=self._active_lang)
+
+    async def speak(
+        self,
+        text: str,
+        voice: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Unified speak API returning wav bytes and metadata."""
+        cfg = config or {}
+        result = await self.synthesize(text, voice_id=voice or self._active_voice, **cfg)
+        return {
+            "wav_bytes": result.audio_data,
+            "sample_rate": result.sample_rate or self._target_sr,
+            "format": result.audio_format,
+            "error": result.error_message,
+        }
     
 
     def get_engine_info(self) -> dict:
