@@ -32,7 +32,7 @@
 - **env.example**: consolidate TTS defaults with `config/tts.json` to prevent drift. _Prio: Niedrig_
 
 ## Dokumentation
-- **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. _Prio: Niedrig_
+- **docs/Refaktorierungsplan.md**: add TODO stubs for true streaming. ✅ Done in commit `docs true streaming stubs`. _Prio: Niedrig_
 - **docs/GUI-TODO.md**: review and merge GUI tasks into central roadmap. _Prio: Niedrig_
 
 ## Tools & Scripts
