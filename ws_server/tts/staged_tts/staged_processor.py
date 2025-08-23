@@ -148,6 +148,11 @@ class StagedTTSProcessor:
             return TTSChunk(sequence_id, index, total, engine, text, None, False, result.error_message)
         except Exception as e:
             logger.error("Fehler bei %s TTS chunk %s: %s", engine, index, e)
+            # Engine-Ausfälle für Monitoring mitzählen
+            try:
+                collector.tts_engine_unavailable_total.labels(engine=engine).inc()
+            except Exception:  # pragma: no cover - Metriken optional
+                pass
             return TTSChunk(sequence_id, index, total, engine, text, None, False, str(e))
 
     def create_chunk_message(self, chunk: TTSChunk) -> Dict[str, Any]:
