@@ -18,8 +18,6 @@ from ws_server.metrics.collector import collector
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-
 def _hardcore_sanitize_text(text: str) -> str:
     """Entfernt ALLE problematischen Zeichen für Piper TTS"""
     if not text:
@@ -60,6 +58,7 @@ def _hardcore_sanitize_text(text: str) -> str:
     return text
 
 
+@dataclass
 class TTSChunk:
     """Repräsentiert einen TTS-Chunk mit Metadaten"""
     sequence_id: str

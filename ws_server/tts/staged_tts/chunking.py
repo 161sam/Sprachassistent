@@ -3,6 +3,7 @@ Text-Chunking für sprechgerechte TTS-Ausgabe
 """
 
 import re
+import unicodedata
 from typing import List
 
 def sanitize_for_tts(text: str) -> str:
@@ -130,17 +131,16 @@ def create_intro_chunk(chunks: List[str], max_intro_length: int = 120) -> tuple[
 
 
 def optimize_for_prosody(text: str) -> str:
-    text = sanitize_for_tts(text)
-    """
-    Optimiere Text für natürliche TTS-Prosodie.
-    
+    """Optimiere Text für natürliche TTS-Prosodie.
+
     Args:
         text: Eingabetext
-    
+
     Returns:
         Optimierter Text mit besserer Zeichensetzung
     """
     text = sanitize_for_tts(text)
+
     # Zahlen in Wortform umwandeln (vereinfacht)
     number_replacements = {
         '20.000': 'zwanzigtausend',
@@ -148,7 +148,8 @@ def optimize_for_prosody(text: str) -> str:
         '2.000': 'zweitausend',
         '10.000': 'zehntausend',
         '100.000': 'hunderttausend',
-    
+    }
+
     # HARDCORE FIX: Cedilla und alle diakritischen Zeichen entfernen
     text = ''.join(
         char for char in unicodedata.normalize('NFD', text)
@@ -156,8 +157,7 @@ def optimize_for_prosody(text: str) -> str:
     )
     # Spezielle Behandlung für Cedilla
     text = text.replace(chr(0x0327), '')  # Combining cedilla
-    }
-    
+
     result = text
     for num, word in number_replacements.items():
         result = result.replace(num, word)
@@ -169,10 +169,10 @@ def optimize_for_prosody(text: str) -> str:
 
     # Entferne redundante Leerzeichen
     result = re.sub(r'\s+', ' ', result)
-    
+
     # Stelle sicher, dass Sätze mit Punkt enden
     result = result.strip()
     if result and result[-1] not in '.!?':
         result += '.'
-    
+
     return result
