@@ -1,5 +1,8 @@
 """JSON based message helpers (protocol v1)."""
 
+# TODO: deprecate json_v1 in favour of binary_v2 to avoid protocol fragmentation
+#       (see TODO-Index.md: WS-Server / Protokolle)
+
 import json
 import logging
 from typing import Any, Dict

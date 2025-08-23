@@ -15,6 +15,7 @@
 ## WS-Server / Protokolle
 - **ws_server/compat/legacy_ws_server.py**: legacy compatibility – log missing event loop, handle missing torch dependency, cleanup/close errors, and replace `DummyTTSManager` stub. _Prio: Mittel_
 - **ws_server/compat/legacy_ws_server.py**: legacy compatibility – plan migration away from this layer once transport server is updated. _Prio: Niedrig_
+- **ws_server/protocol/json_v1.py**: deprecate `json_v1` in favour of `binary_v2` to avoid protocol fragmentation. _Prio: Niedrig_
 - **ws_server/transport/fastapi_adapter.py**: add tests and consider merging into core transport server. _Prio: Niedrig_
 - **ws_server/tts/staged_tts/chunking.py**: streamline integration with `text_sanitizer`/`text_normalize` to reduce pipeline complexity. _Prio: Mittel_
 - **ws_server/tts/text_sanitizer.py** & **ws_server/tts/text_normalize.py**: clarify and consolidate responsibilities to avoid overlapping sanitization steps. _Prio: Mittel_
@@ -22,6 +23,7 @@
 ## Config
 - **backend/tts/voice_aliases.py**: merge with `ws_server/tts/voice_aliases.py` to avoid configuration drift. _Prio: Mittel_
 - **config/tts.json**: deduplicate voice_map keys `de-thorsten-low` and `de_DE-thorsten-low`. _Prio: Niedrig_
+- **env.example**: deduplicate TTS defaults with `config/tts.json` to avoid confusion. _Prio: Niedrig_
 
 ## Dokumentation
 - **docs/Refaktorierungsplan.md**: flesh out true streaming section with concrete milestones. _Prio: Mittel_
@@ -33,4 +35,6 @@
 - ❓ **ws_server/compat/legacy_ws_server.py**: is the embedded `DummyTTSManager` still needed or should a dedicated mock be used? _Prio: Niedrig_
 - ❓ **backend/tts/tts_manager.py**: is `DummyTTSManager` sufficient as a fallback or should a proper mock be used? _Prio: Niedrig_
 - ❓ **docs/Code-und-Dokumentationsreview.md**: clarify whether `EnhancedVoiceAssistant.js` is still required or fully replaced by `VoiceAssistantCore`. _Prio: Niedrig_
+- ❓ **ws_server/protocol/json_v1.py**: maintain JSON v1 protocol or migrate entirely to `binary_v2`? _Prio: Niedrig_
+- ❓ **voice-assistant-apps/shared/workers/audio-streaming-worklet.js**: are multiple AudioWorklets necessary or can streaming be consolidated? _Prio: Niedrig_
 

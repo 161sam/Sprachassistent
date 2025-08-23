@@ -13,7 +13,6 @@
     } catch(e){ console.warn('[GUI] audio play failed', e); }
   }
 
-  // TODO-FIXED(2025-08-23): consolidated with shared VoiceAssistantCore
   async function ensureVA(){
     if (window.va) return window.va;
     if (!window.VoiceAssistantCore && !window.VoiceAssistant) {
@@ -97,7 +96,6 @@
     box.textContent = text || '';
     box.style.display = text ? 'block' : 'none';
     if (text) {
-      // TODO-FIXED(2025-08-23): message flash when new text appears
       box.classList.add('flash');
       box.addEventListener('animationend', () => box.classList.remove('flash'), { once: true });
       // auto-fade nach 12s

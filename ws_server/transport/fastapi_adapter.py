@@ -1,5 +1,4 @@
 """FastAPI transport adapter for the voice server."""
-# TODO-FIXED(2025-02-14): implement FastAPI transport adapter
 # TODO: add tests and consider merging into core transport server
 #       (see TODO-Index.md: WS-Server / Protokolle)
 from __future__ import annotations

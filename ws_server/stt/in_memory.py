@@ -44,5 +44,3 @@ def iter_pcm16_stream(chunks: Iterable[bytes]) -> Iterator[np.ndarray]:
             yield pcm16_bytes_to_float32(bytes(buffer[:length]))
             del buffer[:length]
     # leftover byte (if any) is discarded silently; it cannot form a sample
-
-# TODO-FIXED(2025-08-23): add streaming support for chunked STT without buffering entire audio

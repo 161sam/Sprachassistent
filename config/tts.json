@@ -1,5 +1,4 @@
 {
-  // TODO-FIXED(2025-08-23): unified with ws_server/tts/voice_aliases.py
   // TODO: deduplicate voice keys 'de-thorsten-low' and 'de_DE-thorsten-low'
   //       (see TODO-Index.md: Config)
   "default_engine": "piper",

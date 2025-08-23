@@ -60,7 +60,7 @@ def kill_processes_on_ports(ports):
                                     try:
                                         os.kill(int(pid), signal.SIGKILL)
                                     except Exception as kill_err:
-                                        print(f"   Failed to force kill PID {pid}: {kill_err}")  # TODO-FIXED(2025-08-23): handle kill failure explicitly
+                                        print(f"   Failed to force kill PID {pid}: {kill_err}")
                             except Exception as pe:
                                 print(f"   PID extraction failed: {pe}")
         except Exception as e:
@@ -87,7 +87,7 @@ def kill_processes_on_ports(ports):
                                     time.sleep(0.2)
                                     os.kill(int(pid), signal.SIGKILL)
                                 except Exception as kill_err:
-                                    print(f"   lsof: Failed to kill PID {pid}: {kill_err}")  # TODO-FIXED(2025-08-23): handle kill failure explicitly
+                                    print(f"   lsof: Failed to kill PID {pid}: {kill_err}")
         except Exception as e:
             print(f"   lsof method failed: {e}")
 
@@ -185,7 +185,7 @@ def start_voice_assistant():
                         elif "STT model" in line and "loaded" in line:
                             print("   ✅ STT Model ready!")
             except Exception as read_err:
-                print(f"   Error reading server output: {read_err}")  # TODO-FIXED(2025-08-23): log subprocess read errors
+                print(f"   Error reading server output: {read_err}")
             
             # Test endpoints every 5 seconds after 15s
             if i > 15 and i % 5 == 0:
