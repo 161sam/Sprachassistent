@@ -124,7 +124,7 @@ class IntentRouter:
 
     async def _call_flowise(self, text: str) -> str:
         import aiohttp
-
+        assert self.flowise_url is not None
         url = f"{self.flowise_url.rstrip('/')}/chat"
         try:
             async with aiohttp.ClientSession() as session:
