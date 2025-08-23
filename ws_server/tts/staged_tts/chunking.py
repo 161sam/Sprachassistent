@@ -1,54 +1,10 @@
-"""
-Text-Chunking für sprechgerechte TTS-Ausgabe
-"""
+"""Text-Chunking und Sanitizing für sprechgerechte TTS-Ausgabe."""
 
 import re
 import unicodedata
 from typing import List
 
-def sanitize_for_tts(text: str) -> str:
-    """
-    Macht Eingabetext TTS-freundlich:
-    - NFC-Normalisierung
-    - Zero-Width/NBSP entfernen
-    - typografische Zeichen nach ASCII
-    - verwaiste kombinierende Zeichen droppen
-    """
-    import unicodedata
-
-    # 1) NFC
-    text = unicodedata.normalize("NFC", text)
-
-    # 2) einfache Typographie-Mappings (sichtbare Zeichen direkt)
-    trans = {
-        '‘': "'", '’': "'", '‚': ',', '‛': "'",
-        '“': '"', '”': '"', '„': '"',
-        '–': '-', '—': '-', '−': '-',
-        '…': '...',
-        chr(0x00A0): ' ',  # NBSP
-    }
-    text = text.translate(str.maketrans(trans))
-
-    # 3) Zero-Width & Co. entfernen (per Codepoints, keine unsichtbaren Literalzeichen)
-    ZW = {0x200B: None, 0x200C: None, 0x200D: None, 0x200E: None,
-          0x200F: None, 0x2060: None, 0xFEFF: None}
-    text = text.translate(ZW)
-
-    # 4) Verwaiste kombinierende Zeichen entfernen
-    out = []
-    prev_is_base = False
-    for ch in text:
-        cat = unicodedata.category(ch)
-        if cat.startswith('M') and not prev_is_base:
-            # kombinierendes Zeichen ohne Basis -> verwerfen
-            continue
-        out.append(ch)
-        prev_is_base = not cat.startswith('M')
-    text = ''.join(out)
-
-    # 5) mehrfaches Whitespace trimmen
-    text = ' '.join(text.split())
-    return text
+from ws_server.tts.text_normalize import sanitize_for_tts
 
 
 
