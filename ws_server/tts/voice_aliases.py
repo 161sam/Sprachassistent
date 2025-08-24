@@ -33,7 +33,14 @@ def _build_aliases() -> Dict[str, Dict[str, EngineVoice]]:
     result: Dict[str, Dict[str, EngineVoice]] = {}
     for alias, engines in data.get("voice_map", {}).items():
         result[alias] = {eng: EngineVoice(**cfg) for eng, cfg in engines.items()}
-    return result
+
+    expanded = dict(result)
+    for key, engines in result.items():
+        if "-" in key and "_" not in key:
+            lang, rest = key.split("-", 1)
+            alias = f"{lang}_{lang.upper()}-{rest}"
+            expanded.setdefault(alias, engines)
+    return expanded
 
 
 VOICE_ALIASES: Dict[str, Dict[str, EngineVoice]] = _build_aliases()
