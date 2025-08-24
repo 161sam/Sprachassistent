@@ -372,9 +372,10 @@ class TTSManager:
         if target_engine_name not in self.engines:
             logger.warning(f"Engine '{target_engine_name}' nicht verfügbar")
             return False
-            
+
         try:
             engine_obj = self.engines[target_engine_name]
+            voice = canonicalize_voice(voice)
             # Setze Voice in der Engine (falls unterstützt)
             if hasattr(engine_obj, 'set_voice'):
                 return await engine_obj.set_voice(voice)
