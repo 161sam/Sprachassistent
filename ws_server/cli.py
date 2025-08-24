@@ -58,10 +58,10 @@ async def _async_main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
 
 # --- auto-added robust console entrypoint for 'va' ---
-def main():
+def _wrapped_main():
     import inspect, asyncio
     # Prefer sync wrapper if present
     try:

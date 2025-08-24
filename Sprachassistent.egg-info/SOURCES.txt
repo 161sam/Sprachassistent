@@ -21,10 +21,8 @@ externals/Zonos/zonos/utils.py
 externals/Zonos/zonos/backbone/__init__.py
 externals/Zonos/zonos/backbone/_mamba_ssm.py
 externals/Zonos/zonos/backbone/_torch.py
-scripts/apply_patch_va.py
 scripts/check_piper_model.py
 scripts/repo_hygiene.py
-scripts/tts_selftest.py
 sprachassistent/__init__.py
 test/test_end_to_end.py
 test/test_flowise.py
