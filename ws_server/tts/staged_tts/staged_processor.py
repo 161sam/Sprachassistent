@@ -284,20 +284,26 @@ class StagedTTSProcessor:
             "total_size_mb": total_size / (1024 * 1024),
         }
 
+    def clear_cache(self) -> None:
+        """Leert den internen Audio-Cache für Staged TTS."""
+        self._cache.clear()
+
     def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
+        """Check whether the engine can synthesize the given voice."""
         try:
-            v = canonicalize_voice(voice)
+            canonical = canonicalize_voice(voice)
             engines = getattr(self.tts_manager, "engines", {})
             engine_obj = engines.get(engine)
             if not engine_obj or not getattr(engine_obj, "is_initialized", False):
                 return False
             if hasattr(self.tts_manager, "engine_allowed_for_voice"):
-                return bool(self.tts_manager.engine_allowed_for_voice(engine, v))
+                return bool(self.tts_manager.engine_allowed_for_voice(engine, canonical))
             return True
         except Exception:
             return False
 
     def _resolve_plan(self, canonical_voice: str) -> StagedPlan:
+        """Determine intro and main engines respecting environment overrides."""
         intro = _env_override("STAGED_TTS_INTRO_ENGINE")
         main = _env_override("STAGED_TTS_MAIN_ENGINE")
         try:
@@ -305,19 +311,28 @@ class StagedTTSProcessor:
             main = main or globals().get("MAIN_ENGINE", None)
         except Exception:
             pass
-        if intro in ("none", ""): intro = None
-        if main in ("none", ""): main = None
+        if intro in ("none", ""):
+            intro = None
+        if main in ("none", ""):
+            main = None
 
         if intro and not self._engine_available_for_voice(intro, canonical_voice):
-            logger.info("Intro via %s nicht verfügbar → Intro entfällt, alles %s",
-                        intro.capitalize(), (main or "zonos").capitalize())
+            logger.info(
+                "Intro via %s nicht verfügbar → Intro entfällt, alles %s",
+                intro.capitalize(),
+                (main or "zonos").capitalize(),
+            )
             try:
                 collector.tts_intro_engine_unavailable_total.labels(engine=intro).inc()
             except Exception:
                 pass
             intro = None
         if main and not self._engine_available_for_voice(main, canonical_voice):
-            logger.warning("Main engine '%s' not available for voice '%s'", main, canonical_voice)
+            logger.warning(
+                "Main engine '%s' not available for voice '%s'",
+                main,
+                canonical_voice,
+            )
             main = None
 
         plan = StagedPlan(intro_engine=intro or "auto", main_engine=main or "auto", fast_start=True)
@@ -339,6 +354,10 @@ class StagedTTSProcessor:
         if plan.main_engine == "auto":
             plan.main_engine = pick_main()
 
-        logger.info("STAGED_TTS::plan | intro=%s | main=%s | voice=%s",
-                    plan.intro_engine, plan.main_engine, canonical_voice)
+        logger.info(
+            "STAGED_TTS::plan | intro=%s | main=%s | voice=%s",
+            plan.intro_engine,
+            plan.main_engine,
+            canonical_voice,
+        )
         return plan
