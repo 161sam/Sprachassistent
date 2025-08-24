@@ -9,3 +9,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 exclude = ["archive*", "voice-assistant-apps*", "tests*", "testsuite*"]
 
+
+[project.scripts]
+va="sprachassistent.cli:main"

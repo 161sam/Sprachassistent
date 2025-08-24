@@ -128,3 +128,15 @@ config = Config.from_env()
 
 
 __all__ = ["Config", "config", "load_env", "get_tts_engine_default"]
+
+LLM_BASE_URL = os.getenv('LLM_BASE_URL', '')
+
+LLM_API_KEY = os.getenv('LLM_API_KEY', '')
+
+FLOWISE_URL = os.getenv('FLOWISE_URL','')
+
+FLOWISE_TOKEN = os.getenv('FLOWISE_TOKEN','')
+
+N8N_URL = os.getenv('N8N_URL','')
+
+N8N_TOKEN = os.getenv('N8N_TOKEN','')

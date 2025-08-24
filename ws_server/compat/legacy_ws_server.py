@@ -57,12 +57,12 @@ _PROJECT_ROOT = _P(__file__).resolve().parents[2]
 (_sys.path.insert(0, str(_PROJECT_ROOT))
  if str(_PROJECT_ROOT) not in _sys.path else None)
 # ------------------------------------------
-from ws_server.tts.manager import TTSManager, TTSEngineType, TTSConfig
+from backend.tts.tts_manager import TTSManager, TTSEngineType, TTSConfig
 from ws_server.tts.voice_validation import validate_voice_assets
 from ws_server.tts.voice_aliases import VOICE_ALIASES
 from ws_server.tts.voice_utils import canonicalize_voice
 from ws_server.tts.staged_tts import StagedTTSProcessor, limit_and_chunk
-from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
+from ws_server.tts.staged_tts.staged_tts_config import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
 from ws_server.audio.vad import VoiceActivityDetector, VADConfig
 
