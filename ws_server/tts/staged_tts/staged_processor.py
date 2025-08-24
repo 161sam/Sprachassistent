@@ -289,7 +289,14 @@ class StagedTTSProcessor:
         self._cache.clear()
 
     def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
-        """Check whether the engine can synthesize the given voice."""
+        """Return whether ``engine`` can synthesize ``voice``.
+
+        The voice is normalized via :func:`canonicalize_voice`. The engine must
+        be registered and initialized inside :attr:`tts_manager`. If the manager
+        exposes ``engine_allowed_for_voice`` it is queried to ensure the engine
+        is permitted to synthesize the voice. Any exception results in
+        ``False`` so that plan resolution remains robust.
+        """
         try:
             canonical = canonicalize_voice(voice)
             engines = getattr(self.tts_manager, "engines", {})
@@ -297,37 +304,47 @@ class StagedTTSProcessor:
             if not engine_obj or not getattr(engine_obj, "is_initialized", False):
                 return False
             if hasattr(self.tts_manager, "engine_allowed_for_voice"):
-                return bool(self.tts_manager.engine_allowed_for_voice(engine, canonical))
+                allowed = self.tts_manager.engine_allowed_for_voice(engine, canonical)
+                return bool(allowed)
             return True
         except Exception:
             return False
 
     def _resolve_plan(self, canonical_voice: str) -> StagedPlan:
-        """Determine intro and main engines respecting environment overrides."""
+        """Resolve intro and main engines for ``canonical_voice``.
+
+        Environment variables ``STAGED_TTS_INTRO_ENGINE`` and
+        ``STAGED_TTS_MAIN_ENGINE`` override the automatic selection. They may
+        be set to ``"auto"`` to trigger automatic detection. Engines are only
+        chosen if :meth:`_engine_available_for_voice` confirms support for the
+        voice; otherwise they fall back to ``None``.
+        """
         intro = _env_override("STAGED_TTS_INTRO_ENGINE")
         main = _env_override("STAGED_TTS_MAIN_ENGINE")
-        try:
-            intro = intro or globals().get("INTRO_ENGINE", None)
-            main = main or globals().get("MAIN_ENGINE", None)
-        except Exception:
+        try:  # legacy globals for compatibility
+            intro = intro or globals().get("INTRO_ENGINE")
+            main = main or globals().get("MAIN_ENGINE")
+        except Exception:  # pragma: no cover - defensive
             pass
-        if intro in ("none", ""):
+
+        if intro in {"", "none"}:
             intro = None
-        if main in ("none", ""):
+        if main in {"", "none"}:
             main = None
 
-        if intro and not self._engine_available_for_voice(intro, canonical_voice):
+        if intro not in {None, "auto"} and not self._engine_available_for_voice(intro, canonical_voice):
             logger.info(
                 "Intro via %s nicht verfügbar → Intro entfällt, alles %s",
                 intro.capitalize(),
                 (main or "zonos").capitalize(),
             )
-            try:
+            try:  # pragma: no cover - metrics optional
                 collector.tts_intro_engine_unavailable_total.labels(engine=intro).inc()
-            except Exception:
+            except Exception:  # pragma: no cover - metrics optional
                 pass
             intro = None
-        if main and not self._engine_available_for_voice(main, canonical_voice):
+
+        if main not in {None, "auto"} and not self._engine_available_for_voice(main, canonical_voice):
             logger.warning(
                 "Main engine '%s' not available for voice '%s'",
                 main,
