@@ -48,6 +48,9 @@ class VoiceServer:
 
     async def initialize(self) -> None:
         await self.stt_engine.initialize()
+        # Init TTS-Manager (einheitlich)
+        await self.tts_manager.initialize()
+
         # LLM Discovery (optional)
         if self.llm_enabled:
             try:

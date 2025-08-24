@@ -29,7 +29,7 @@ except Exception as e:  # pragma: no cover - handled gracefully in __init__
     _PIPER_AVAILABLE = False
     _PIPER_IMPORT_ERROR = e
 
-from backend.tts.base_tts_engine import (
+from ws_server.tts.base_tts_engine import (
     BaseTTSEngine,
     TTSConfig,
     TTSInitializationError,

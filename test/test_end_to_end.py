@@ -10,7 +10,7 @@ try:  # pragma: no cover - optional dependencies
 except Exception as exc:  # pragma: no cover
     WhisperModel = None
 
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 
 # Minimaler End-to-End-Test des Audioflusses
 # Dieser Test simuliert den Ablauf: Audio -> STT -> Intent -> TTS -> GUI.

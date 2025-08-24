@@ -148,7 +148,7 @@ echo "7) Quick‑Checks…"
 echo "   - Plan anzeigen"
 python3 - <<'PY'
 import asyncio, inspect, json, os
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor
 sig = inspect.signature(TTSManager.__init__)
 mgr = TTSManager(**({"config": json.load(open("config/tts.json"))} if "config" in sig.parameters else {}))
@@ -164,7 +164,7 @@ PY
 echo "   - Direkt‑TTS Zonos (schreibt tts_out/once_zonos.wav)…"
 python3 - <<'PY'
 import asyncio, inspect, json, pathlib
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 sig = inspect.signature(TTSManager.__init__)
 mgr = TTSManager(**({"config": json.load(open("config/tts.json"))} if "config" in sig.parameters else {}))
 async def go():
@@ -182,7 +182,7 @@ PY
 echo "   - Gestufte TTS (Intro Piper, Main Zonos)…"
 python3 - <<'PY'
 import asyncio, inspect, json, os, pathlib
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 from ws_server.tts.staged_tts.staged_processor import StagedTTSProcessor
 sig = inspect.signature(TTSManager.__init__)
 mgr = TTSManager(**({"config": json.load(open("config/tts.json"))} if "config" in sig.parameters else {}))

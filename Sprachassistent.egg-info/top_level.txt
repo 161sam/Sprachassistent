@@ -1,12 +1,10 @@
 audio
-backend
 config
 docs
 externals
 gui
 headscale
 models
-phonemizer_local
 piper
 pull_requests
 reports

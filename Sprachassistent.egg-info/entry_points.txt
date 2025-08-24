@@ -1,2 +1,2 @@
 [console_scripts]
-va = sprachassistent.cli:main
+va = ws_server.cli:main

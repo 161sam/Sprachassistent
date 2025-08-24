@@ -3,7 +3,7 @@ import argparse
 import asyncio
 import logging
 
-from backend.tts.model_validation import list_voices_with_aliases
+from ws_server.tts.voice_validation import list_voices_with_aliases
 from ws_server.core.config import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

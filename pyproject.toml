@@ -11,4 +11,4 @@ exclude = ["archive*", "voice-assistant-apps*", "tests*", "testsuite*"]
 
 
 [project.scripts]
-va="sprachassistent.cli:main"
+va="ws_server.cli:main"

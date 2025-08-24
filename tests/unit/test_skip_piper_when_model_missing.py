@@ -1,5 +1,5 @@
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 
 
 def test_piper_config_missing_model(monkeypatch):

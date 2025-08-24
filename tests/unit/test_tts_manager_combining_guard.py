@@ -1,7 +1,7 @@
 import unicodedata
 import pytest
 
-from backend.tts.tts_manager import TTSManager, TTSResult, COMBINING_GUARD_RE
+from ws_server.tts.manager import TTSManager, TTSResult, COMBINING_GUARD_RE
 
 
 def test_combining_guard_regex_matches():

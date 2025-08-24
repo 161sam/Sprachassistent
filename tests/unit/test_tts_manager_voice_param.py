@@ -2,8 +2,8 @@ import sys
 import types
 import asyncio
 
-import backend.tts.tts_manager as tts_manager
-from backend.tts.tts_manager import TTSManager, TTSConfig, TTSEngineType
+import ws_server.tts.manager as tts_manager
+from ws_server.tts.manager import TTSManager, TTSConfig, TTSEngineType
 
 
 class FakePiper:

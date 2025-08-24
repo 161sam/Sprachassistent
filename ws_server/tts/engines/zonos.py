@@ -47,3 +47,6 @@ try:  # pragma: no cover - import may fail
 except Exception as e:  # pragma: no cover
     IMPORT_ERROR = e  # exposed for diagnostics
     __all__ = []
+
+from backend.tts.engine_zonos import ZonosTTSEngine as ZonosEngine
+__all__=["ZonosTTSEngine","ZonosEngine"]
