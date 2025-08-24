@@ -946,7 +946,7 @@ class VoiceServer:
                 async def initialize(self, *args, **kwargs):
                     return True
                 async def synthesize(self, *args, **kwargs):
-                    from backend.tts.base_tts_engine import TTSResult
+                    from ws_server.tts.base_tts_engine import TTSResult
                     return TTSResult(success=False, error_message="TTS not available")
                 async def cleanup(self):
                     # TODO: provide real cleanup or use dedicated mock

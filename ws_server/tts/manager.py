@@ -61,8 +61,8 @@ TTS_ENGINE = get_tts_engine_default()  # "piper" | "kokoro" | "zonos"
 # Lazy-Import Map: { engine_name: (module_path, class_name) }
 ENGINE_IMPORTS: Dict[str, Tuple[str, str]] = {
     "piper": ("ws_server.tts.engines.piper", "PiperTTSEngine"),
-    "kokoro": ("backend.tts.kokoro_tts_engine", "KokoroTTSEngine"),
-    "zonos": ("backend.tts.engine_zonos", "ZonosTTSEngine"),
+    "kokoro": ("ws_server.tts.engines.kokoro", "KokoroTTSEngine"),
+    "zonos": ("ws_server.tts.engines.zonos", "ZonosTTSEngine"),
 }
 
 

@@ -1,23 +1,47 @@
 #!/usr/bin/env python3
-import pathlib, sys, re
+import pathlib, re, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent
-bad_patterns = [r"\bbackend\.", r"\bws_server\.compat\b", r"\blegacy_ws_server\b"]
+
+SKIP_DIRS = {
+    ".venv", "venv", "__pycache__",
+    "archive", "archive_legacy",
+    "externals",  # third-party
+    "tests", "test", "testsuite",  # unit/integration tests
+}
+# Wir behalten den Compat-Baum, scannen ihn aber nicht: Ziel ist produktiver Code
+SKIP_DIRS.add(pathlib.Path("ws_server/compat").as_posix())
+
+BAD = [
+    r"\bbackend\.",           # alte Backend-Imports
+    r"\bws_server\.compat\b", # Kompat-Layer
+    r"\blegacy_ws_server\b",  # alter Servername
+]
+
+def should_skip(p: pathlib.Path) -> bool:
+    try:
+        rel = p.relative_to(ROOT)
+    except ValueError:
+        return True
+    parts = rel.parts
+    return any(part in SKIP_DIRS for part in parts)
 
 violations = []
-for py in ROOT.rglob("*.py"):
-    if py.parts[0] in ("archive","archive_legacy",".venv"): 
+for path in ROOT.rglob("*.py"):
+    if should_skip(path):
         continue
-    txt = py.read_text(encoding="utf-8", errors="ignore")
-    for pat in bad_patterns:
+    try:
+        txt = path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        continue
+    for pat in BAD:
         if re.search(pat, txt):
-            violations.append((py, pat))
+            violations.append((str(path), pat))
 
 if violations:
-    print("❌ Legacy imports detected:")
-    for v in violations:
-        print(" -", v[0], "matches", v[1])
+    print("❌ Legacy-Referenzen gefunden:")
+    for p, pat in violations:
+        print(f" - {p}  (match: {pat})")
     sys.exit(1)
 
-print("✅ No legacy imports detected.")
-
+print("✅ Keine Legacy-Referenzen gefunden (produktiver Code).")

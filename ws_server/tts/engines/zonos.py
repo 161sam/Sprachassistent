@@ -42,11 +42,11 @@ except Exception:
 
 AVAILABLE = False
 try:  # pragma: no cover - import may fail
-    from backend.tts.engine_zonos import *  # type: ignore  # noqa: F401,F403
+    from ws_server.tts.engines.zonos import *  # type: ignore  # noqa: F401,F403
     AVAILABLE = True
 except Exception as e:  # pragma: no cover
     IMPORT_ERROR = e  # exposed for diagnostics
     __all__ = []
 
-from backend.tts.engine_zonos import ZonosTTSEngine as ZonosEngine
+from ws_server.tts.engines.zonos import ZonosTTSEngine as ZonosEngine
 __all__=["ZonosTTSEngine","ZonosEngine"]

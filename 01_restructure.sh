@@ -38,8 +38,8 @@ if [ -f "$SRC_DIR/ws_server_fastapi.py" ]; then
 fi
 
 #   – Zonos Engine
-if [ -f "$SRC_DIR/engine_zonos.py" ]; then
-  cp -n "$SRC_DIR/engine_zonos.py" ws_server/tts/engines/zonos.py
+if [ -f "$SRC_DIR/engines.zonos.py" ]; then
+  cp -n "$SRC_DIR/engines.zonos.py" ws_server/tts/engines/zonos.py
 fi
 
 #   – Legacy ws-server als kompatibler Import

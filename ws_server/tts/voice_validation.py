@@ -30,3 +30,28 @@ def validate_voice_assets(canonical_voice: str) -> List[str]:
     if parts:
         messages.insert(0, f"✅ Voice mapping: canonical='{canonical_voice}' → {', '.join(parts)}")
     return messages
+
+# --- Compatibility helper for unified CLI ---
+def list_voices_with_aliases():
+    """Return a mapping of voice aliases to their canonical targets.
+
+    This keeps backward compatibility with the old CLI validate command.
+    """
+    try:
+        from . import voice_aliases as _va
+        # Try common attribute names
+        candidates = [
+            getattr(_va, "VOICE_ALIASES", None),
+            getattr(_va, "ALIASES", None),
+            getattr(_va, "VOICE_MAP", None),
+        ]
+        for c in candidates:
+            if isinstance(c, dict) and c:
+                return c
+        # Fallback: introspect dict-like globals
+        for k, v in _va.__dict__.items():
+            if k.isupper() and isinstance(v, dict):
+                return v
+        return {}
+    except Exception:
+        return {}

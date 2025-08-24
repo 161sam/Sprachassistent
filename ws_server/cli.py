@@ -7,9 +7,7 @@ from ws_server.tts.voice_validation import list_voices_with_aliases
 from ws_server.core.config import config
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-
-async def main() -> None:
+async def _async_main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--validate-models",
@@ -61,3 +59,24 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+# --- auto-added robust console entrypoint for 'va' ---
+def main():
+    import inspect, asyncio
+    # Prefer sync wrapper if present
+    try:
+        res = _wrapped_main()
+    except NameError:
+        # Fallback to async if only async is defined
+        try:
+            coro = _async_main()
+        except NameError:
+            # Nothing defined? then no-op
+            return
+        else:
+            return asyncio.run(coro)
+    else:
+        # If a sync wrapper returned a coroutine, run it.
+        if inspect.iscoroutine(res):
+            return asyncio.run(res)
+        return res
