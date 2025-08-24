@@ -1,38 +1,18 @@
 {
-  "default_engine": "piper",
+  "default_engine": "zonos",
   "engines": ["piper", "zonos"],
   "voice_map": {
     "de-thorsten-low": {
-      "piper": {
-        "model_path": "models/piper/de-thorsten-low.onnx",
-        "language": "de",
-        "sample_rate": 22050
-      },
-      "zonos": {
-        "voice_id": "thorsten",
-        "language": "de",
-        "sample_rate": 48000
-      }
-    },
-    "de_DE-thorsten-low": {
-      "piper": {
-        "model_path": "models/piper/de-thorsten-low.onnx",
-        "language": "de",
-        "sample_rate": 22050
-      },
-      "zonos": {
-        "voice_id": "thorsten",
-        "language": "de",
-        "sample_rate": 48000
-      }
+      "piper": { "model_path": "models/piper/de-thorsten-low.onnx", "language": "de", "sample_rate": 22050 },
+      "zonos": { "voice_id": "thorsten", "language": "de", "sample_rate": 44100 }
     }
   },
   "playback": {
     "mode": "staged",
     "autoplay": true,
     "staged": {
-      "intro": "auto",   // auto|piper|zonos|none
-      "main":  "auto",   // auto|zonos|piper|none
+      "intro": "auto",
+      "main": "auto",
       "fastStart": true
     }
   }

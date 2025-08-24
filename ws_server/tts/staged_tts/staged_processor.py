@@ -1,3 +1,4 @@
+from ..voice_utils import canonicalize_voice
 """Staged TTS Processor – intro via Piper, main via configurable engine."""
 
 from __future__ import annotations
@@ -15,7 +16,6 @@ from typing import Any, Dict, List, Optional
 from ws_server.metrics.collector import collector
 from ws_server.tts.text_sanitizer import sanitize_for_tts_strict, pre_clean_for_piper
 from ws_server.tts.text_normalize import sanitize_for_tts as sanitize_basic
-from ws_server.tts.voice_utils import canonicalize_voice
 
 logger = logging.getLogger(__name__)
 
@@ -284,69 +284,64 @@ class StagedTTSProcessor:
             "total_size_mb": total_size / (1024 * 1024),
         }
 
-    def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
-        try:
-            engines = getattr(self.tts_manager, "engines", {})
-            engine_obj = engines.get(engine)
-            if not engine_obj or not getattr(engine_obj, "is_initialized", False):
-                return False
-            v = canonicalize_voice(voice)
-            if hasattr(self.tts_manager, "engine_allowed_for_voice"):
-                return bool(self.tts_manager.engine_allowed_for_voice(engine, v))
-            return True
-        except Exception:
-            return False
+    
 
-    def _resolve_plan(self, canonical_voice: str) -> StagedPlan:
-        intro = _env_override("STAGED_TTS_INTRO_ENGINE")
-        main = _env_override("STAGED_TTS_MAIN_ENGINE")
-        try:
-            intro = intro or globals().get("INTRO_ENGINE", None)
-            main = main or globals().get("MAIN_ENGINE", None)
-        except Exception:
-            pass
-        if intro in ("none", ""): intro = None
-        if main in ("none", ""): main = None
 
-        if intro and not self._engine_available_for_voice(intro, canonical_voice):
-            logger.info(
-                "Intro via %s nicht verfügbar → Intro entfällt, alles %s",
-                intro.capitalize(),
-                (main or "zonos").capitalize(),
-            )
+        def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
             try:
-                collector.tts_intro_engine_unavailable_total.labels(engine=intro).inc()
+                v = canonicalize_voice(voice)
+                engines = getattr(self.tts_manager, "engines", {})
+                engine_obj = engines.get(engine)
+                if not engine_obj or not getattr(engine_obj, "is_initialized", False):
+                    return False
+                if hasattr(self.tts_manager, "engine_allowed_for_voice"):
+                    return bool(self.tts_manager.engine_allowed_for_voice(engine, v))
+                return True
+            except Exception:
+                return False
+
+        def _resolve_plan(self, canonical_voice: str) -> StagedPlan:
+            intro = _env_override("STAGED_TTS_INTRO_ENGINE")
+            main = _env_override("STAGED_TTS_MAIN_ENGINE")
+            try:
+                intro = intro or globals().get("INTRO_ENGINE", None)
+                main = main or globals().get("MAIN_ENGINE", None)
             except Exception:
                 pass
-            intro = None
-        if main and not self._engine_available_for_voice(main, canonical_voice):
-            logger.warning("Main engine '%s' not available for voice '%s'", main, canonical_voice)
-            main = None
+            if intro in ("none", ""): intro = None
+            if main in ("none", ""): main = None
 
-        plan = StagedPlan(intro_engine=intro or "auto", main_engine=main or "auto", fast_start=True)
+            if intro and not self._engine_available_for_voice(intro, canonical_voice):
+                logger.info("Intro via %s nicht verfügbar → Intro entfällt, alles %s",
+                            intro.capitalize(), (main or "zonos").capitalize())
+                try:
+                    collector.tts_intro_engine_unavailable_total.labels(engine=intro).inc()
+                except Exception:
+                    pass
+                intro = None
+            if main and not self._engine_available_for_voice(main, canonical_voice):
+                logger.warning("Main engine '%s' not available for voice '%s'", main, canonical_voice)
+                main = None
 
-        def pick_intro() -> Optional[str]:
-            if self._engine_available_for_voice("piper", canonical_voice):
-                return "piper"
-            return None
+            plan = StagedPlan(intro_engine=intro or "auto", main_engine=main or "auto", fast_start=True)
 
-        def pick_main() -> Optional[str]:
-            if self._engine_available_for_voice("zonos", canonical_voice):
-                return "zonos"
-            if self._engine_available_for_voice("piper", canonical_voice):
-                return "piper"
-            return None
+            def pick_intro() -> Optional[str]:
+                if self._engine_available_for_voice("piper", canonical_voice):
+                    return "piper"
+                return None
 
-        if plan.intro_engine == "auto":
-            plan.intro_engine = pick_intro()
-        if plan.main_engine == "auto":
-            plan.main_engine = pick_main()
+            def pick_main() -> Optional[str]:
+                if self._engine_available_for_voice("zonos", canonical_voice):
+                    return "zonos"
+                if self._engine_available_for_voice("piper", canonical_voice):
+                    return "piper"
+                return None
 
-        logger.info(
-            "STAGED_TTS::plan | intro=%s | main=%s | voice=%s",
-            plan.intro_engine,
-            plan.main_engine,
-            canonical_voice,
-        )
-        return plan
+            if plan.intro_engine == "auto":
+                plan.intro_engine = pick_intro()
+            if plan.main_engine == "auto":
+                plan.main_engine = pick_main()
 
+            logger.info("STAGED_TTS::plan | intro=%s | main=%s | voice=%s",
+                        plan.intro_engine, plan.main_engine, canonical_voice)
+            return plan

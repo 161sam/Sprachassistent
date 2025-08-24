@@ -1,23 +1,18 @@
 from __future__ import annotations
 
-"""Helper utilities for voice normalization."""
+def canonicalize_voice(v: str | None) -> str | None:
+    if not v:
+        return v
+    return v.strip().replace("de_DE-", "de-")
 
-import re
-from typing import Optional
-
-
-def canonicalize_voice(voice: Optional[str]) -> Optional[str]:
-    """Return canonical voice identifier.
-
-    Normalizes locale-style prefixes like ``de_DE-`` to ``de-`` and strips
-    surrounding whitespace.  The function is intentionally minimal and can be
-    extended with more rules as new voices are added.
+def expand_aliases(voice_map: dict) -> dict:
     """
-    if not voice:
-        return voice
-    v = voice.strip()
-    # collapse locale style prefix, e.g. "de_DE-" or "EN_us-" -> "de-" / "en-"
-    v = re.sub(r"([a-z]{2})_[a-z]{2}-", r"\1-", v, flags=re.IGNORECASE)
-    return v.lower()
-
-__all__ = ["canonicalize_voice"]
+    Erzeugt Alias-Keys zur Laufzeit, z.B. 'de_DE-…' für 'de-…',
+    ohne sie im JSON vorzuhalten.
+    """
+    vm = dict(voice_map)
+    for key, engines in list(voice_map.items()):
+        if key.startswith("de-"):
+            alias = key.replace("de-", "de_DE-")
+            vm.setdefault(alias, engines)
+    return vm
