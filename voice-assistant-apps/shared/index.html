@@ -1697,7 +1697,7 @@
           <div class="sidebar-item">
             <div class="sidebar-control">
               <button class="sidebar-button" id="applyTtsPlan" onclick="applyStagedTtsPlan()">
-                📝 Plan anwenden
+                📋 Plan anwenden
               </button>
               <span id="ttsPlanStatus" class="sidebar-item-desc"></span>
             </div>
@@ -2072,7 +2072,7 @@
 
           <div class="action-item">
             <div class="action-info">
-              <div class="action-icon">📝</div>
+              <div class="action-icon">📋</div>
               <div class="action-details">
                 <h4>Tageszusammenfassung</h4>
                 <p>Automatischer Bericht</p>
@@ -2267,19 +2267,14 @@
   <!-- Notification Container -->
   <div class="notification-container" id="notificationContainer"></div>
 
-  <!-- Load core components -->
-  <!-- removed: ws-utils.js (monolith handles WS) -->
-  <!-- removed: AudioStreamer.js (dup globals) -->
-  <!-- removed: VoiceAssistantCore.js (dup globals) -->
-
   <script>
     // Global State
     let voiceAssistant = null;
     let ws = null;
     let isRecording = false;
-    let mediaRecorder;
-    let recordingTimer;
-    let recordingStartTime;
+    let mediaRecorder = null;
+    let recordingTimer = null;
+    let recordingStartTime = null;
     let sidebarOpen = false;
     let currentSidebarTab = 'settings';
     let audioContext = null;
@@ -3464,7 +3459,7 @@ Anfragen: ${info.totalQueries}`;
         // einfache Queue, damit mehrere TTS-Segmente nacheinander laufen
         _audioQueue.push(dataUrl);
         if (_isPlaying) return;
-        _isPlaying = true;  # <-- will be fixed below
+        _isPlaying = true;
       } catch (e) {
         console.warn('playDataUrlAudio: enqueue error', e);
       }
@@ -3488,9 +3483,6 @@ Anfragen: ${info.totalQueries}`;
         _isPlaying = false;
       }
     }
-    
-
-
 
     function showNotification(type, title, message, duration = 4000) {
       if (!settings.notifications) return;
@@ -3551,231 +3543,230 @@ Anfragen: ${info.totalQueries}`;
     });
   </script>
 
-<!-- === GUI Shim: Sidebar + Theme + Info (non-invasive) === -->
-<script>
-(() => {
-  const $  = (s,root=document)=>root.querySelector(s);
-  const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
+  <!-- === GUI Shim: Sidebar + Theme + Info (non-invasive) === -->
+  <script>
+    (() => {
+      const $  = (s,root=document)=>root.querySelector(s);
+      const $ = (s,root=document)=>Array.from(root.querySelectorAll(s));
 
-  // -------- Theme handling (persist in localStorage) --------
-  const THEME_KEY = "app:theme";
-  function applyTheme(t){
-    const root = document.documentElement;
-    const theme = (t === "dark" || t === "light") ? t : "light";
-    root.setAttribute("data-theme", theme);
-    try { localStorage.setItem(THEME_KEY, theme); } catch(_){}
-    // Optional: Body-Class als Fallback für vorhandenes CSS
-    document.body.classList.toggle("theme-dark", theme==="dark");
-    document.body.classList.toggle("theme-light", theme==="light");
-  }
-  function toggleTheme(){
-    const cur = (document.documentElement.getAttribute("data-theme") || 
-                 (localStorage.getItem(THEME_KEY) || "light")).toLowerCase();
-    applyTheme(cur === "dark" ? "light" : "dark");
-    if (typeof showNotification === "function"){
-      showNotification("success","🎨 Theme gewechselt",
-        "Aktives Theme: " + document.documentElement.getAttribute("data-theme"), 2500);
-    }
-  }
-  // initial
-  try { applyTheme(localStorage.getItem(THEME_KEY) || "light"); } catch(_){ applyTheme("light"); }
+      // -------- Theme handling (persist in localStorage) --------
+      const THEME_KEY = "app:theme";
+      function applyTheme(t){
+        const root = document.documentElement;
+        const theme = (t === "dark" || t === "light") ? t : "light";
+        root.setAttribute("data-theme", theme);
+        try { localStorage.setItem(THEME_KEY, theme); } catch(_){}
+        // Optional: Body-Class als Fallback für vorhandenes CSS
+        document.body.classList.toggle("theme-dark", theme==="dark");
+        document.body.classList.toggle("theme-light", theme==="light");
+      }
+      function toggleTheme(){
+        const cur = (document.documentElement.getAttribute("data-theme") || 
+                     (localStorage.getItem(THEME_KEY) || "light")).toLowerCase();
+        applyTheme(cur === "dark" ? "light" : "dark");
+        if (typeof showNotification === "function"){
+          showNotification("success","🎨 Theme gewechselt",
+            "Aktives Theme: " + document.documentElement.getAttribute("data-theme"), 2500);
+        }
+      }
+      // initial
+      try { applyTheme(localStorage.getItem(THEME_KEY) || "light"); } catch(_){ applyTheme("light"); }
 
-  // -------- Sidebar (create if missing; populate if empty) --------
-  function ensureSidebar(){
-    let sb = document.getElementById("sidebar");
-    if(!sb){
-      sb = document.createElement("aside");
-      sb.id = "sidebar";
-      sb.setAttribute("aria-label","Seitenleiste");
-      // Minimales, unaufdringliches Styling, falls dein CSS nichts setzt
-      sb.style.position = "fixed";
-      sb.style.top = "0"; sb.style.left = "0"; sb.style.bottom = "0";
-      sb.style.width = "280px"; sb.style.maxWidth = "80vw";
-      sb.style.background = "var(--sidebar-bg, rgba(0,0,0,0.75))";
-      sb.style.backdropFilter = "blur(6px)";
-      sb.style.color = "var(--sidebar-fg, #fff)";
-      sb.style.boxShadow = "2px 0 12px rgba(0,0,0,0.25)";
-      sb.style.transform = "translateX(-110%)";
-      sb.style.transition = "transform .25s ease";
-      sb.style.zIndex = "9999";
-      document.body.appendChild(sb);
-    }
-    if (!sb.innerHTML.trim()){
-      sb.innerHTML = `
-        <div style="display:flex;align-items:center;gap:.5rem;padding:16px;border-bottom:1px solid rgba(255,255,255,.15)">
-          <strong style="font-size:1.05rem">⚙️ Einstellungen</strong>
-          <button id="sidebarCloseBtn" style="margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.3);color:inherit;border-radius:8px;padding:.25rem .5rem;cursor:pointer">Schließen</button>
-        </div>
-        <div style="padding:12px 16px 16px 16px;display:grid;gap:.5rem">
-          <button data-action="themeToggle" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
-            🎨 Theme umschalten
-            <div style="opacity:.7;font-size:.85em">Wechselt zwischen Hell/Dunkel</div>
-          </button>
-          <button data-action="info" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
-            ℹ️ Info / Über
-            <div style="opacity:.7;font-size:.85em">Versions- & System‑Infos anzeigen</div>
-          </button>
-          <button data-action="ttsTest" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
-            🔊 TTS‑Test
-            <div style="opacity:.7;font-size:.85em">Spielt eine kurze Ausgabe ab</div>
-          </button>
-        </div>
-      `;
-    }
-    // Close wiring
-    const closeBtn = $("#sidebarCloseBtn");
-    if (closeBtn && !closeBtn.__wired){
-      closeBtn.__wired = true;
-      closeBtn.addEventListener("click", () => setSidebar(false));
-    }
-    // Actions
-    $$("#sidebar [data-action]").forEach(btn=>{
-      if (btn.__wired) return;
-      btn.__wired = true;
-      btn.addEventListener("click", () => {
-        const act = btn.getAttribute("data-action");
-        if (act === "themeToggle") toggleTheme();
-        else if (act === "info") openInfo();
-        else if (act === "ttsTest") quickTts();
-      });
-    });
-    return sb;
-  }
+      // -------- Sidebar (create if missing; populate if empty) --------
+      function ensureSidebar(){
+        let sb = document.getElementById("sidebar");
+        if(!sb){
+          sb = document.createElement("aside");
+          sb.id = "sidebar";
+          sb.setAttribute("aria-label","Seitenleiste");
+          // Minimales, unaufdringliches Styling, falls dein CSS nichts setzt
+          sb.style.position = "fixed";
+          sb.style.top = "0"; sb.style.left = "0"; sb.style.bottom = "0";
+          sb.style.width = "280px"; sb.style.maxWidth = "80vw";
+          sb.style.background = "var(--sidebar-bg, rgba(0,0,0,0.75))";
+          sb.style.backdropFilter = "blur(6px)";
+          sb.style.color = "var(--sidebar-fg, #fff)";
+          sb.style.boxShadow = "2px 0 12px rgba(0,0,0,0.25)";
+          sb.style.transform = "translateX(-110%)";
+          sb.style.transition = "transform .25s ease";
+          sb.style.zIndex = "9999";
+          document.body.appendChild(sb);
+        }
+        if (!sb.innerHTML.trim()){
+          sb.innerHTML = `
+            <div style="display:flex;align-items:center;gap:.5rem;padding:16px;border-bottom:1px solid rgba(255,255,255,.15)">
+              <strong style="font-size:1.05rem">⚙️ Einstellungen</strong>
+              <button id="sidebarCloseBtn" style="margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.3);color:inherit;border-radius:8px;padding:.25rem .5rem;cursor:pointer">Schließen</button>
+            </div>
+            <div style="padding:12px 16px 16px 16px;display:grid;gap:.5rem">
+              <button data-action="themeToggle" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
+                🎨 Theme umschalten
+                <div style="opacity:.7;font-size:.85em">Wechselt zwischen Hell/Dunkel</div>
+              </button>
+              <button data-action="info" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
+                ℹ️ Info / Über
+                <div style="opacity:.7;font-size:.85em">Versions- & System‑Infos anzeigen</div>
+              </button>
+              <button data-action="ttsTest" style="text-align:left;padding:.6rem .75rem;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:inherit;cursor:pointer">
+                🔊 TTS‑Test
+                <div style="opacity:.7;font-size:.85em">Spielt eine kurze Ausgabe ab</div>
+              </button>
+            </div>
+          `;
+        }
+        // Close wiring
+        const closeBtn = $("#sidebarCloseBtn");
+        if (closeBtn && !closeBtn.__wired){
+          closeBtn.__wired = true;
+          closeBtn.addEventListener("click", () => setSidebar(false));
+        }
+        // Actions
+        $("#sidebar [data-action]").forEach(btn=>{
+          if (btn.__wired) return;
+          btn.__wired = true;
+          btn.addEventListener("click", () => {
+            const act = btn.getAttribute("data-action");
+            if (act === "themeToggle") toggleTheme();
+            else if (act === "info") openInfo();
+            else if (act === "ttsTest") quickTts();
+          });
+        });
+        return sb;
+      }
 
-  function setSidebar(open){
-    const sb = ensureSidebar();
-    sb.style.transform = open ? "translateX(0)" : "translateX(-110%)";
-    document.body.classList.toggle("sidebar-open", !!open);
-  }
-  function toggleSidebar(){ setSidebar(!document.body.classList.contains("sidebar-open")); }
+      function setSidebar(open){
+        const sb = ensureSidebar();
+        sb.style.transform = open ? "translateX(0)" : "translateX(-110%)";
+        document.body.classList.toggle("sidebar-open", !!open);
+      }
+      function toggleSidebar(){ setSidebar(!document.body.classList.contains("sidebar-open")); }
 
-  // -------- Info action --------
-  function openInfo(){
-    if (typeof showAbout === "function"){ 
-      try { showAbout(); return; } catch(_){}
-    }
-    const info = [
-      "KI‑Sprachassistent (Desktop GUI)",
-      "WebSocket: " + ((window.getBackendUrl && window.getBackendUrl()) || window.BACKEND_URL || "http://127.0.0.1:48232"),
-      "Theme: " + (document.documentElement.getAttribute("data-theme") || "light")
-    ].join("\\n");
-    if (typeof showNotification === "function"){
-      showNotification("success","ℹ️ Über den Assistenten", info, 6000);
-    } else {
-      alert(info);
-    }
-  }
+      // -------- Info action --------
+      function openInfo(){
+        if (typeof showAbout === "function"){ 
+          try { showAbout(); return; } catch(_){}
+        }
+        const info = [
+          "KI‑Sprachassistent (Desktop GUI)",
+          "WebSocket: " + ((window.getBackendUrl && window.getBackendUrl()) || window.BACKEND_URL || "http://127.0.0.1:48232"),
+          "Theme: " + (document.documentElement.getAttribute("data-theme") || "light")
+        ].join("\\n");
+        if (typeof showNotification === "function"){
+          showNotification("success","ℹ️ Über den Assistenten", info, 6000);
+        } else {
+          alert(info);
+        }
+      }
 
-  // -------- Minimal WS helper für TTS‑Test --------
-  function getWsUrl(){
-    try{
-      const raw = (window.getBackendUrl?window.getBackendUrl():null) || (window.BACKEND_URL?window.BACKEND_URL:null) || "http://127.0.0.1:48232";
-      if (/^wss?:\\/\\//.test(raw)){ const u = raw.replace(/\\/?$/,""); return u.endsWith("/ws") ? u : (u+"/ws"); }
-      if (/^https?:\\/\\//.test(raw)){ const u = raw.replace(/^http/,"ws").replace(/\\/?$/,""); return u.endsWith("/ws") ? u : (u+"/ws"); }
-      return "ws://127.0.0.1:48232/ws";
-    } catch(e){ return "ws://127.0.0.1:48232/ws"; }
-  }
-  function ensureWS(){
-    if (window.__WS && window.__WS.readyState===1) return window.__WS;
-    const ws = new WebSocket(getWsUrl());
-    window.__WS = ws;
-    ws.onopen = () => { try { ws.send(JSON.stringify({op:"hello", stream_id:"gui"})); } catch(_){} };
-    ws.onmessage = (ev) => {
-      try { 
-        const m = JSON.parse(ev.data);
-        (window.handleWebSocketMessage || console.log)(m);
-      } catch(e){ console.warn("non-JSON msg", e); }
-    };
-    ws.onclose = () => setTimeout(()=>{ try{ ensureWS(); }catch(_){ } }, 1000);
-    return ws;
-  }
-  function quickTts(){
-    const ws = ensureWS();
-    const txt = (document.querySelector("#textInput")?.value?.trim()) || "Dies ist ein kurzer TTS‑Test.";
-    try { ws.send(JSON.stringify({type:"tts_test", text: txt})); } catch(e){ console.warn("tts_test failed", e); }
-  }
+      // -------- Minimal WS helper für TTS‑Test --------
+      function getWsUrl(){
+        try{
+          const raw = (window.getBackendUrl?window.getBackendUrl():null) || (window.BACKEND_URL?window.BACKEND_URL:null) || "http://127.0.0.1:48232";
+          if (/^wss?:\/\//.test(raw)){ const u = raw.replace(/\/?$/,""); return u.endsWith("/ws") ? u : (u+"/ws"); }
+          if (/^https?:\/\//.test(raw)){ const u = raw.replace(/^http/,"ws").replace(/\/?$/,""); return u.endsWith("/ws") ? u : (u+"/ws"); }
+          return "ws://127.0.0.1:48232/ws";
+        } catch(e){ return "ws://127.0.0.1:48232/ws"; }
+      }
+      function ensureWS(){
+        if (window.__WS && window.__WS.readyState===1) return window.__WS;
+        const ws = new WebSocket(getWsUrl());
+        window.__WS = ws;
+        ws.onopen = () => { try { ws.send(JSON.stringify({op:"hello", stream_id:"gui"})); } catch(_){} };
+        ws.onmessage = (ev) => {
+          try { 
+            const m = JSON.parse(ev.data);
+            (window.handleWebSocketMessage || console.log)(m);
+          } catch(e){ console.warn("non-JSON msg", e); }
+        };
+        ws.onclose = () => setTimeout(()=>{ try{ ensureWS(); }catch(_){ } }, 1000);
+        return ws;
+      }
+      function quickTts(){
+        const ws = ensureWS();
+        const txt = (document.querySelector("#textInput")?.value?.trim()) || "Dies ist ein kurzer TTS‑Test.";
+        try { ws.send(JSON.stringify({type:"tts_test", text: txt})); } catch(e){ console.warn("tts_test failed", e); }
+      }
 
-  // -------- Public wiring (reuse existing ids if present) --------
-  function wire(){
-    // Toggle‑Button: #toggleSidebarBtn oder [data-action="toggleSidebar"]
-    const sbBtn = document.getElementById("toggleSidebarBtn") || document.querySelector('[data-action="toggleSidebar"]');
-    if (sbBtn && !sbBtn.__wired){
-      sbBtn.__wired = true;
-      sbBtn.addEventListener("click", toggleSidebar);
-    }
-    // Theme‑Button: #themeBtn oder [data-action="themeToggle"]
-    const thBtn = document.getElementById("themeBtn") || document.querySelector('[data-action="themeToggle"]');
-    if (thBtn && !thBtn.__wired){
-      thBtn.__wired = true;
-      thBtn.addEventListener("click", toggleTheme);
-    }
-    // Info‑Button: #infoBtn oder [data-action="info"]
-    const infoBtn = document.getElementById("infoBtn") || document.querySelector('[data-action="info"]');
-    if (infoBtn && !infoBtn.__wired){
-      infoBtn.__wired = true;
-      infoBtn.addEventListener("click", openInfo);
-    }
-    // Sicherstellen, dass Sidebar existiert (und nicht leer bleibt)
-    ensureSidebar();
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
-  else wire();
+      // -------- Public wiring (reuse existing ids if present) --------
+      function wire(){
+        // Toggle‑Button: #toggleSidebarBtn oder [data-action="toggleSidebar"]
+        const sbBtn = document.getElementById("toggleSidebarBtn") || document.querySelector('[data-action="toggleSidebar"]');
+        if (sbBtn && !sbBtn.__wired){
+          sbBtn.__wired = true;
+          sbBtn.addEventListener("click", toggleSidebar);
+        }
+        // Theme‑Button: #themeBtn oder [data-action="themeToggle"]
+        const thBtn = document.getElementById("themeBtn") || document.querySelector('[data-action="themeToggle"]');
+        if (thBtn && !thBtn.__wired){
+          thBtn.__wired = true;
+          thBtn.addEventListener("click", toggleTheme);
+        }
+        // Info‑Button: #infoBtn oder [data-action="info"]
+        const infoBtn = document.getElementById("infoBtn") || document.querySelector('[data-action="info"]');
+        if (infoBtn && !infoBtn.__wired){
+          infoBtn.__wired = true;
+          infoBtn.addEventListener("click", openInfo);
+        }
+        // Sicherstellen, dass Sidebar existiert (und nicht leer bleibt)
+        ensureSidebar();
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+      else wire();
 
-  // Expose minimal API (falls Monolith darauf zugreift)
-  if (!window.toggleSidebar) window.toggleSidebar = toggleSidebar;
-  if (!window.toggleTheme)   window.toggleTheme   = toggleTheme;
-  if (!window.openInfo)      window.openInfo      = openInfo;
-})();
-</script>
-<!-- === /GUI Shim: Sidebar + Theme + Info === -->
+      // Expose minimal API (falls Monolith darauf zugreift)
+      if (!window.toggleSidebar) window.toggleSidebar = toggleSidebar;
+      if (!window.toggleTheme)   window.toggleTheme   = toggleTheme;
+      if (!window.openInfo)      window.openInfo      = openInfo;
+    })();
+  </script>
+  <!-- === /GUI Shim: Sidebar + Theme + Info === -->
+
+  <!-- TTS WAV Player + GUI Shim -->
+  <script>
+    (()=>{
+      // ---- TTS Player (einmalig) ----
+      let ttsEl=document.getElementById("ttsAudioPlayer");
+      if(!ttsEl){ ttsEl=document.createElement("audio"); ttsEl.id="ttsAudioPlayer"; ttsEl.style.display="none"; ttsEl.preload="auto"; document.body.appendChild(ttsEl); }
+      function b64ToBlob(b64){const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return new Blob([u8],{type:"audio/wav"});}
+      function playWav(b64){ try{ const url=URL.createObjectURL(b64ToBlob(b64)); ttsEl.src=url; ttsEl.onended=()=>URL.revokeObjectURL(url); ttsEl.play().catch(e=>{ console.warn("TTS play() blocked:",e); window.showNotification&&showNotification("error","Audio blockiert","Bitte einmal klicken, um Audio zu erlauben"); }); }catch(e){ console.error("WAV decode failed",e);} }
+      // Hook in bestehende Message-Pipeline (falls vorhanden)
+      const orig=window.handleWebSocketMessage; 
+      window.handleWebSocketMessage=function(d){
+        try{
+          if(d&&d.type==="tts"&&d.format==="wav_base64"&&d.audio){ playWav(d.audio); }
+          else if(d&&d.type==="tts"&&typeof d.content==="string"&&d.content.startsWith("data:audio/")){
+            const i=d.content.indexOf("base64,"); if(i>=0) playWav(d.content.slice(i+7));
+          }
+        }catch(e){ console.warn("TTS hook error",e); }
+        return typeof orig==="function"?orig.call(this,d):undefined;
+      };
+      console.log("✅ Single TTS WAV Player ready");
+
+      // ---- Minimaler GUI-/WS-Shim (nur wenn Monolith es nicht schon bereitstellt) ----
+      const $ = (s)=>document.querySelector(s);
+      function getWsUrl(){ try{ const raw=(window.getBackendUrl?window.getBackendUrl():null) || (window.BACKEND_URL?window.BACKEND_URL:null) || "ws://127.0.0.1:48232"; if(/^wss?:\/\//.test(raw)){ const u=raw.replace(/\/?$/, ""); return u.endsWith("/ws")?u:(u+"/ws"); } if(/^https?:\/\//.test(raw)){ const u=raw.replace(/^http/,"ws").replace(/\/?$/,""); return u.endsWith("/ws")?u:(u+"/ws"); } return "ws://127.0.0.1:48232/ws"; }catch(e){ return "ws://127.0.0.1:48232/ws"; } }
+      function ensureWS(){
+        if(window.__WS && window.__WS.readyState===1) return window.__WS;
+        const url=getWsUrl();
+        const ws=new WebSocket(url);
+        window.__WS=ws;
+        ws.onopen=()=>{ try{ ws.send(JSON.stringify({op:"hello", stream_id:"gui"})); }catch(_){} };
+        ws.onmessage=(ev)=>{ try{ const m=JSON.parse(ev.data); (window.handleWebSocketMessage||console.log)(m); }catch(e){ console.warn("non-JSON msg",e); } };
+        ws.onclose=()=>{ setTimeout(()=>{ try{ ensureWS(); }catch(_){} }, 1000); };
+        return ws;
+      }
+      if(!window.initWebSocket){ window.initWebSocket=ensureWS; }
+      if(!window.sendText){ window.sendText=()=>{ const v=$("#textInput")?.value?.trim(); if(!v) return; const ws=ensureWS(); ws.send(JSON.stringify({type:"text", content:v, timestamp:Date.now()})); }; }
+      if(!window.toggleRecording){ window.toggleRecording=()=>{ const v=$("#textInput")?.value?.trim()||"TTS Test"; const ws=ensureWS(); ws.send(JSON.stringify({type:"tts_test", text:v})); }; }
+      if(!window.toggleSidebar){ window.toggleSidebar=()=>{ document.body.classList.toggle("sidebar-open"); }; }
+      function wire(){ $("#sendBtn")&&$("#sendBtn").addEventListener("click", window.sendText);
+                        $("#voiceBtn")&&$("#voiceBtn").addEventListener("click", window.toggleRecording);
+                        $("#toggleSidebarBtn")&&$("#toggleSidebarBtn").addEventListener("click", window.toggleSidebar);
+                        $("#textInput")&&$("#textInput").addEventListener("keydown", e=>{ if(e.key==="Enter") window.sendText(); });
+                        try{ ensureWS(); }catch(_){}}
+      if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", wire); } else { wire(); }
+    })();
+  </script>
 
 </body>
-<!-- === TTS WAV Player + GUI Shim === -->
-<script>
-(()=>{
-  // ---- TTS Player (einmalig) ----
-  let ttsEl=document.getElementById("ttsAudioPlayer");
-  if(!ttsEl){ ttsEl=document.createElement("audio"); ttsEl.id="ttsAudioPlayer"; ttsEl.style.display="none"; ttsEl.preload="auto"; document.body.appendChild(ttsEl); }
-  function b64ToBlob(b64){const bin=atob(b64);const u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return new Blob([u8],{type:"audio/wav"});}
-  function playWav(b64){ try{ const url=URL.createObjectURL(b64ToBlob(b64)); ttsEl.src=url; ttsEl.onended=()=>URL.revokeObjectURL(url); ttsEl.play().catch(e=>{ console.warn("TTS play() blocked:",e); window.showNotification&&showNotification("error","Audio blockiert","Bitte einmal klicken, um Audio zu erlauben"); }); }catch(e){ console.error("WAV decode failed",e);} }
-  // Hook in bestehende Message-Pipeline (falls vorhanden)
-  const orig=window.handleWebSocketMessage; 
-  window.handleWebSocketMessage=function(d){
-    try{
-      if(d&&d.type==="tts"&&d.format==="wav_base64"&&d.audio){ playWav(d.audio); }
-      else if(d&&d.type==="tts"&&typeof d.content==="string"&&d.content.startsWith("data:audio/")){
-        const i=d.content.indexOf("base64,"); if(i>=0) playWav(d.content.slice(i+7));
-      }
-    }catch(e){ console.warn("TTS hook error",e); }
-    return typeof orig==="function"?orig.call(this,d):undefined;
-  };
-  console.log("✅ Single TTS WAV Player ready");
-
-  // ---- Minimaler GUI-/WS-Shim (nur wenn Monolith es nicht schon bereitstellt) ----
-  const $ = (s)=>document.querySelector(s);
-  function getWsUrl(){ try{ const raw=(window.getBackendUrl?window.getBackendUrl():null) || (window.BACKEND_URL?window.BACKEND_URL:null) || "ws://127.0.0.1:48232"; if(/^wss?:\/\//.test(raw)){ const u=raw.replace(/\/?$/, ""); return u.endsWith("/ws")?u:(u+"/ws"); } if(/^https?:\/\//.test(raw)){ const u=raw.replace(/^http/,"ws").replace(/\/?$/,""); return u.endsWith("/ws")?u:(u+"/ws"); } return "ws://127.0.0.1:48232/ws"; }catch(e){ return "ws://127.0.0.1:48232/ws"; } }
-  function ensureWS(){
-    if(window.__WS && window.__WS.readyState===1) return window.__WS;
-    const url=getWsUrl();
-    const ws=new WebSocket(url);
-    window.__WS=ws;
-    ws.onopen=()=>{ try{ ws.send(JSON.stringify({op:"hello", stream_id:"gui"})); }catch(_){} };
-    ws.onmessage=(ev)=>{ try{ const m=JSON.parse(ev.data); (window.handleWebSocketMessage||console.log)(m); }catch(e){ console.warn("non-JSON msg",e); } };
-    ws.onclose=()=>{ setTimeout(()=>{ try{ ensureWS(); }catch(_){} }, 1000); };
-    return ws;
-  }
-  if(!window.initWebSocket){ window.initWebSocket=ensureWS; }
-  if(!window.sendText){ window.sendText=()=>{ const v=$("#textInput")?.value?.trim(); if(!v) return; const ws=ensureWS(); ws.send(JSON.stringify({type:"text", content:v, timestamp:Date.now()})); }; }
-  if(!window.toggleRecording){ window.toggleRecording=()=>{ const v=$("#textInput")?.value?.trim()||"TTS Test"; const ws=ensureWS(); ws.send(JSON.stringify({type:"tts_test", text:v})); }; }
-  if(!window.toggleSidebar){ window.toggleSidebar=()=>{ document.body.classList.toggle("sidebar-open"); }; }
-  function wire(){ $("#sendBtn")&&$("#sendBtn").addEventListener("click", window.sendText);
-                    $("#voiceBtn")&&$("#voiceBtn").addEventListener("click", window.toggleRecording);
-                    $("#toggleSidebarBtn")&&$("#toggleSidebarBtn").addEventListener("click", window.toggleSidebar);
-                    $("#textInput")&&$("#textInput").addEventListener("keydown", e=>{ if(e.key==="Enter") window.sendText(); });
-                    try{ ensureWS(); }catch(_){}}
-  if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded", wire); } else { wire(); }
-})();
-</script>
-<!-- === /TTS WAV Player + GUI Shim === -->
 </html>
-
