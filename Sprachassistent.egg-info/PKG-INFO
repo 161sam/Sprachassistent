@@ -2,4 +2,6 @@ Metadata-Version: 2.4
 Name: Sprachassistent
 Version: 0.1.0
 License-File: LICENSE
+Provides-Extra: zonos
+Requires-Dist: zonos-tts>=0.1.0; extra == "zonos"
 Dynamic: license-file

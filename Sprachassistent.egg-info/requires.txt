@@ -1,0 +1,3 @@
+
+[zonos]
+zonos-tts>=0.1.0

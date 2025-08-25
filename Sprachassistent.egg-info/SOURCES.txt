@@ -5,6 +5,7 @@ Sprachassistent.egg-info/PKG-INFO
 Sprachassistent.egg-info/SOURCES.txt
 Sprachassistent.egg-info/dependency_links.txt
 Sprachassistent.egg-info/entry_points.txt
+Sprachassistent.egg-info/requires.txt
 Sprachassistent.egg-info/top_level.txt
 audio/__init__.py
 audio/vad.py
@@ -73,6 +74,7 @@ ws_server/transport/fastapi_adapter.py
 ws_server/transport/server.py
 ws_server/tts/__init__.py
 ws_server/tts/base_tts_engine.py
+ws_server/tts/exceptions.py
 ws_server/tts/manager.py
 ws_server/tts/text_normalize.py
 ws_server/tts/text_sanitizer.py
