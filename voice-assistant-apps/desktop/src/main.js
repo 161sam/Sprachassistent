@@ -5,6 +5,7 @@ const path   = require('path');
 const fs     = require('fs');
 const { spawn } = require('child_process');
 const log    = require('electron-log');
+log.info('Desktop app starting');
 const { autoUpdater } = require('electron-updater');
 const dotenv = require('dotenv');
 const http   = require('http');

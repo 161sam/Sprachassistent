@@ -1374,6 +1374,7 @@
     <div class="header">
       <h1>🤖 KI-Sprachassistent</h1>
       <p>Sprechen Sie mit Ihrem intelligenten Assistenten</p>
+      <button class="btn" id="toggleSidebarBtn">☰</button>
     </div>
 
     <div class="main-card">
@@ -1384,12 +1385,11 @@
           id="textInput"
           class="text-input"
           placeholder="Fragen Sie mich etwas..."
-          onkeypress="handleKeyPress(event)"
         />
-        <button onclick="sendText()" class="btn" id="sendBtn">
+        <button class="btn" id="sendBtn">
           <span class="icon-send">➤</span>
         </button>
-        <button onclick="toggleRecording()" class="btn voice-button" id="voiceBtn">
+        <button class="btn voice-button" id="voiceBtn">
           <span id="voiceIcon">🎙️</span>
         </button>
       </div>
@@ -1828,53 +1828,35 @@
 
     // WebSocket mit Settings
     function initWebSocket() {
+      const url = window.BACKEND_URL || 'ws://127.0.0.1:48232/ws';
       try {
-        ws = new WebSocket("ws://raspi4.local:8123");
+        ws = new WebSocket(url);
+        window.__WS = ws;
 
         ws.onopen = () => {
-          console.log('✅ Verbunden mit Sprachassistent');
-          showNotification('success', 'Verbunden', 'Erfolgreich mit dem Sprachassistenten verbunden');
-          ws.send(JSON.stringify({ type: 'get_llm_models' }));
+          const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+          ws.send(JSON.stringify({ op: 'hello', stream_id: id }));
         };
 
         ws.onmessage = (event) => {
-          hideNebelAnimation();
-          const data = JSON.parse(event.data);
-          if (data.type === 'llm_models') {
-            renderModelDropdown(data.models, data.current);
-          } else if (data.type === 'llm_model_switched') {
-            updateLlmModel(data.current, data.ok);
-          } else if (data.type === 'response') {
-            displayResponse(data.content || '');
-          } else if (data.content) {
-            displayResponse(data.content);
-          }
+          try {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+          } catch {}
         };
-        
-        ws.onclose = () => {
-          console.log('❌ Verbindung getrennt');
-          showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
 
+        ws.onclose = () => {
+          showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
           if (settings.autoReconnect) {
             setTimeout(initWebSocket, settings.connectionTimeout);
           }
         };
-        
-        ws.onerror = (err) => {
-          console.error('WebSocket Error:', err);
-          showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
 
-          if (settings.debugMode) {
-            console.error('WebSocket Error:', err);
-          }
+        ws.onerror = () => {
+          showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
         };
       } catch (e) {
-        console.error('Connection Error:', e);
         showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Konfiguration');
-
-        if (settings.debugMode) {
-          console.error('Connection Error:', e);
-        }
       }
     }
     
@@ -2114,48 +2096,44 @@ Modulares Design mit WebSocket-Verbindung
 
     // Text senden
     function sendText() {
-      const input = document.getElementById("textInput");
-      const sendBtn = document.getElementById("sendBtn");
-      
-      if (input.value.trim() === "") return;
-      
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        sendBtn.classList.add('loading');
-        sendBtn.disabled = true;
-        
-        showNebelAnimation();
-        displayResponse("Verarbeite Ihre Anfrage...");
-        
-        ws.send(JSON.stringify({ 
-          type: "text", 
-          content: input.value.trim(),
-          timestamp: Date.now()
-        }));
-        
-        input.value = "";
-        
-        setTimeout(() => {
-          sendBtn.classList.remove('loading');
-          sendBtn.disabled = false;
-        }, 1000);
-      } else {
-        showNotification('error', 'Keine Verbindung', 'Bitte warten Sie, bis die Verbindung hergestellt ist');
-      }
-    }
-
-    // Enter-Taste für Senden
-    function handleKeyPress(event) {
-      if (event.key === 'Enter') {
-        sendText();
-      }
+      const input = document.getElementById('textInput');
+      const msg = input.value.trim();
+      if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'text', content: msg }));
+      input.value = '';
     }
 
     // Aufnahme umschalten
     function toggleRecording() {
-      if (isRecording) {
-        stopRecording();
-      } else {
-        startRecording();
+      showNotification('info', 'Mikrofon', 'Aufnahmefunktion folgt');
+    }
+
+    function toggleSidebar() {
+      const el = document.getElementById('sidebar');
+      if (el) { el.classList.toggle('active'); }
+    }
+
+    function handleWebSocketMessage(data) {
+      if (!data) return;
+      if (data.type === 'response' || data.response) {
+        const resp = document.getElementById('response');
+        if (resp) {
+          const div = document.createElement('div');
+          div.textContent = data.response || data.content || '';
+          resp.appendChild(div);
+        }
+      }
+      if (data.tts) {
+        try {
+          const audio = new Audio(`data:audio/wav;base64,${data.tts}`);
+          audio.play().catch(()=>{});
+        } catch (e) { console.error(e); }
+      }
+      if (data.error) {
+        showNotification('error', 'Fehler', data.error);
+      }
+      if (data.op === 'ready' || data.type === 'ready') {
+        showNotification('success', 'Bereit', 'Verbindung hergestellt');
       }
     }
 
@@ -2265,12 +2243,21 @@ Modulares Design mit WebSocket-Verbindung
     document.addEventListener('DOMContentLoaded', function() {
       // Settings anwenden
       applySettings();
-      
+
       // WebSocket initialisieren
       initWebSocket();
-      
-      // Focus auf Eingabefeld
-      document.getElementById('textInput').focus();
+
+      const sendBtn = document.getElementById('sendBtn');
+      const textInput = document.getElementById('textInput');
+      const voiceBtn = document.getElementById('voiceBtn');
+      const sidebarBtn = document.getElementById('toggleSidebarBtn');
+      if (sendBtn) sendBtn.addEventListener('click', sendText);
+      if (textInput) {
+        textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
+        textInput.focus();
+      }
+      if (voiceBtn) voiceBtn.addEventListener('click', toggleRecording);
+      if (sidebarBtn) sidebarBtn.addEventListener('click', toggleSidebar);
     });
 
     // Event Listeners
