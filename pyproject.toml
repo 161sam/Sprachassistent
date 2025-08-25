@@ -12,3 +12,6 @@ exclude = ["archive*", "voice-assistant-apps*", "tests*", "testsuite*"]
 
 [project.scripts]
 va="ws_server.cli:main"
+
+[project.optional-dependencies]
+zonos = ["zonos-tts>=0.1.0"]

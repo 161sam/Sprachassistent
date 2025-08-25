@@ -1,19 +1,10 @@
 """
-Optional Zonos TTS engine adapter (Stub).
-
-Wenn die echte Zonos-Implementierung nicht installiert ist,
-stellen wir einen Stub bereit, damit der Manager auf Piper zurückfällt.
+Optionaler Zonos‑Adapter (Stub). Erlaubt sauberen Fallback, wenn Zonos nicht installiert ist.
 """
-AVAILABLE = False  # Signal für Manager/CLI
-
 class ZonosEngine:
-    def __init__(self, *args, **kwargs):
-        raise ImportError("Zonos engine not installed; using Piper fallback")
+    def __init__(self, *_, **__):
+        raise ImportError("Zonos TTS nicht installiert")
 
-# Backcompat: manche Stellen importieren ZonosTTSEngine
+# Backcompat: einige Stellen erwarten diesen Namen
 class ZonosTTSEngine(ZonosEngine):
     pass
-
-def load_engine(*args, **kwargs):
-    """API-kompatible Factory."""
-    raise ImportError("Zonos engine not installed; using Piper fallback")

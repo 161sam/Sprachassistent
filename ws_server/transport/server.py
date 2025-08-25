@@ -175,3 +175,11 @@ class VoiceServer:
                 logger.exception("Unhandled WS error")
                 await websocket.send(json.dumps({"type":"error","message":"internal server error"}))
                 break
+# --- canonical entrypoint for CLI ---
+def main():
+    import os
+    from .fastapi_adapter import app
+    import uvicorn
+    host = os.getenv("WS_HOST", os.getenv("BACKEND_HOST", "127.0.0.1"))
+    port = int(os.getenv("WS_PORT", os.getenv("BACKEND_PORT", "48232")))
+    return uvicorn.run(app, host=host, port=port)

@@ -162,7 +162,7 @@ class AudioStreamer {
     async loadAudioWorklet() {
         try {
             // Load the enhanced audio worklet processor with VAD support
-            await this.audioContext.audioWorklet.addModule('/shared/workers/audio-streaming-worklet.js');
+            await this.audioContext.audioWorklet.addModule('workers/audio-streaming-worklet.js');
             console.log('✅ Enhanced audio worklet loaded');
         } catch (error) {
             console.warn('⚠️ Audio worklet not available, falling back to ScriptProcessor');
@@ -367,7 +367,7 @@ class AudioStreamer {
         }
         try {
             if (!this.playbackNode) {
-                await this.audioContext.audioWorklet.addModule('/shared/workers/audio-streaming-worklet.js');
+                await this.audioContext.audioWorklet.addModule('workers/audio-streaming-worklet.js');
                 this.playbackNode = new AudioWorkletNode(this.audioContext, 'audio-streaming-worklet');
                 this.playbackPort = this.playbackNode.port;
                 this.playbackNode.connect(this.audioContext.destination);
@@ -852,7 +852,7 @@ class AudioStreamer {
 class VoiceAssistant {
     constructor(config = {}) {
         this.config = {
-            wsUrl: 'ws://127.0.0.1:48231',
+            wsUrl: 'ws://127.0.0.1:48232',
             chunkSize: 1024,
             chunkIntervalMs: 50,
             adaptiveQuality: true,
