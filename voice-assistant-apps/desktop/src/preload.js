@@ -1,4 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const backendUrl = process.env.BACKEND_URL || 'ws://127.0.0.1:48232/ws';
+contextBridge.exposeInMainWorld('BACKEND_URL', backendUrl);
 
 // Sichere API für den Renderer-Prozess
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -24,6 +26,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Platform-spezifische Informationen
   platform: process.platform,
   isElectron: true,
+
+  getBackendUrl: () => backendUrl,
+  onDomReady: (fn) => {
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      fn();
+    } else {
+      window.addEventListener('DOMContentLoaded', fn, { once: true });
+    }
+  },
   
   // Notification API
   showNotification: (title, body, options = {}) => {
