@@ -1,5 +1,7 @@
 import argparse, os, sys, time, subprocess, urllib.request
 
+__all__ = ["main"]
+
 def _parse_args(argv):
     p = argparse.ArgumentParser(prog="va")
     p.add_argument("--validate-models", action="store_true", help="TTS-Modelle prüfen und verfügbare Stimmen anzeigen")
@@ -81,8 +83,8 @@ def _start_backend_foreground(host: str, port: int):
     except KeyboardInterrupt:
         pass
 
-def main():
-    args = _parse_args(sys.argv)
+def main(argv: list[str] | None = None):
+    args = _parse_args(argv or sys.argv)
     if args.validate_models:
         _validate_models(); return
     if args.desktop:
