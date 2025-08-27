@@ -62,7 +62,7 @@ from ws_server.tts.voice_validation import validate_voice_assets
 from ws_server.tts.voice_aliases import VOICE_ALIASES
 from ws_server.tts.voice_utils import canonicalize_voice
 from ws_server.tts.staged_tts import StagedTTSProcessor, limit_and_chunk
-from ws_server.tts.staged_tts.staged_processor import StagedTTSConfig
+from ws_server.tts.staged_tts.staged_tts_config import StagedTTSConfig
 from ws_server.core.prompt import get_system_prompt
 from ws_server.audio.vad import VoiceActivityDetector, VADConfig
 
@@ -946,7 +946,7 @@ class VoiceServer:
                 async def initialize(self, *args, **kwargs):
                     return True
                 async def synthesize(self, *args, **kwargs):
-                    from backend.tts.base_tts_engine import TTSResult
+                    from ws_server.tts.base_tts_engine import TTSResult
                     return TTSResult(success=False, error_message="TTS not available")
                 async def cleanup(self):
                     # TODO: provide real cleanup or use dedicated mock

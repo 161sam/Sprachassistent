@@ -1,0 +1,66 @@
+*** a/voice-assistant-apps/shared/core/VoiceAssistantCore.js
+--- b/voice-assistant-apps/shared/core/VoiceAssistantCore.js
+@@
+   constructor(opts = {}) {
+     this.opts = opts;
+     this.ws = null;
+     this.audioStreamer = opts.audioStreamer;
+   }
+ 
+   connect(url, token) {
+     const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
+     this.ws = new WebSocket(wsUrl);
+ 
+     this.ws.addEventListener('open', () => {
+       console.log('[VA-Core] WS open');
++      // Staged‑TTS: Stream abonnieren (Float32 bei 48k empfohlen)
++      try {
++        const subMsg = {
++          op: 'audio_subscribe',
++          stream: 'staged_tts',
++          format: 'f32',
++          sampleRate: 48000
++        };
++        this.ws.send(JSON.stringify(subMsg));
++        console.log('[VA-Core] subscribed staged_tts');
++      } catch (e) {
++        console.warn('[VA-Core] subscribe failed', e);
++      }
+     });
+ 
+     this.ws.addEventListener('message', (ev) => {
+       try {
+-        const msg = JSON.parse(ev.data);
++        // Kann JSON ODER Binär sein (Binary v2). Für JSON:
++        if (typeof ev.data === 'string') {
++          const msg = JSON.parse(ev.data);
++          // Staged‑TTS: JSON‑Push
++          if (msg && msg.op === 'staged_tts_chunk' && this.audioStreamer) {
++            this.audioStreamer.handleStagedChunkJSON(msg);
++            return;
++          }
++          if (msg && msg.op === 'staged_tts_end' && this.audioStreamer) {
++            this.audioStreamer.handleStagedEnd();
++            return;
++          }
++          // ... andere Nachrichten normal weiterreichen
++          this.onMessage && this.onMessage(msg);
++          return;
++        }
++        // Binary‑Frames werden (falls vorhanden) vom AudioStreamer verarbeitet
++        if (ev.data instanceof Blob && this.audioStreamer) {
++          this.audioStreamer.handleBinaryFrame(ev.data);
++          return;
++        }
+       } catch (e) {
+         console.error('[VA-Core] message parse error', e);
+       }
+     });
+ 
+     this.ws.addEventListener('close', () => {
+       console.log('[VA-Core] WS close');
+     });
+   }
+ }
+ 
+ export default VoiceAssistantCore;

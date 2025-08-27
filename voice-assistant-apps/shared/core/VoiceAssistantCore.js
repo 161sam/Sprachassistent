@@ -96,13 +96,24 @@ class VoiceAssistantCore {
         sttModel: 'Faster-Whisper',
         ttsEngine: 'Zonos',
         wsHost: '127.0.0.1',
-        wsPort: 48231
+        wsPort: 48232
       };
 
     this.cache = new Map();
     this.gestureHandler = null;
     this.serviceWorker = null;
     
+    
+    // BACKEND_URL (z.B. http://127.0.0.1:48232) aus ENV übernehmen
+    try {
+      const BU = (typeof process !== 'undefined' && process.env && process.env.BACKEND_URL) || null;
+      if (BU) {
+        const u = new URL(BU);
+        this.settings.wsHost = u.hostname;
+        this.settings.wsPort = parseInt(u.port || '48232', 10);
+        this.settings.metricsPort = this.settings.wsPort;
+      }
+    } catch (_) {}
     console.log(`🚀 Voice Assistant Core initialized (Platform: ${this.platform})`);
   }
 
@@ -184,7 +195,7 @@ class VoiceAssistantCore {
       // Load audio worklet for real-time processing
       if (this.audioContext.audioWorklet) {
         try {
-          await this.audioContext.audioWorklet.addModule('/audio-worklet-processor.js');
+          await this.audioContext.audioWorklet.addModule('../gui/audio-worklet-processor.js');
         } catch (e) {
           console.warn('Audio worklet not available, falling back to script processor');
         }
@@ -854,7 +865,7 @@ class VoiceAssistantCore {
     const host = localStorage.getItem('wsHost') || this.settings.wsHost;
     const port = localStorage.getItem('wsPort') || this.settings.wsPort;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${host}:${port}`;
+    return `${protocol}//${host}:${port}/ws`;
   }
 
   getMetrics() {

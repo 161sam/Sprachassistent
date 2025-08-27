@@ -73,7 +73,7 @@ def get_tts_engine_default() -> str:
     engine = os.getenv("TTS_ENGINE", DEFAULT_ENV["TTS_ENGINE"]).lower()
     if engine == "zonos":
         try:  # optional dependency
-            from backend.tts.engine_zonos import ZonosTTSEngine  # type: ignore # noqa: F401
+            from ws_server.tts.engines.zonos import ZonosTTSEngine  # type: ignore # noqa: F401
         except Exception as exc:  # pragma: no cover - import probe
             logger.warning("Zonos nicht verfügbar (%s) – falle auf Piper zurück", exc)
             engine = "piper"
@@ -128,3 +128,15 @@ config = Config.from_env()
 
 
 __all__ = ["Config", "config", "load_env", "get_tts_engine_default"]
+
+LLM_BASE_URL = os.getenv('LLM_BASE_URL', '')
+
+LLM_API_KEY = os.getenv('LLM_API_KEY', '')
+
+FLOWISE_URL = os.getenv('FLOWISE_URL','')
+
+FLOWISE_TOKEN = os.getenv('FLOWISE_TOKEN','')
+
+N8N_URL = os.getenv('N8N_URL','')
+
+N8N_TOKEN = os.getenv('N8N_TOKEN','')

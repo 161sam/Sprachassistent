@@ -1,4 +1,4 @@
-# backend/ws-server/tts/engine_zonos.py
+# backend/ws-server/tts/engines.zonos.py
 import os, asyncio, numpy as np, torch, torchaudio
 from zonos.model import Zonos
 from zonos.conditioning import make_cond_dict

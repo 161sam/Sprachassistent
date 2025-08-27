@@ -1,0 +1,46 @@
+*** a/ws_server/protocol/handshake.py
+--- b/ws_server/protocol/handshake.py
+@@
+-# erwartet: {"op":"hello", "version":<int>, "device": "...", "features": {...}}
++# erwartet: {"op":"hello", "version":<int>, "device": "...", "features": {...}}
++# Kompatibilität: der Web-Client sendet statt "features" häufig "capabilities".
++# Wir akzeptieren beides und antworten vereinheitlicht mit "capabilities".
+ 
+ def _extract_features(hello: dict) -> dict:
+-    feats = hello.get("features") or {}
+-    if not isinstance(feats, dict):
+-        feats = {}
+-    return feats
++    feats = hello.get("features") or hello.get("capabilities") or {}
++    return feats if isinstance(feats, dict) else {}
+ 
+ async def parse_client_hello(ws, raw_json: str) -> dict:
+@@
+-    return {"version": version, "device": device, "features": features, "stream_id": stream_id}
++    return {"version": version, "device": device, "features": features, "stream_id": stream_id}
+ 
+ async def build_ready(hello_info: dict) -> str:
+-    # historische Serverantwort enthielt "features"
+-    payload = {
+-        "op": "ready",
+-        "protocol_version": 2,
+-        "features": {
+-            "binaryAudio": True,
+-            "vad": True,
+-            "interimTranscripts": True,
+-        }
+-    }
++    # Antworte mit "capabilities" (Client erwartet das Feld),
++    # belasse zusätzlich "features" zwecks Rückwärtskompatibilität.
++    caps = {
++        "binaryAudio": True,
++        "vad": True,
++        "interimTranscripts": True,
++    }
++    payload = {
++        "op": "ready",
++        "protocol_version": 2,
++        "capabilities": caps,
++        "features": caps,
++    }
+     return json.dumps(payload)

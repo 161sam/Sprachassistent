@@ -1,0 +1,16 @@
+audio
+config
+docs
+externals
+gui
+headscale
+models
+piper
+pull_requests
+reports
+scripts
+sprachassistent
+test
+tools
+tts_out
+ws_server

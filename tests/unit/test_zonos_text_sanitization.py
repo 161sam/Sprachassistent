@@ -5,7 +5,7 @@ torch = pytest.importorskip("torch")
 torchaudio = pytest.importorskip("torchaudio")
 soundfile = pytest.importorskip("soundfile")
 
-from backend.tts.engine_zonos import ZonosTTSEngine
+from backend.tts.engines.zonos import ZonosTTSEngine
 from backend.tts.base_tts_engine import TTSConfig
 
 
@@ -50,7 +50,7 @@ def test_zonos_engine_sanitizes_text(monkeypatch, raw, forbidden):
             captured["text"] = text
             return {}
 
-        monkeypatch.setattr("backend.tts.engine_zonos.make_cond_dict", fake_make_cond_dict)
+        monkeypatch.setattr("backend.tts.engines.zonos.make_cond_dict", fake_make_cond_dict)
         monkeypatch.setattr("torch.autocast", lambda *a, **k: contextlib.nullcontext())
 
         await engine.synthesize(raw, voice_id="test")

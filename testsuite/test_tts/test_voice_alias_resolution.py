@@ -1,6 +1,6 @@
 import pytest
 
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 
 
 def test_resolve_known_engines():

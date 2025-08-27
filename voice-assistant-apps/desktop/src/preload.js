@@ -1,3 +1,4 @@
+
 const { contextBridge, ipcRenderer } = require('electron');
 const backendUrl = process.env.BACKEND_URL || 'ws://127.0.0.1:48232/ws';
 contextBridge.exposeInMainWorld('BACKEND_URL', backendUrl);
@@ -76,45 +77,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-// Erweiterte API für Desktop-spezifische Features
-contextBridge.exposeInMainWorld('desktopAPI', {
-  // Fenster-Kontrolle
-  minimize: () => ipcRenderer.send('window-minimize'),
-  maximize: () => ipcRenderer.send('window-maximize'),
-  close: () => ipcRenderer.send('window-close'),
-  
-  // System-Integration
-  getSystemInfo: () => ({
-    platform: process.platform,
-    arch: process.arch,
-    version: process.version,
-    electronVersion: process.versions.electron,
-    chromeVersion: process.versions.chrome,
-    nodeVersion: process.versions.node
-  }),
-  
-  // Keyboard Shortcuts (bereits im Hauptprozess definiert)
-  shortcuts: {
-    newConversation: 'CmdOrCtrl+N',
-    settings: 'CmdOrCtrl+,',
-    startRecording: 'CmdOrCtrl+Enter',
-    stopRecording: 'Escape',
-    quit: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q'
+    // Frontend-Defaults überschreiben
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('wsHost', host);
+      localStorage.setItem('wsPort', String(port)); // WS = gleicher Port wie HTTP
+    }
+    // Für Code, der auf window.wsUtils hört
+    globalThis.wsUtils = {
+      getAuthToken: async () => 'dev-token', // austauschbar mit echter Auth
+    };
+  } catch (e) {
+    console.warn('[preload] Could not parse BACKEND_URL:', e);
   }
-});
+})();
 
-// Console-Weiterleitung für besseres Debugging
-const originalConsole = { ...console };
-['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
-  console[method] = (...args) => {
-    originalConsole[method]('[Renderer]', ...args);
-  };
-});
-
-// --- added: expose ttsPlan API ---
-
-try {
-  contextBridge.exposeInMainWorld('ttsPlan', {
-    setPlan: (intro, main) => ipcRenderer.invoke('tts-plan:set', { intro, main }),
-  });
-} catch {}
+// Kleine Bridge, falls mal gebraucht
+contextBridge.exposeInMainWorld('electronAPI', { isElectron: true });

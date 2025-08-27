@@ -1,0 +1,2 @@
+[console_scripts]
+va = ws_server.cli:main

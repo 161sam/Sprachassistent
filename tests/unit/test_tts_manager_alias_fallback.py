@@ -1,4 +1,4 @@
-from backend.tts.tts_manager import TTSManager
+from ws_server.tts.manager import TTSManager
 from ws_server.tts.voice_aliases import EngineVoice
 
 

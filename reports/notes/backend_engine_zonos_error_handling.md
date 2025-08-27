@@ -1,7 +1,7 @@
 # Zonos Engine Error Handling
 
 ## Context
-`backend/tts/engine_zonos.py` silently ignores failures when importing the text sanitizer and when applying speed conditioning. This hides configuration errors and hampers debugging.
+`backend/tts/engines.zonos.py` silently ignores failures when importing the text sanitizer and when applying speed conditioning. This hides configuration errors and hampers debugging.
 
 ## Proposal
 - Wrap the sanitizer import in `try/except` and log a warning if it fails.

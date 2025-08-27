@@ -60,3 +60,13 @@ Metrics and a simple health check are exposed over HTTP on
 `http://127.0.0.1:$METRICS_PORT/metrics` and `.../health` once the server
 is running.
 
+
+## Migration: Ablösung `ws_server/compat/legacy_ws_server.py`
+
+- **LLM** → `ws_server/core/llm.py` (LMClient, `list_models()`, `chat()`)
+- **Flowise/n8n Bridges** → `ws_server/routing/external.py` (mit Retry/Backoff)
+- **AudioChunk/Buffer** → `ws_server/core/streams.py`
+- **AudioStreamManager** → `ws_server/transport/audio_streams.py`
+- **Transport/Message-Loop** → `ws_server/transport/server.py` (ohne Compat-Import)
+
+Handshake/Loop & Initialisierungslogik wurden aus dem Legacy-Server übernommen und an die Protokoll-Helper (`parse_client_hello()`, `build_ready()`) angeschlossen.

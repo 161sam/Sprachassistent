@@ -148,7 +148,7 @@ sprint-4(config): centralize settings, normalize env names, update docs
 
 **Tasks**
 
-* Re‑export duplicates to a single canonical engine implementation (prefer `backend/tts/engine_zonos.py` or `ws_server/tts/engines/zonos.py` → pick one; the other becomes a thin re‑export or is removed).
+* Re‑export duplicates to a single canonical engine implementation (prefer `backend/tts/engines.zonos.py` or `ws_server/tts/engines/zonos.py` → pick one; the other becomes a thin re‑export or is removed).
 * `TTSManager` supports lazy import; if engine unavailable, mark **unavailable** and auto‑fallback (Piper).
 
 **Acceptance**
