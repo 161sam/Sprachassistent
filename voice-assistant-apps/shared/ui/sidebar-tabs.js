@@ -1,10 +1,10 @@
-// sidebar-tabs.js – Tab-Switching + Hash-Unterstützung
+// Sidebar tab switching without aliases
 import { DOMHelpers } from '../core/dom-helpers.js';
 
-export const sidebarTabs = {
+export const SidebarTabs = {
   init() {
     const nav = DOMHelpers.get('.sidebar-nav');
-    const panels = DOMHelpers.all('.sidebar-panel, [data-tab]'); // tolerant
+    const panels = DOMHelpers.all('.sidebar-panel');
     if (!nav || !panels.length) return;
 
     nav.addEventListener('click', (ev) => {
@@ -13,41 +13,24 @@ export const sidebarTabs = {
       const tab = btn.getAttribute('data-tab');
       if (!tab) return;
 
-      // Active-Status in der Navigation
       DOMHelpers.all('.sidebar-nav-item').forEach(b => b.classList.toggle('active', b === btn));
-
-      // Panels umschalten – Panels tragen data-tab="..."
       panels.forEach(p => {
         const match = p.getAttribute('data-tab') === tab;
         p.classList.toggle('active', match);
-        // 'hidden' Flag konsistent halten (falls CSS es nutzt)
-        if (match) p.removeAttribute('hidden'); else p.setAttribute('hidden','');
+        if (match) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
       });
     });
   },
 
-  // Wird von sidebar.js beim Boot aufgerufen
   initFromHash() {
-    // Basis-Init (Listener setzen)
     this.init();
-
-    // Hash auswerten: #tab=audio  ODER  #audio
     const hash = window.location.hash || '';
-    let tab = null;
     let m = hash.match(/tab=([a-z0-9_-]+)/i);
     if (!m) m = hash.match(/^#([a-z0-9_-]+)$/i);
-    if (m) tab = m[1];
-
+    const tab = m ? m[1] : null;
     if (tab) {
       const btn = DOMHelpers.get(`.sidebar-nav-item[data-tab="${tab}"]`);
-      if (btn) {
-        // Navigation sauber triggern
-        btn.click();
-      }
+      if (btn) btn.click();
     }
   }
 };
-
-// Kompatible Aliase für bestehenden Code
-export const SidebarTabs = sidebarTabs;
-export default sidebarTabs;

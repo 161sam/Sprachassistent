@@ -1,42 +1,31 @@
-// sidebar-events.js – bindet Header- & Sidebar-Events CSP-konform
+// Sidebar header and panel events
 import { DOMHelpers } from '../core/dom-helpers.js';
-import { NotificationManager } from '../events.js';
+import { SidebarTabs } from './sidebar-tabs.js';
 import * as Theme from './sidebar-theme.js';
-import { sidebarTabs } from './sidebar-tabs.js';
+import { NotificationManager } from '../events.js';
 
-export const sidebarEvents = {
+export const SidebarEvents = {
   bind() {
-    // Sidebar open/close
     const sidebar = DOMHelpers.get('#sidebar');
     const toggle = DOMHelpers.get('#sidebarToggle');
     const close = DOMHelpers.get('#sidebarClose');
+    if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+    if (close && sidebar) close.addEventListener('click', () => sidebar.classList.remove('open'));
 
-    if (toggle && sidebar) {
-      toggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-      });
-    }
-    if (close && sidebar) {
-      close.addEventListener('click', () => sidebar.classList.remove('open'));
-    }
-
-    // Theme toggle
     const themeToggle = DOMHelpers.get('#themeToggle');
     if (themeToggle) {
       themeToggle.addEventListener('click', () => {
         if (Theme && typeof Theme.toggle === 'function') {
-          Theme?.toggle?.();
+          Theme.toggle();
         } else {
-          // Fallback: body[data-theme] toggeln
           const el = document.documentElement;
-          const next = (el.getAttribute('data-theme') === 'light') ? 'dark' : 'light';
+          const next = el.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
           el.setAttribute('data-theme', next);
         }
         NotificationManager.show('Theme gewechselt', 'info', 1200);
       });
     }
 
-    // Info
     const infoToggle = DOMHelpers.get('#infoToggle');
     if (infoToggle) {
       infoToggle.addEventListener('click', () => {
@@ -44,12 +33,24 @@ export const sidebarEvents = {
       });
     }
 
-    // Tabs initialisieren (falls noch nicht)
-    sidebarTabs.init();
+    const content = DOMHelpers.get('.sidebar-content');
+    if (content) {
+      content.addEventListener('change', (ev) => {
+        const target = ev.target;
+        if (target.id) {
+          const evt = new CustomEvent('sidebar:change', { detail: { id: target.id, value: target.value } });
+          document.dispatchEvent(evt);
+        }
+      });
+      content.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button');
+        if (btn && btn.id) {
+          const evt = new CustomEvent('sidebar:click', { detail: { id: btn.id } });
+          document.dispatchEvent(evt);
+        }
+      });
+    }
+
+    SidebarTabs.initFromHash();
   }
 };
-
-export default sidebarEvents;
-
-/* alias for compatibility with sidebar.js */
-export const SidebarEvents = sidebarEvents;
