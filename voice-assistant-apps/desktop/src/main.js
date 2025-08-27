@@ -1,18 +1,15 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, Menu, dialog, shell, Tray, nativeImage, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
-
-app.disableHardwareAcceleration(); // vermeidet GLib/GPU Zicken
-const { app, BrowserWindow, Menu, dialog, shell, Tray, nativeImage, ipcMain } = require('electron');
-const path   = require('path');
-const fs     = require('fs');
 const { spawn } = require('child_process');
-const log    = require('electron-log');
+const log = require('electron-log');
 log.info('Desktop app starting');
 const { autoUpdater } = require('electron-updater');
 const dotenv = require('dotenv');
-const http   = require('http');
-const url    = require('url');
+const http = require('http');
+const url = require('url');
+
+app.disableHardwareAcceleration(); // vermeidet GLib/GPU Zicken
 
 const SHOULD_SPAWN = !process.env.SKIP_BACKEND_SPAWN && !process.env.BACKEND_URL;
 
