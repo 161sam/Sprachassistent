@@ -582,3 +582,24 @@ class TTSManager:
 
 __all__ = ["TTSManager", "TTSEngineType", "TTSConfig", "TTSResult"]
 
+
+
+# --- STAGED_TTS::activate ---
+try:
+    import asyncio
+    from .staged_tts.adapter import synthesize_staged
+    async def _synth_staged_bridge(self, text: str, voice: str|None=None):
+        audio, sr = await synthesize_staged(self, text, voice)
+        return (audio, sr)
+    if not hasattr(globals().get('TTSManager', None), '_staged_bridge_added'):
+        TM = globals().get('TTSManager', None)
+        if TM and hasattr(TM, 'synthesize'):
+            orig = TM.synthesize
+            async def synth(self, text: str, engine: str|None=None, voice: str|None=None, **kw):
+                if engine and engine.lower()=='staged':
+                    return await _synth_staged_bridge(self, text, voice)
+                return await orig(self, text, engine=engine, voice=voice, **kw)
+            TM.synthesize = synth
+            TM._staged_bridge_added = True
+except Exception as e:
+    import logging as _lg; _lg.getLogger(__name__).warning('staged bridge not attached: %s', e)
