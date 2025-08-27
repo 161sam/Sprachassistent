@@ -1,35 +1,28 @@
-// ui/sidebar-theme.js
+// Theme helpers with named exports only
 import { DOMHelpers } from '../core/dom-helpers.js';
 
-export const SidebarTheme = {
-  init() {
-    // Theme aus localStorage laden
-    const saved = this._get();
-    if (saved) this.apply(saved);
+const STORAGE_KEY = 'va_theme';
 
-    // Theme-Dropdown/Buttons binden (falls vorhanden)
-    const selector = DOMHelpers.get('#themeSelector');
-    if (selector) {
-      selector.addEventListener('change', (e) => this.apply(e.target.value));
-    }
-  },
+export function init() {
+  const saved = get();
+  if (saved) apply(saved);
+  DOMHelpers.all('.theme-card').forEach(card => {
+    card.addEventListener('click', () => apply(card.dataset.theme));
+  });
+}
 
-  apply(theme) {
-    document.body.setAttribute('data-theme', theme);
-    this._set(theme);
+export function apply(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem(STORAGE_KEY, theme); } catch {}
+}
 
-    // Optional: Sidebar-spezifische Elemente aktualisieren
-    const icon = DOMHelpers.get('#themeToggle');
-    if (icon) {
-      const icons = { dark: '☀️', light: '🌙', 'sci-fi': '🚀', nature: '🌿', 'high-contrast': '🔲' };
-      icon.textContent = icons[theme] || '☀️';
-    }
-  },
+export function toggle() {
+  const current = get() || document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  apply(next);
+  return next;
+}
 
-  _get() {
-    try { return localStorage.getItem('va.settings.theme'); } catch { return null; }
-  },
-  _set(theme) {
-    try { localStorage.setItem('va.settings.theme', theme); } catch {}
-  }
-};
+export function get() {
+  try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
+}

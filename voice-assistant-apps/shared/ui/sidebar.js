@@ -1,9 +1,8 @@
-// ui/sidebar.js
-import { SidebarCore }   from './sidebar-core.js';
-import { SidebarTabs }   from './sidebar-tabs.js';
+// ui/sidebar.js – unified imports without aliases
+import { SidebarCore } from './sidebar-core.js';
+import { SidebarTabs } from './sidebar-tabs.js';
 import { SidebarEvents } from './sidebar-events.js';
-import { SidebarTheme }  from './sidebar-theme.js';
-
+import * as SidebarTheme from './sidebar-theme.js';
 
 export const sidebarManager = {
   async initialize() {
@@ -11,13 +10,13 @@ export const sidebarManager = {
     SidebarCore.queryDom();
     SidebarCore.ensureDom();
     SidebarEvents.bind();
-    SidebarTabs.initFromHash();
     SidebarTheme.init();
     SidebarCore.state.initialized = true;
     console.log('[Sidebar] initialized');
   },
   switchTab(name) {
-    SidebarTabs.switchTab(name);
+    const btn = document.querySelector(`.sidebar-nav-item[data-tab="${name}"]`);
+    if (btn) btn.click();
   },
   isOpen() {
     return !!SidebarCore.state.open;
@@ -32,5 +31,4 @@ export const sidebarManager = {
   }
 };
 
-// Optional global hook (falls index.js darauf zugreift)
 window.sidebarManager = window.sidebarManager || sidebarManager;

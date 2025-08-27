@@ -1,797 +1,133 @@
 <!doctype html>
+<!-- Restored monolithic GUI structure with modular sidebar -->
 <html lang="de">
 <head>
-
-
   <meta charset="utf-8" />
-
-  
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self'; font-src 'self' data:; connect-src 'self' ws: http: https:; script-src 'self'; object-src 'none'; base-uri 'self'">
-<!-- Optionale CSP als <meta>. (Hinweis: frame-ancestors wird per <meta> ignoriert, ist hier bewusst weggelassen.) -->
-  
-
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voice Assistant</title>
-
-  <!-- Wichtig: Diese Datei wird in Schritt 3 als Symlink/Datei bereitgestellt -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self'; font-src 'self' data:; connect-src 'self' ws: http: https:; script-src 'self'; object-src 'none'; base-uri 'self'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#6366f1" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="./styles.css" />
-
-
+  <title>KI-Sprachassistent</title>
 </head>
 <body class="app-preload">
-
-
-  <!-- Topbar / Shell (keine Inline-Events) -->
   <header class="top-nav">
-  <div class="app-logo">🤖 KI-Assistent</div>
-  <div class="nav-actions">
-    <button id="sidebarToggle" class="nav-button" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
-    <button id="themeToggle" class="nav-button" title="Theme wechseln" aria-label="Theme wechseln">🌙</button>
-    <button id="infoToggle" class="nav-button" title="Info" aria-label="Info">ℹ️</button>
-  </div>
-</header>
+    <div class="app-logo">🤖 KI-Assistent</div>
+    <div class="nav-actions">
+      <button id="sidebarToggle" class="nav-button" aria-label="Einstellungen">⚙️</button>
+      <button id="themeToggle" class="nav-button" aria-label="Theme wechseln">🌙</button>
+      <button id="infoToggle" class="nav-button" aria-label="Info">ℹ️</button>
+    </div>
+  </header>
 
-  <!-- App-Layout: Sidebar + Main -->
   <div id="app" class="app-layout">
     <aside id="sidebar" class="sidebar">
-
-<div class="sidebar-header">
-    <h2 class="sidebar-title">Einstellungen</h2>
-    <button id="sidebarClose" class="sidebar-close" aria-label="Schließen">×</button>
-  </div>
-
-  <nav class="sidebar-nav">
-    <button class="sidebar-nav-item active" data-tab="llm">LLM</button>
-    <button class="sidebar-nav-item" data-tab="audio">Audio</button>
-    <button class="sidebar-nav-item" data-tab="themes">Themes</button>
-  </nav>
-
-  <div class="sidebar-content">
-    <div class="sidebar-panel active" data-tab="llm">
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-title">LLM-Auswahl</h3>
-        <select class="sidebar-select" id="llmSelect">
-          <option value="lmstudio">LM Studio</option>
-          <option value="openai">OpenAI</option>
-        </select>
+      <div class="sidebar-header">
+        <h2 class="sidebar-title">Einstellungen</h2>
+        <button id="sidebarClose" class="sidebar-close" aria-label="Schließen">×</button>
       </div>
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-title">System-Prompt</h3>
-        <textarea class="sidebar-textarea" id="systemPrompt" rows="4" placeholder="System-Prompt…"></textarea>
-      </div>
-    </div>
-  </div>
-
-  <div class="container">
-    <div class="header">
-      <h1>🤖 KI-Sprachassistent</h1>
-      <p>Sprechen Sie mit Ihrem intelligenten Assistenten</p>
-      <button class="btn" id="toggleSidebarBtn">☰</button>
-    </div>
-
-    <div class="main-card">
-      <!-- Text Input -->
-      <div class="input-section">
-        <input
-          type="text"
-          id="textInput"
-          class="text-input"
-          placeholder="Fragen Sie mich etwas..."
-        />
-        <button class="btn" id="sendBtn">
-          <span class="icon-send">➤</span>
-        </button>
-        <button class="btn voice-button" id="voiceBtn">
-          <span id="voiceIcon">🎙️</span>
-        </button>
-      </div>
-
-    <div class="sidebar-panel" data-tab="audio">
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-title">TTS-Engine</h3>
-        <select class="sidebar-select" id="ttsSelect">
-          <option value="piper">Piper</option>
-          <option value="kokoro">Kokoro</option>
-        </select>
-      </div>
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-title">Mikrofon</h3>
-        <select class="sidebar-select" id="micSelect"></select>
-      </div>
-    </div>
-
-    <div class="sidebar-panel" data-tab="themes">
-      <div class="sidebar-section">
-        <h3 class="sidebar-section-title">Theme</h3>
-        <div class="theme-grid">
-          <div class="theme-card theme-dark" data-theme="dark"><div class="theme-name">Dark</div></div>
-          <div class="theme-card theme-light" data-theme="light"><div class="theme-name">Light</div></div>
-          <div class="theme-card theme-sci-fi" data-theme="sci-fi"><div class="theme-name">Sci-Fi</div></div>
-          <div class="theme-card theme-nature" data-theme="nature"><div class="theme-name">Nature</div></div>
-          <div class="theme-card theme-high-contrast" data-theme="high-contrast"><div class="theme-name">High Contrast</div></div>
+      <nav class="sidebar-nav">
+        <button class="sidebar-nav-item active" data-tab="settings" title="Audio/TTS">🎤</button>
+        <button class="sidebar-nav-item" data-tab="llm" title="LLM Settings">🧠</button>
+        <button class="sidebar-nav-item" data-tab="profiles" title="Voice Profiles">🎙️</button>
+        <button class="sidebar-nav-item" data-tab="stats" title="Statistics">📊</button>
+        <button class="sidebar-nav-item" data-tab="themes" title="Themes">🎨</button>
+        <button class="sidebar-nav-item" data-tab="plugins" title="Plugins">🔌</button>
+        <button class="sidebar-nav-item" data-tab="actions" title="Scheduled">⏰</button>
+        <button class="sidebar-nav-item" data-tab="advanced" title="Advanced">⚡</button>
+      </nav>
+      <div class="sidebar-content">
+        <div class="sidebar-panel active" data-tab="settings">
+          <div class="sidebar-section">
+            <h3 class="sidebar-section-title">Audio/TTS</h3>
+            <label class="sidebar-label" for="ttsSelect">TTS-Engine</label>
+            <select id="ttsSelect" class="sidebar-select">
+              <option value="piper">Piper</option>
+              <option value="kokoro">Kokoro</option>
+            </select>
+            <label class="sidebar-label" for="micSelect">Mikrofon</label>
+            <select id="micSelect" class="sidebar-select"></select>
+          </div>
+        </div>
+        <div class="sidebar-panel" data-tab="llm">
+          <div class="sidebar-section">
+            <h3 class="sidebar-section-title">LLM</h3>
+            <label class="sidebar-label" for="llmSelect">Provider</label>
+            <select id="llmSelect" class="sidebar-select">
+              <option value="lmstudio">LM Studio</option>
+              <option value="openai">OpenAI</option>
+            </select>
+            <label class="sidebar-label" for="systemPrompt">System-Prompt</label>
+            <textarea id="systemPrompt" class="sidebar-textarea" rows="4" placeholder="System-Prompt…"></textarea>
+          </div>
+        </div>
+        <div class="sidebar-panel" data-tab="profiles">
+          <div class="sidebar-section"><p class="sidebar-text">Keine Profile.</p></div>
+        </div>
+        <div class="sidebar-panel" data-tab="stats">
+          <div class="sidebar-section"><p class="sidebar-text">Keine Statistiken.</p></div>
+        </div>
+        <div class="sidebar-panel" data-tab="themes">
+          <div class="sidebar-section">
+            <h3 class="sidebar-section-title">Theme</h3>
+            <div class="theme-grid">
+              <div class="theme-card theme-dark" data-theme="dark"><div class="theme-name">Dark</div></div>
+              <div class="theme-card theme-light" data-theme="light"><div class="theme-name">Light</div></div>
+              <div class="theme-card theme-sci-fi" data-theme="sci-fi"><div class="theme-name">Sci-Fi</div></div>
+              <div class="theme-card theme-nature" data-theme="nature"><div class="theme-name">Nature</div></div>
+              <div class="theme-card theme-high-contrast" data-theme="high-contrast"><div class="theme-name">High Contrast</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-panel" data-tab="plugins">
+          <div class="sidebar-section"><p class="sidebar-text">Keine Plugins.</p></div>
+        </div>
+        <div class="sidebar-panel" data-tab="actions">
+          <div class="sidebar-section"><p class="sidebar-text">Keine Aktionen.</p></div>
+        </div>
+        <div class="sidebar-panel" data-tab="advanced">
+          <div class="sidebar-section"><p class="sidebar-text">Erweiterte Einstellungen.</p></div>
         </div>
       </div>
-    </div>
-  </div>
-
-</aside>
+    </aside>
 
     <main id="mainContent" class="main">
-<section class="avatar-section">
-  <div class="avatar idle style-default" id="avatar">
-  <!-- Voice Visualization Canvas -->
-  <canvas class="voice-visualizer" id="voiceCanvas" width="400" height="400"></canvas>
-
-  <div class="avatar-nebel">
-  <div class="nebel-layer"></div>
-  <div class="nebel-layer"></div>
-  <div class="nebel-layer"></div>
-  </div>
-  <div class="avatar-core" title="Klicken für Interaktion"></div>
-
-    function applySettings() {
-      applyAnimationSpeed();
-      applyNebelColors();
-      applyGlassOpacity();
-      applyReducedMotion();
-    }
-
-    function applyAnimationSpeed() {
-      const speed = settings.animationSpeed;
-      document.documentElement.style.setProperty('--animation-speed', `${4/speed}s`);
-      document.documentElement.style.setProperty('--avatar-speed', `${4/speed}s`);
-      document.documentElement.style.setProperty('--nebel-speed', `${3/speed}s`);
-    }
-
-    function applyNebelColors() {
-      const colors = settings.nebelColors;
-      document.documentElement.style.setProperty('--nebel-primary', colors.primary);
-      document.documentElement.style.setProperty('--nebel-secondary', colors.secondary);
-      document.documentElement.style.setProperty('--nebel-accent', colors.accent);
-    }
-
-    function applyGlassOpacity() {
-      document.documentElement.style.setProperty('--glass-bg', `rgba(255, 255, 255, ${settings.glassOpacity})`);
-    }
-
-    function applyReducedMotion() {
-      if (settings.reducedMotion) {
-        document.body.classList.add('reduced-motion');
-      } else {
-        document.body.classList.remove('reduced-motion');
-      }
-    }
-
-    // Notification System (mit Settings-Check)
-    function showNotification(type, title, message, duration = 5000) {
-      if (!settings.notifications) return;
-      
-      const container = document.getElementById('notificationContainer');
-      const notification = document.createElement('div');
-      
-      notification.className = `notification ${type}`;
-      notification.innerHTML = `
-        <div class="notification-icon">
-          ${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}
+      <section class="avatar-section">
+        <div id="avatar" class="avatar idle">
+          <canvas id="voiceCanvas" class="voice-visualizer" width="400" height="400"></canvas>
+          <div class="avatar-nebel">
+            <div class="nebel-layer"></div>
+            <div class="nebel-layer"></div>
+            <div class="nebel-layer"></div>
+          </div>
+          <div class="avatar-core" title="Interaktion"></div>
+          <div id="processingAnimation" class="processing-animation">
+            <div class="processing-circle scale-100"></div>
+            <div class="processing-circle scale-80"></div>
+            <div class="processing-circle scale-60"></div>
+          </div>
         </div>
-        <div class="notification-content">
-          <div class="notification-title">${title}</div>
-          <div class="notification-message">${message}</div>
+      </section>
+      <section class="response-section">
+        <div id="responseContent" class="response-content"></div>
+      </section>
+      <section class="input-section">
+        <div class="input-container">
+          <input id="textInput" class="text-input" type="text" placeholder="Fragen Sie mich etwas..." />
+          <button id="sendBtn" class="action-button">➤</button>
+          <button id="voiceBtn" class="action-button voice">🎙️</button>
+          <div id="recordingIndicator" class="recording-indicator">
+            <span class="recording-dot"></span>
+            <span id="recordingTime">0:00</span>
+          </div>
         </div>
-        <button class="notification-close" onclick="closeNotification(this)">×</button>
-      `;
-      
-      container.appendChild(notification);
-      
-      // Animate in
-      setTimeout(() => notification.classList.add('show'), 100);
-      
-      // Auto remove
-      setTimeout(() => {
-        closeNotification(notification.querySelector('.notification-close'));
-      }, duration);
-    }
-
-    // Aufnahme starten (mit neuen Settings)
-    function startRecording() {
-      const audioSettings = {
-        echoCancellation: settings.echoCancellation,
-        noiseSuppression: settings.noiseSuppression,
-        sampleRate: 44100
-      };
-
-      navigator.mediaDevices.getUserMedia({ audio: audioSettings })
-      .then(stream => {
-        mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'audio/webm;codecs=opus'
-        });
-        
-        const audioChunks = [];
-        
-        mediaRecorder.ondataavailable = event => {
-          audioChunks.push(event.data);
-        };
-        
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const reader = new FileReader();
-          
-          reader.onloadend = () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              showNebelAnimation();
-              displayResponse("Verarbeite Spracheingabe...");
-              
-              ws.send(JSON.stringify({ 
-                type: "audio", 
-                content: reader.result,
-                timestamp: Date.now()
-              }));
-            } else {
-              showNotification('error', 'Keine Verbindung', 'Spracheingabe konnte nicht übertragen werden');
-            }
-          };
-          
-          reader.readAsDataURL(audioBlob);
-          stream.getTracks().forEach(track => track.stop());
-        };
-        
-        mediaRecorder.start();
-        isRecording = true;
-        updateRecordingUI(true);
-        
-        recordingStartTime = Date.now();
-        recordingTimer = setInterval(updateRecordingTime, 100);
-        
-        showNotification('success', 'Aufnahme gestartet', 'Sprechen Sie jetzt...');
-        
-        // Auto-stop basierend auf Settings
-        setTimeout(() => {
-          if (isRecording) stopRecording();
-        }, settings.autoStopTime);
-        
-      })
-      .catch(err => {
-        showNotification('error', 'Mikrofonzugriff verweigert', 'Bitte erlauben Sie den Zugriff auf das Mikrofon');
-        if (settings.debugMode) {
-          console.error('Microphone Error:', err);
-        }
-      });
-    }
-
-    // WebSocket mit Settings
-    function initWebSocket() {
-      const url = window.BACKEND_URL || 'ws://127.0.0.1:48232/ws';
-      try {
-        ws = new WebSocket(url);
-        window.__WS = ws;
-
-        ws.onopen = () => {
-          const id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
-          ws.send(JSON.stringify({ op: 'hello', stream_id: id }));
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            handleWebSocketMessage(data);
-          } catch {}
-        };
-
-        ws.onclose = () => {
-          showNotification('error', 'Verbindung getrennt', 'Versuche automatisch zu reconnecten...');
-          if (settings.autoReconnect) {
-            setTimeout(initWebSocket, settings.connectionTimeout);
-          }
-        };
-
-        ws.onerror = () => {
-          showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Serververbindung');
-        };
-      } catch (e) {
-        showNotification('error', 'Server nicht erreichbar', 'Bitte überprüfen Sie die Konfiguration');
-      }
-    }
-    
-    function closeNotification(button) {
-      const notification = button.closest('.notification');
-      notification.classList.remove('show');
-      setTimeout(() => notification.remove(), 300);
-    }
-
-    // Settings Menu Functions
-    function toggleSettingsMenu() {
-      const menu = document.getElementById('settingsMenu');
-      menu.classList.toggle('active');
-    }
-
-    function openSettingsTab(tabName) {
-      document.getElementById('settingsMenu').classList.remove('active');
-      openSettingsModal();
-      
-      // Switch to specific tab after modal opens
-      setTimeout(() => {
-        switchTab(tabName);
-      }, 100);
-    }
-
-    function openLanguageSettings() {
-      document.getElementById('settingsMenu').classList.remove('active');
-      
-      // Create language selection popup
-      const languages = [
-        { code: 'de', name: '🇩🇪 Deutsch', selected: true },
-        { code: 'en', name: '🇬🇧 English', selected: false },
-        { code: 'fr', name: '🇫🇷 Français', selected: false },
-        { code: 'es', name: '🇪🇸 Español', selected: false },
-        { code: 'it', name: '🇮🇹 Italiano', selected: false }
-      ];
-      
-      const currentLang = '🇩🇪 Deutsch';
-      showNotification('success', 'Sprache', `Aktuelle Sprache: ${currentLang}`, 3000);
-    }
-
-    function showSystemInfo() {
-      document.getElementById('settingsMenu').classList.remove('active');
-
-      const info = {
-        version: '2.1.0',
-        platform: 'Raspberry Pi',
-        connection: ws && ws.readyState === WebSocket.OPEN ? 'Verbunden' : 'Getrennt',
-        browser: navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Anderer Browser',
-        features: 'WebRTC, WebSocket, MediaRecorder'
-      };
-
-      const infoHtml = `
-        <html>
-          <head>
-            <title>System Info</title>
-            <style>
-              body { font-family: sans-serif; background:#0f0f23; color:white; padding:1rem; }
-              h1 { margin-top:0; }
-            </style>
-          </head>
-          <body>
-            <h1>System-Info</h1>
-            <pre>Version: ${info.version}\nPlattform: ${info.platform}\nVerbindung: ${info.connection}\nBrowser: ${info.browser}\nFeatures: ${info.features}</pre>
-          
-  <section id="tts-plan-panel" style="position:fixed;right:12px;bottom:12px;background:#1118;padding:12px 14px;border-radius:12px;font:14px/1.2 system-ui,sans-serif;color:#e6e6e6;backdrop-filter:blur(4px);z-index:9999">
-    <div style="margin-bottom:6px;font-weight:600;">Staged TTS Plan</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <label>Intro</label>
-      <select id="intro-engine">
-        <option value="auto" selected>auto</option>
-        <option value="piper">piper</option>
-        <option value="zonos">zonos</option>
-        <option value="none">none</option>
-      </select>
-      <label>Main</label>
-      <select id="main-engine">
-        <option value="auto" selected>auto</option>
-        <option value="zonos">zonos</option>
-        <option value="piper">piper</option>
-        <option value="none">none</option>
-      </select>
-      <button id="apply-tts-plan" style="margin-left:8px;">Übernehmen</button>
-      <span id="tts-plan-status" style="margin-left:8px;opacity:.8"></span>
-    </div>
-  </section>
-  <script>
-  (function(){
-    const introSel = document.getElementById('intro-engine');
-    const mainSel  = document.getElementById('main-engine');
-    const applyBtn = document.getElementById('apply-tts-plan');
-    const statusEl = document.getElementById('tts-plan-status');
-    if (!introSel || !mainSel || !applyBtn) return;
-
-    const LSKEY = 'tts-plan';
-    try {
-      const prev = JSON.parse(localStorage.getItem(LSKEY) || '{}');
-      if (prev.intro) introSel.value = prev.intro;
-      if (prev.main)  mainSel.value  = prev.main;
-    } catch {}
-
-    applyBtn.addEventListener('click', async () => {
-      const intro = introSel.value, main = mainSel.value;
-      localStorage.setItem(LSKEY, JSON.stringify({ intro, main }));
-      statusEl.textContent = '…schreibe .env & starte neu';
-      try {
-        if (window.ttsPlan && window.ttsPlan.setPlan) {
-          const res = await window.ttsPlan.setPlan(intro, main);
-          statusEl.textContent = (res && res.ok) ? 'Neustart…' : ('Fehler: ' + (res && res.error || 'unbekannt'));
-        } else {
-          statusEl.textContent = 'IPC nicht verfügbar';
-          alert('IPC nicht verfügbar – bitte manuell .env setzen.');
-        }
-      } catch(e){ statusEl.textContent = 'Fehler: ' + e; }
-    });
-  })();
-  </script>
-
-
-  <section id="assistant-text-panel" style="position:fixed;left:12px;bottom:12px;background:#1118;padding:10px 12px;border-radius:12px;font:14px/1.35 system-ui,sans-serif;color:#e6e6e6;max-width:40vw;backdrop-filter:blur(4px);z-index:9998">
-    <div style="font-weight:600;margin-bottom:6px;">Antwort</div>
-    <div id="assistant-text" style="white-space:pre-wrap;word-wrap:break-word;opacity:.95;max-height:30vh;overflow:auto"></div>
-  </section>
-  <script>
-  (function(){
-    const el = document.getElementById('assistant-text');
-    const OrigWS = window.WebSocket;
-    window.WebSocket = function(url, proto){
-      const ws = new OrigWS(url, proto);
-      ws.addEventListener('message', (ev)=>{
-        try{
-          const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : null;
-          if (!data) return;
-          if (data.type === 'assistant_text' && data.text){ el.textContent = data.text; }
-          else if (data.type === 'final_text' && data.text){ el.textContent = data.text; }
-          else if (data.type === 'text_delta' && data.delta){ el.textContent += data.delta; }
-          else if (data.text && !data.type){ el.textContent = data.text; }
-        }catch{}
-      });
-      return ws;
-    };
-    Object.setPrototypeOf(window.WebSocket, OrigWS);
-    window.WebSocket.prototype = OrigWS.prototype;
-  })();
-  </script>
-
-</body>
-        </html>`;
-
-      const win = window.open('', 'systemInfo', 'width=400,height=300');
-      if (win) {
-        win.document.write(infoHtml);
-        win.document.close();
-      } else {
-        const infoText = `Version: ${info.version}\nPlattform: ${info.platform}\nVerbindung: ${info.connection}\nBrowser: ${info.browser}\nFeatures: ${info.features}`;
-        showNotification('success', '📊 System-Information', infoText, 8000);
-      }
-    }
-
-    function showAbout() {
-      document.getElementById('settingsMenu').classList.remove('active');
-      
-      const aboutText = `KI-Sprachassistent v2.1.0
-      
-Entwickelt für Raspberry Pi 4/400
-Unterstützt Sprach- und Texteingabe
-Modulares Design mit WebSocket-Verbindung
-
-© 2025 - Open Source Projekt`;
-      
-      showNotification('success', 'ℹ️ Über den Assistenten', aboutText, 10000);
-    }
-
-    // Close settings menu when clicking outside
-    document.addEventListener('click', function(event) {
-      const settingsBtn = document.getElementById('settingsBtn');
-      const settingsMenu = document.getElementById('settingsMenu');
-      
-      if (!settingsBtn.contains(event.target)) {
-        settingsMenu.classList.remove('active');
-      }
-    });
-
-    // Avatar Steuerung
-    function activateAvatar() {
-      document.getElementById('avatar').classList.add('active');
-    }
-
-    function deactivateAvatar() {
-      document.getElementById('avatar').classList.remove('active');
-    }
-
-    // Nebel Animation zeigen/verstecken
-    function showNebelAnimation() {
-      activateAvatar();
-      document.getElementById('nebelAnimation').classList.add('active');
-      document.getElementById('response').style.opacity = '0.3';
-    }
-
-    function hideNebelAnimation() {
-      deactivateAvatar();
-      document.getElementById('nebelAnimation').classList.remove('active');
-      document.getElementById('response').style.opacity = '1';
-    }
-
-    // Antwort anzeigen
-    function displayResponse(content) {
-      const responseElement = document.getElementById('response');
-      responseElement.innerHTML = '<div class="response-content"></div>';
-      const container = responseElement.firstElementChild;
-      matrixRain(container, content);
-
-      // Smooth scroll to response
-      responseElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function matrixRain(element, text) {
-      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let iteration = 0;
-      const interval = setInterval(() => {
-        element.textContent = text
-          .split('')
-          .map((char, index) => {
-            if (index < iteration) {
-              return char;
-            }
-            return letters[Math.floor(Math.random() * letters.length)];
-          })
-          .join('');
-        if (iteration >= text.length) {
-          clearInterval(interval);
-          element.textContent = text;
-        }
-        iteration += 1;
-      }, 50);
-    }
-
-    // Text senden
-    function sendText() {
-      const input = document.getElementById('textInput');
-      const msg = input.value.trim();
-      if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ type: 'text', content: msg }));
-      input.value = '';
-    }
-
-    // Aufnahme umschalten
-    function toggleRecording() {
-      showNotification('info', 'Mikrofon', 'Aufnahmefunktion folgt');
-    }
-
-    function toggleSidebar() {
-      const el = document.getElementById('sidebar');
-      if (el) { el.classList.toggle('active'); }
-    }
-
-    function handleWebSocketMessage(data) {
-      if (!data) return;
-      if (data.type === 'response' || data.response) {
-        const resp = document.getElementById('response');
-        if (resp) {
-          const div = document.createElement('div');
-          div.textContent = data.response || data.content || '';
-          resp.appendChild(div);
-        }
-      }
-      if (data.tts) {
-        try {
-          const audio = new Audio(`data:audio/wav;base64,${data.tts}`);
-          audio.play().catch(()=>{});
-        } catch (e) { console.error(e); }
-      }
-      if (data.error) {
-        showNotification('error', 'Fehler', data.error);
-      }
-      if (data.op === 'ready' || data.type === 'ready') {
-        showNotification('success', 'Bereit', 'Verbindung hergestellt');
-      }
-    }
-
-    // Aufnahme starten (mit neuen Settings)
-    function startRecording() {
-      const audioSettings = {
-        echoCancellation: settings.echoCancellation,
-        noiseSuppression: settings.noiseSuppression,
-        sampleRate: 44100
-      };
-
-      navigator.mediaDevices.getUserMedia({ audio: audioSettings })
-      .then(stream => {
-        mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'audio/webm;codecs=opus'
-        });
-        
-        const audioChunks = [];
-        
-        mediaRecorder.ondataavailable = event => {
-          audioChunks.push(event.data);
-        };
-        
-        mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const reader = new FileReader();
-          
-          reader.onloadend = () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              showNebelAnimation();
-              displayResponse("Verarbeite Spracheingabe...");
-              
-              ws.send(JSON.stringify({ 
-                type: "audio", 
-                content: reader.result,
-                timestamp: Date.now()
-              }));
-            } else {
-              showNotification('error', 'Keine Verbindung', 'Spracheingabe konnte nicht übertragen werden');
-            }
-          };
-          
-          reader.readAsDataURL(audioBlob);
-          stream.getTracks().forEach(track => track.stop());
-        };
-        
-        mediaRecorder.start();
-        isRecording = true;
-        updateRecordingUI(true);
-        
-        recordingStartTime = Date.now();
-        recordingTimer = setInterval(updateRecordingTime, 100);
-        
-        showNotification('success', 'Aufnahme gestartet', 'Sprechen Sie jetzt...');
-        
-        // Auto-stop basierend auf Settings
-        setTimeout(() => {
-          if (isRecording) stopRecording();
-        }, settings.autoStopTime);
-        
-      })
-      .catch(err => {
-        showNotification('error', 'Mikrofonzugriff verweigert', 'Bitte erlauben Sie den Zugriff auf das Mikrofon');
-        if (settings.debugMode) {
-          console.error('Microphone Error:', err);
-        }
-      });
-    }
-
-    // Aufnahme stoppen
-    function stopRecording() {
-      if (mediaRecorder && isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        updateRecordingUI(false);
-        clearInterval(recordingTimer);
-        showNotification('success', 'Aufnahme beendet', 'Wird verarbeitet...');
-      }
-    }
-
-    // Recording UI aktualisieren
-    function updateRecordingUI(recording) {
-      const voiceBtn = document.getElementById('voiceBtn');
-      const voiceIcon = document.getElementById('voiceIcon');
-      const indicator = document.getElementById('recordingIndicator');
-      
-      if (recording) {
-        voiceBtn.classList.add('recording');
-        voiceIcon.textContent = '⏹️';
-        indicator.classList.add('active');
-      } else {
-        voiceBtn.classList.remove('recording');
-        voiceIcon.textContent = '🎙️';
-        indicator.classList.remove('active');
-      }
-    }
-
-    // Aufnahmezeit aktualisieren
-    function updateRecordingTime() {
-      if (recordingStartTime) {
-        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-        document.getElementById('recordingTime').textContent = `${elapsed}s`;
-      }
-    }
-
-    // App initialisieren
-    document.addEventListener('DOMContentLoaded', function() {
-      // Settings anwenden
-      applySettings();
-
-      // WebSocket initialisieren
-      initWebSocket();
-
-      const sendBtn = document.getElementById('sendBtn');
-      const textInput = document.getElementById('textInput');
-      const voiceBtn = document.getElementById('voiceBtn');
-      const sidebarBtn = document.getElementById('toggleSidebarBtn');
-      if (sendBtn) sendBtn.addEventListener('click', sendText);
-      if (textInput) {
-        textInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendText(); });
-        textInput.focus();
-      }
-      if (voiceBtn) voiceBtn.addEventListener('click', toggleRecording);
-      if (sidebarBtn) sidebarBtn.addEventListener('click', toggleSidebar);
-    });
-
-    // Event Listeners
-    document.addEventListener('keydown', function(event) {
-      // Strg/Cmd + Enter für Spracheingabe
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-        event.preventDefault();
-        toggleRecording();
-      }
-      
-      // Strg/Cmd + , für Settings
-      if ((event.ctrlKey || event.metaKey) && event.key === ',') {
-        event.preventDefault();
-        openSettingsModal();
-      }
-      
-      // Shortcuts für Dropdown-Menü (wenn geöffnet)
-      const settingsMenu = document.getElementById('settingsMenu');
-      if (settingsMenu.classList.contains('active')) {
-        switch(event.key.toLowerCase()) {
-          case 'a':
-            event.preventDefault();
-            openSettingsTab('audio');
-            break;
-          case 'v':
-            event.preventDefault();
-            openSettingsTab('connection');
-            break;
-          case 's':
-            event.preventDefault();
-            openLanguageSettings();
-            break;
-        }
-      }
-      
-      // ESC für Aufnahme stoppen oder Menüs schließen
-      if (event.key === 'Escape') {
-        if (isRecording) {
-          stopRecording();
-        } else {
-          // Schließe alle offenen Menüs/Modals
-          settingsMenu.classList.remove('active');
-          closeSettingsModal();
-        }
-      }
-    });
-
-  <!-- Processing Animation -->
-  <div class="processing-animation" id="processingAnimation">
-  <div  class="processing-circle scale-100" ></div>
-  <div  class="processing-circle scale-80" ></div>
-  <div  class="processing-circle scale-60" ></div>
+      </section>
+    </main>
   </div>
 
-  <!-- Response Overlay -->
-  <div class="response-overlay">
-  <div class="response-content" id="responseContent">
-  <div class="response-empty">Ihre Antwort erscheint hier...</div>
-  </div>
-  </div>
-  </div>
-  </section>
-
-  <div class="input-container">
-  <input
-  type="text"
-  id="textInput"
-  class="text-input"
-  placeholder="Fragen Sie mich etwas..."
-  autocomplete="off"
-  autocorrect="off"
-  autocapitalize="sentences"
-  />
-  <button class="action-button" id="sendBtn" title="Senden" type="button">➤</button>
-  <button class="action-button voice" id="voiceBtn" title="Spracheingabe" type="button">
-  <span id="voiceIcon">🎤</span>
-  </button>
-  <div class="recording-indicator" id="recordingIndicator">
-  <div class="recording-dot"></div>
-  <span>Aufnahme läuft... <span id="recordingTime">0s</span></span>
-  </div>
-  </div>
-</main>
-  </div>
-
-  <!-- Notifications (CSP-sicher, keine Inline-Events) -->
   <div id="notificationContainer" class="notification-container"></div>
 
-  <!-- Module Scripts (keine Inline-Handler) -->
-  <script type="module" src="./core/dom-helpers.js"></script>
-  <script type="module" src="./core/backend.js"></script>
-  <script type="module" src="./core/audio.js"></script>
-  <script type="module" src="./events.js"></script>
-
-  <script type="module" src="./ui/sidebar-core.js"></script>
-  <script type="module" src="./ui/sidebar-tabs.js"></script>
-  <script type="module" src="./ui/sidebar-events.js"></script>
-  <script type="module" src="./ui/sidebar-theme.js"></script>
-  <script type="module" src="./ui/sidebar.js"></script>
-
-  <script type="module" src="./hotkeys.js"></script>
   <script type="module" src="./main.js"></script>
-  <script type="module" src="./index.js"></script>
 </body>
 </html>
