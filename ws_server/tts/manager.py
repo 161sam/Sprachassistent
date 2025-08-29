@@ -264,77 +264,25 @@ class TTSManager:
     # --- Robustes Piper-Model-Resolving -------------------------------------
 
     def _build_piper_config(self) -> TTSConfig | None:
-        """Erzeuge Piper-Konfiguration nur, wenn ein Modell für die aktuelle Stimme existiert."""
-        voice = canonicalize_voice(os.getenv("TTS_VOICE", self.config.voice))
-        alias = VOICE_ALIASES.get(voice, {}).get("piper")
-        model = alias.model_path if alias else None
-        if not model:
-            logger.info("Piper deaktiviert: Kein Piper-Modell für voice=%s gefunden", voice)
-            return None
+        """Erzeuge Piper-Konfiguration. Modell wird in der Engine robust aufgelöst.
 
-        model_dir = os.getenv("TTS_MODEL_DIR", self.config.model_dir) or "models/piper"
-        mp = Path(model)
-        base = Path(model_dir)
-
-        # Kandidatenliste zusammenstellen
-        candidates: List[Path] = []
-        # 1) direkt unter model_dir
-        candidates.append(base / mp if not mp.is_absolute() else mp)
-        # 2) models/piper Root
-        candidates.append(Path("models/piper") / mp.name)
-        # 3) Home-Pfad
-        candidates.append(Path.home() / ".local/share/piper" / mp.name)
-        # 4) Fuzzy-Stem in models/piper
-        stem = mp.stem.lower()
-        try:
-            for c in Path("models/piper").glob("*.onnx"):
-                cs = c.stem.lower()
-                if stem in cs or cs in stem:
-                    candidates.append(c)
-        except Exception:
-            pass
-        # 5) Rekursiv unter model_dir
-        try:
-            for c in base.glob("**/*.onnx"):
-                cs = c.stem.lower()
-                if stem in cs or cs in stem:
-                    candidates.append(c)
-        except Exception:
-            pass
-
-        # Duplikate entfernen
-        uniq: List[Path] = []
-        seen = set()
-        for c in candidates:
-            try:
-                k = c.resolve()
-            except Exception:
-                k = c
-            if k not in seen:
-                seen.add(k)
-                uniq.append(c)
-
-        found = next((c for c in uniq if c.exists()), None)
-        if not found:
-            tried_list = [str(c) for c in uniq]
-            logger.info(
-                "Piper deaktiviert: Kein Piper-Modell für voice=%s gefunden (alias=%s). Tried: %s",
-                voice, model, tried_list,
-            )
-            return None
-
-        mp = found.resolve()
-        logger.info("Piper-Modell gewählt: %s (exists=%s)", mp, mp.exists())
+        - Modelle‑Verzeichnis: PIPER_MODELS_DIR oder "models/piper"
+        - Default‑Stimme: PIPER_DEFAULT_VOICE oder "de-thorsten-low"
+        - Kein starres "default.onnx" mehr.
+        """
+        models_dir = Path(os.getenv("PIPER_MODELS_DIR") or "models/piper")
+        default_voice = canonicalize_voice(os.getenv("PIPER_DEFAULT_VOICE", "de-thorsten-low"))
+        voice = canonicalize_voice(os.getenv("TTS_VOICE", self.config.voice) or default_voice)
 
         return TTSConfig(
             engine_type="piper",
-            model_path=str(mp),
+            model_path="",  # wird von der Engine via resolve_piper_model bestimmt
             voice=voice,
             speed=self.config.speed or 1.0,
             volume=self.config.volume or 1.0,
-            language=(self.config.language or os.getenv("TTS_LANGUAGE") or "de-DE"),
-            sample_rate=22050,
-            model_dir=self.config.model_dir,
+            language=(self.config.language or os.getenv("TTS_LANGUAGE") or "de"),
+            sample_rate=0,
+            model_dir=str(models_dir),
         )
 
     def _build_zonos_config(self) -> TTSConfig:

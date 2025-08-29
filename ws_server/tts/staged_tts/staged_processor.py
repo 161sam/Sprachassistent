@@ -1,56 +1,131 @@
-# (from upload)
-# -*- coding: utf-8 -*-
+"""Deprecated wrapper for staged TTS.
+
+Diese Datei ist veraltet. Die Staged‑TTS‑Logik wurde in
+``ws_server.tts.staged_tts.adapter`` konsolidiert. Wir behalten minimale
+Kompatibilität für bestehende Imports und Tests bei und delegieren alle
+Aufrufe. Ein Deprecation‑Hinweis wird genau einmal pro Prozess ausgegeben.
+"""
+
 from __future__ import annotations
-import os, logging
+
+import base64
+import io
+import logging
+import os
+import wave
+import warnings
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import List, Optional
+
 log = logging.getLogger(__name__)
+
+_DEPRECATION_EMITTED = False
+
+
+def _deprecated_notice() -> None:
+    global _DEPRECATION_EMITTED
+    if not _DEPRECATION_EMITTED:
+        warnings.warn(
+            "StagedTTSProcessor ist veraltet – benutze adapter.synthesize_staged",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        log.warning("[DEPRECATED] StagedTTSProcessor – delegiere an adapter.synthesize_staged")
+        _DEPRECATION_EMITTED = True
+
+
+@dataclass
+class TTSChunk:
+    sequence_id: str
+    index: int
+    total: int
+    engine: str
+    text: str
+    wav_bytes: bytes
+    success: bool
+    sample_rate: int
+
+
+def create_chunk_message(chunk: TTSChunk) -> dict:
+    """Erzeuge ein JSON‑Chunk für den Frontend‑Player (f32 + Metadaten).
+
+    Erwartet WAV‑Bytes (mono, 16‑bit). Konvertiert Frames nach float32
+    und liefert base64‑String. Crossfade‑Dauer wird aus ENV gelesen.
+    """
+    try:
+        with wave.open(io.BytesIO(chunk.wav_bytes), "rb") as wf:
+            n_channels = wf.getnchannels()
+            sampwidth = wf.getsampwidth()
+            fr = wf.getframerate()
+            frames = wf.readframes(wf.getnframes())
+        if n_channels != 1 or sampwidth != 2:
+            # Einfacher Downmix‑/Konvertierungs‑Guard: nur 16‑bit mono erwartet
+            log.warning("staged_chunk: WAV nicht mono/16‑bit – sende Rohdaten")
+            f32 = frames  # Fallback
+        else:
+            import numpy as np
+
+            i16 = np.frombuffer(frames, dtype=np.int16).astype(np.float32)
+            f32 = (i16 / 32768.0).astype(np.float32).tobytes()
+        b64 = base64.b64encode(f32).decode("ascii")
+    except Exception:
+        # Fallback: sende Originalbytes (selten, nur bei kaputten WAVs)
+        b64 = base64.b64encode(chunk.wav_bytes).decode("ascii")
+        fr = chunk.sample_rate or 22050
+
+    try:
+        xfade = int(os.getenv("STAGED_TTS_CROSSFADE_MS", "100") or 100)
+    except Exception:
+        xfade = 100
+    return {
+        "op": "staged_tts_chunk",
+        "engine": chunk.engine,
+        "index": int(chunk.index),
+        "total": int(chunk.total),
+        "text": chunk.text,
+        "sampleRate": int(fr or chunk.sample_rate or 22050),
+        "format": "f32",
+        "pcm": b64,
+        "crossfade_ms": xfade,
+    }
+
+
 @dataclass
 class StagedPlan:
     intro_engine: Optional[str]
     main_engine: Optional[str]
     fast_start: bool = True
+
+
 class StagedTTSProcessor:
+    """Veraltete Hülle – delegiert an adapter.synthesize_staged."""
+
     def __init__(self, manager):
         self.mgr = manager
-    def _engine_available_for_voice(self, engine: str, voice: str) -> bool:
-        # Relaxed check: allow ignoring voice caps (default: on)
-        ignore_caps = os.getenv("STAGED_TTS_IGNORE_VOICE_CAPS", "1").lower() in ("1","true","yes","on")
-        try:
-            if engine not in self.mgr.engines:
-                return False
-            if ignore_caps:
-                return True
-            return getattr(self.mgr, "engine_allowed_for_voice", lambda e,v: True)(engine, voice)
-        except Exception:
-            return engine in getattr(self.mgr, "engines", {})
 
-    def _resolve_plan(self, voice: str) -> StagedPlan:
-        intro = (os.getenv("STAGED_TTS_INTRO_ENGINE","piper") or "").strip() or None
-        main  = (os.getenv("STAGED_TTS_MAIN_ENGINE","zonos") or "").strip() or None
-        if intro and not self._engine_available_for_voice(intro, voice):
-            log.info("Intro via %s nicht verfügbar → Intro entfällt", intro); intro = None
-        if main and not self._engine_available_for_voice(main, voice):
-            log.warning("Main engine '%s' not available for voice '%s'", main, voice); main = None
-        return StagedPlan(intro, main, True)
     async def process_staged_tts(self, text: str, voice: str) -> List[object]:
-        plan = self._resolve_plan(voice); chunks=[]
-        if not plan.intro_engine and not plan.main_engine:
-            log.warning("Staged TTS erzeugte keine Chunks (keine Engine verfügbar)"); return chunks
-        def _wrap(idx, total, engine, res):
-            return type("Chunk", (), dict(index=idx, total=total, engine=engine,
-                success=getattr(res,"success",False), audio_data=getattr(res,"audio_data",None),
-                error_message=getattr(res,"error_message",None), ))()
-        max_intro = int(os.getenv("STAGED_TTS_MAX_INTRO_LENGTH","120"))
-        total = (1 if plan.main_engine else 0) + (1 if plan.intro_engine else 0)
-        if plan.intro_engine:
-            e = self.mgr.engines[plan.intro_engine]
-            intro_text = text[:max_intro]
-            res = await e.synthesize(intro_text, voice)
-            chunks.append(_wrap(0, total, plan.intro_engine, res))
-        if plan.main_engine:
-            e = self.mgr.engines[plan.main_engine]
-            res = await e.synthesize(text, voice)
-            idx = 1 if plan.intro_engine else 0
-            chunks.append(_wrap(idx, total, plan.main_engine, res))
-        return chunks
+        _deprecated_notice()
+        try:
+            from .adapter import synthesize_staged
+        except Exception as e:  # pragma: no cover - defensive
+            log.error("Adapter Importfehler: %s", e)
+            return []
+
+        pcm, sr = await synthesize_staged(self.mgr, text=text, voice=voice)
+        if not pcm:
+            return []
+        # Verpacke als ein einzelnes Chunk
+        chunk = TTSChunk(
+            sequence_id="staged",
+            index=0,
+            total=1,
+            engine="staged",
+            text=text,
+            wav_bytes=pcm,
+            success=True,
+            sample_rate=sr or 22050,
+        )
+        return [chunk]
+
+
+__all__ = ["StagedTTSProcessor", "StagedPlan", "TTSChunk", "create_chunk_message"]

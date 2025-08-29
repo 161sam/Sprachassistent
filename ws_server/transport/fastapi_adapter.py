@@ -354,6 +354,17 @@ async def run_faster_whisper(
 ENABLE_TTS = os.getenv("ENABLE_TTS", "1") == "1"  # default on
 _tts_mgr = None
 
+#
+# Laufzeitstatus für TTS‑Optionen (rein synchron, WS‑lokal)
+# Wird von set_tts_options gepflegt, um Async‑Fehler (ungebundenes asyncio) zu vermeiden.
+#
+TTS_OPTIONS_STATE: Dict[str, object] = {
+    "engine": os.getenv("TTS_ENGINE", "piper"),
+    "speed": float(os.getenv("TTS_SPEED", "1.0") or 1.0),
+    "volume": float(os.getenv("TTS_VOLUME", "1.0") or 1.0),
+    "voice": os.getenv("TTS_VOICE", "de-thorsten-low"),
+}
+
 
 # -----------------------------------------------------------------------------
 # Staged‑TTS Runtime Config (overridable by GUI control)
@@ -825,20 +836,33 @@ async def _handle_gui_control(ws: WebSocket, payload: dict) -> bool:
                     except Exception:
                         pass
         if typ == "set_tts_options":
+            # Rein synchron: Optionen im lokalen State ablegen und OK senden
             try:
-                mgr = await _ensure_tts_manager()
-                if mgr and getattr(mgr, "config", None) is not None:
-                    spd = payload.get("speed")
-                    vol = payload.get("volume")
-                    if spd is not None:
-                        mgr.config.speed = float(spd)
-                    if vol is not None:
-                        mgr.config.volume = float(vol)
+                eng = payload.get("engine")
+                spd = payload.get("speed")
+                vol = payload.get("volume")
+                vce = payload.get("voice")
+                if eng is not None:
+                    TTS_OPTIONS_STATE["engine"] = eng
+                if spd is not None:
+                    try: TTS_OPTIONS_STATE["speed"] = float(spd)
+                    except Exception: pass
+                if vol is not None:
+                    try: TTS_OPTIONS_STATE["volume"] = float(vol)
+                    except Exception: pass
+                if vce is not None:
+                    TTS_OPTIONS_STATE["voice"] = vce
+                _logging.getLogger("ws_server.transport").info(
+                    "TTS-Optionen aktualisiert: engine=%s speed=%s volume=%s voice=%s",
+                    TTS_OPTIONS_STATE.get("engine"),
+                    TTS_OPTIONS_STATE.get("speed"),
+                    TTS_OPTIONS_STATE.get("volume"),
+                    TTS_OPTIONS_STATE.get("voice"),
+                )
                 await ws.send_text(json.dumps({"type": "ok", "action": "set_tts_options"}))
-                return True
             except Exception as e:
                 await ws.send_text(json.dumps({"type": "error", "message": f"set_tts_options failed: {e}"}))
-                return True
+            return True
         if typ == "set_tts_language":
             # accepts BCP-47 like 'de-DE'; engines handle mapping internally
             lang = (payload.get("value") or payload.get("language") or payload.get("lang") or "").strip()

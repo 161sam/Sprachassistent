@@ -11,6 +11,9 @@
 
     await import('./ui/sidebar.js').then(()=>ok('sidebar','./ui/sidebar.js')).catch(e=>fail('sidebar','./ui/sidebar.js',e));
     await import('./ui/hotkeys.js').then(()=>ok('hotkeys','./ui/hotkeys.js')).catch(e=>fail('hotkeys','./ui/hotkeys.js',e));
+    await import('./core/settings.js').then(()=>ok('settings','./core/settings.js')).catch(e=>fail('settings','./core/settings.js',e));
+    // Wire Electron events to UI after core + ui modules are ready
+    await import('./core/electron-bridge.js').then(()=>ok('electron-bridge','./core/electron-bridge.js')).catch(e=>fail('electron-bridge','./core/electron-bridge.js',e));
 
     await import('./index.js').then(()=>ok('app-shell','./index.js')).catch(e=>fail('app-shell','./index.js',e));
 

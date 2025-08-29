@@ -3,14 +3,16 @@ import { DOMHelpers } from '../core/dom-helpers.js';
 import { SidebarTabs } from './sidebar-tabs.js';
 import * as Theme from './sidebar-theme.js';
 import { NotificationManager } from '../events.js';
+import { sidebarManager } from './sidebar.js';
 
 export const SidebarEvents = {
   bind() {
-    const sidebar = DOMHelpers.get('#sidebar');
     const toggle = DOMHelpers.get('#sidebarToggle');
     const close = DOMHelpers.get('#sidebarClose');
-    if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-    if (close && sidebar) close.addEventListener('click', () => sidebar.classList.remove('open'));
+    if (toggle) toggle.addEventListener('click', () => {
+      if (sidebarManager.isOpen()) sidebarManager.close(); else sidebarManager.open();
+    });
+    if (close) close.addEventListener('click', () => sidebarManager.close());
 
     const themeToggle = DOMHelpers.get('#themeToggle');
     if (themeToggle) {
@@ -29,7 +31,11 @@ export const SidebarEvents = {
     const infoToggle = DOMHelpers.get('#infoToggle');
     if (infoToggle) {
       infoToggle.addEventListener('click', () => {
-        NotificationManager.show('KI-Assistent – Build OK ✅', 'info', 2500);
+        if (window.App && typeof window.App.showInfo === 'function') {
+          window.App.showInfo();
+        } else {
+          NotificationManager.show('KI-Assistent – Build OK ✅', 'info', 2500);
+        }
       });
     }
 
@@ -37,7 +43,9 @@ export const SidebarEvents = {
     if (content) {
       content.addEventListener('change', (ev) => {
         const target = ev.target;
-        if (target.id) {
+        // Avoid duplicate emits for range inputs; those are handled on 'input'
+        if (target?.tagName === 'INPUT' && target.type === 'range') return;
+        if (target && target.id) {
           const evt = new CustomEvent('sidebar:change', { detail: { id: target.id, value: target.value } });
           document.dispatchEvent(evt);
         }

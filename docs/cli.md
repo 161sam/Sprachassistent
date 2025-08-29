@@ -1,6 +1,30 @@
-# 🛠 Sprachassistent Setup CLI
+# 🛠 Sprachassistent CLI
 
-Dieses CLI-Skript (`cli.sh`) ermöglicht dir die einfache und interaktive Installation, Konfiguration und Wartung aller Bestandteile des Sprachassistenten-Projekts.
+Das Projekt stellt eine einzige End‑User‑CLI bereit: `va`.
+
+Beispiele:
+
+```
+# Backend starten (FastAPI/Uvicorn)
+va --host 127.0.0.1 --port 48232
+
+# Desktop (Electron) + Backend starten
+va --desktop --host 127.0.0.1 --port 48232
+
+# Modelle prüfen
+va --validate-models
+
+# Terminal‑Progress für Staged‑TTS erzwingen (0/1)
+va --tts-progress 1
+
+# Zonos lokal laden / Voice
+va --zonos-local-dir models/zonos/local --zonos-model-id Zyphra/Zonos-v0.1-transformer --zonos-speaker thorsten
+
+# Sprache (TTS)
+va --language de-DE
+```
+
+Hinweis: `python -m ws_server.cli` ist veraltet und ruft intern `va` auf. Bitte künftig `va` verwenden.
 
 ## 📦 Voraussetzungen
 
@@ -72,8 +96,7 @@ Beendet die CLI.
 ## 🔍 Beispielaufruf
 
 ```bash
-chmod +x setup_cli.sh
-./cli.sh
+va --help
 ```
 
 ## 📁 Typische Projektstruktur
@@ -92,6 +115,19 @@ chmod +x setup_cli.sh
 * Der WS-Server verwendet Faster-Whisper und Piper lokal.
 * Flowise kann sowohl lokal (npm) als auch via Docker genutzt werden.
 * Headscale wird für sichere Verbindung empfohlen (`scripts/setup-headscale.sh`).
+
+### Audioausgabe & Qualität
+
+- TTS-Geschwindigkeit wird ausschließlich im Backend angewandt (per `set_tts_options`).
+  Der Player verändert `playbackRate` nicht und bewahrt die Tonhöhe (Pitch).
+- Zentrale Nachbearbeitung im Manager:
+  - Resampling auf `TTS_TARGET_SR` (Standard `24000`)
+  - Loudness-Normalisierung (`TTS_LOUDNESS_NORMALIZE=1`) auf ≈ −16 dBFS
+  - Soft-Limiter (`TTS_LIMITER_CEILING_DBFS=-1.0`)
+- Staged TTS: Equal-Power Crossfade, `STAGED_TTS_CROSSFADE_MS=100` (per GUI/ENV änderbar).
+- Piper: `PIPER_NOISE_SCALE=0.45`, `PIPER_NOISE_W=0.5` (ruhiger Klang)
+- Zonos: `ZONOS_SPEAKING_RATE=14`, `ZONOS_PITCH_STD=0.2`
+- Optionaler Binär-Audiopfad (`WS_BINARY_AUDIO=true`) bleibt standardmäßig deaktiviert; JSON‑WAV‑Chunks sind weiterhin der Default.
 
 ## 📞 Support
 

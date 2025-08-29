@@ -48,10 +48,22 @@ ls -l models/piper
 ```
 
 Symlinks like `de-thorsten-low.onnx -> de_DE-thorsten-low.onnx` must point to
-the real file next to a `*.onnx.json` metadata file.  The manager resolves
-aliases via `voice_aliases.py`; ensure the environment variable
-`TTS_MODEL_DIR` points to the directory containing the `piper` folder or leave
-it unset to use the repository default.
+the real file next to a `*.onnx.json` metadata file.
+
+Neue, robuste Auflösung (kein „default.onnx“ mehr):
+- Standard‑Suchpfad: `PIPER_MODELS_DIR` (Default: `models/piper`)
+- Priorität ohne gesetzte Stimme: `de-thorsten-low` > `de-thorsten-high` > erstes `de-*.onnx` > erstes `*.onnx` im Verzeichnis
+- Bei fehlendem Sidecar: Thorsten‑Modelle → 22050 Hz
+
+Empfohlene ENV‑Defaults (env.example):
+```
+PIPER_MODELS_DIR=models/piper
+PIPER_DEFAULT_VOICE=de-thorsten-low
+```
+
+Fehlermeldung „Kein Piper‑Modell gefunden …“ bedeutet, dass im Pfad kein `.onnx`
+liegt oder der Alias nicht existiert. Lege Modelle in `models/piper/` ab oder
+setze `PIPER_MODELS_DIR` entsprechend.
 
 ## Piper Modellpfad doppelt geprefixt
 
@@ -77,10 +89,33 @@ Lokales Modell (optional):
 - Pfad via `ZONOS_LOCAL_DIR` setzen (Ordner mit `config.json` und `model.safetensors`), sonst nutzt die Engine `ZONOS_MODEL_ID` (z. B. `Zyphra/Zonos-v0.1-transformer`).
 
 
-- Zonos: "Please pick a supported language"
-  - Setze `ZONOS_LANGUAGE` oder `TTS_LANGUAGE` auf einen unterstützten Code.
-  - Unterstützt: de, en, fr, ja, zh. Aliasse wie de-de, en-us werden automatisch normalisiert.
+### Zonos Sprache
+- Aliasse werden normalisiert (alle Fälle → Kleinbuchstaben):
+  - de-de, de_DE, de-DE, de-DEU, deu, ger → de
+  - en-us, eng → en
+  - fr-fr → fr
+  - zh-cn → zh; „chinese“ → zh; „japanese“ → ja
+- Fallback, wenn nichts gesetzt: `ZONOS_LANG_DEFAULT` (Default: `de`)
+
+Fehlermeldung bei Nicht‑Unterstützung ist jetzt ausführlich und nennt gültige Optionen.
+
+Empfohlener Default (env.example):
+```
+ZONOS_LANG_DEFAULT=de
+```
 
 - Piper Default Voice
   - Setze `TTS_DEFAULT_VOICE` (z. B. `de-thorsten-low`) oder konfiguriere Voice Aliases in `docs/TTS-VOICE-ALIASES.md`.
   - Der Intro-Teil nutzt niemals `default`, sondern eine auflösbare Alias-Stimme.
+
+## WebSocket set_tts_options Fehler
+Ursache: In einigen Umgebungen führte ein ungebundenes `asyncio` im Handler zu
+`UnboundLocalError: cannot access local variable 'asyncio'`.
+
+Fix: Der Handler speichert Optionen rein synchron in einem lokalen State und
+antwortet mit:
+```
+{"type":"ok","action":"set_tts_options"}
+```
+Die Werte werden protokolliert („TTS‑Optionen aktualisiert …“). Engine‑seitige
+Effekte bleiben davon entkoppelt.

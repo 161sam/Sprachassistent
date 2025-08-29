@@ -12,6 +12,7 @@
 import { DOMHelpers } from './dom-helpers.js';
 import Backend from './backend.js';
 import AudioManager from './audio.js';
+import Settings from './settings.js';
 
 /**
  * Event State Management
@@ -21,6 +22,7 @@ const EventState = {
   isRecording: false,
   recordingTimer: null,
   recordingStartTime: null,
+  autoStopTimer: null,
   
   // UI State
   sidebarOpen: false,
@@ -34,7 +36,8 @@ const EventState = {
     voiceVisualization: true,
     notifications: true,
     vadEnabled: true,
-    autoStop: true
+    autoStop: true,
+    maxRecordMs: 30000
   }
 };
 
@@ -212,6 +215,10 @@ export const RecordingEvents = {
       // Audio-Aufnahme starten
       await AudioManager.startRecording({
         enableVisualization: EventState.settings.voiceVisualization,
+        echoCancellation: Settings.get('echoCancellation') !== false,
+        noiseSuppression: Settings.get('noiseSuppression') !== false,
+        autoGainControl: true,
+        deviceId: Settings.get('micDeviceId') || undefined,
         onAudioReady: function(audioDataUrl) {
           RecordingEvents.handleAudioReady(audioDataUrl);
         }
@@ -222,6 +229,14 @@ export const RecordingEvents = {
       
       // Recording Timer starten
       RecordingEvents.startRecordingTimer();
+
+      // Optionales Auto-Stop nach maxRecordMs
+      if (EventState.settings.autoStop) {
+        if (EventState.autoStopTimer) { clearTimeout(EventState.autoStopTimer); EventState.autoStopTimer = null; }
+        EventState.autoStopTimer = setTimeout(function() {
+          if (EventState.isRecording) RecordingEvents.stopRecording();
+        }, Math.max(5000, EventState.settings.maxRecordMs || 30000));
+      }
 
       NotificationManager.show('success', 'Aufnahme gestartet', 'Sprechen Sie jetzt...');
 
@@ -247,6 +262,7 @@ export const RecordingEvents = {
       EventState.isRecording = false;
       RecordingEvents.updateRecordingUI(false);
       RecordingEvents.stopRecordingTimer();
+      if (EventState.autoStopTimer) { clearTimeout(EventState.autoStopTimer); EventState.autoStopTimer = null; }
 
       AvatarManager.setEmotion('thinking');
       AvatarManager.showProcessing(true);
@@ -270,6 +286,10 @@ export const RecordingEvents = {
 
     if (voiceBtn) {
       DOMHelpers.toggleClass(voiceBtn, 'recording', recording);
+      // Fallback: Icon direkt im Button aktualisieren, wenn kein #voiceIcon vorhanden ist
+      if (!voiceIcon) {
+        try { voiceBtn.textContent = recording ? '⏹️' : '🎙️'; } catch (_) {}
+      }
     }
     
     if (voiceIcon) {
@@ -560,6 +580,63 @@ Theme: ${EventState.currentTheme}
         }
         break;
 
+      case 'tts_chunk':
+        try {
+          let prog = document.getElementById('ttsProgress');
+          if (!prog) {
+            prog = document.createElement('div');
+            prog.id = 'ttsProgress';
+            prog.className = 'tts-progress show';
+            const badge = document.createElement('span'); badge.id = 'ttsEngineBadge'; badge.className = 'tts-badge';
+            const count = document.createElement('span'); count.id = 'ttsCount';
+            const bar = document.createElement('div'); bar.className = 'tts-bar';
+            const fill = document.createElement('span'); fill.id = 'ttsFill'; bar.appendChild(fill);
+            prog.appendChild(badge); prog.appendChild(count); prog.appendChild(bar);
+            const host = document.getElementById('responseContent') || document.body;
+            host.parentNode.insertBefore(prog, host.nextSibling);
+          }
+          prog.classList.add('show');
+          const badge = document.getElementById('ttsEngineBadge');
+          const count = document.getElementById('ttsCount');
+          const fill = document.getElementById('ttsFill');
+          if (badge) badge.textContent = (data.engine || '').toUpperCase();
+          if (count) count.textContent = ` ${Number(data.index)+1}/${Number(data.total)||2}`;
+          if (fill) {
+            const pct = Math.min(100, Math.max(0, Math.round(((Number(data.index)+1) / (Number(data.total)||2)) * 100)));
+            fill.style.width = pct + '%';
+          }
+        } catch (e) { console.warn('tts_progress UI error:', e); }
+        try { AudioManager.addTtsChunk(data); } catch (e) { console.warn('tts_chunk Fehler:', e); }
+        break;
+
+      case 'tts_sequence_end':
+        try { AudioManager.endTtsSequence(data); } catch (_) {}
+        try { const prog = document.getElementById('ttsProgress'); if (prog) setTimeout(() => prog.classList.remove('show'), 800); } catch (_) {}
+        break;
+
+      case 'staged_tts_config_updated':
+        try {
+          const cfg = data.config || {};
+          const status = document.getElementById('ttsPlanStatus');
+          if (status) {
+            status.textContent = `Aktiv: ${cfg.intro_engine || 'piper'} → ${cfg.main_engine || 'zonos'} · Crossfade ${cfg.crossfade_ms || 100}ms · Intro ${cfg.max_intro_length || 120}`;
+          }
+          const btn = document.getElementById('applyTtsPlan');
+          if (btn) btn.disabled = false;
+          NotificationManager.show('success', 'Staged TTS', 'Plan angewendet');
+        } catch (_) {}
+        break;
+      case 'progress':
+        console.log(`[TTS] ${data.phase} ${Number(data.index)+1}/${data.total} via ${data.engine}`);
+        break;
+      case 'log':
+        console.log('[Backend]', data.message);
+        break;
+      case 'ok':
+        // Ack – ignorieren
+        break;
+      // dynamic voice list messages removed; GUI uses static list
+
       case 'error':
         const errorMsg = data.message || data.error || 'Unbekannter Fehler';
         NotificationManager.show('error', 'Server Fehler', errorMsg);
@@ -617,7 +694,9 @@ window.ThemeManager = ThemeManager;
 
 export default AppEvents;
 // --- CSP-safe bindings (fallback) ---
-document.addEventListener('DOMContentLoaded', () => {
+// Use DOMHelpers.ready so bindings run even if DOMContentLoaded already fired
+importReadyBindings:
+DOMHelpers.ready(() => {
   const byId = (id) => document.getElementById(id);
 
   const sendBtn   = byId('sendBtn');

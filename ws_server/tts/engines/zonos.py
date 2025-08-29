@@ -57,22 +57,36 @@ _SR = None
 _LOCK = asyncio.Lock()
 _SPEAKER_CACHE: Dict[str, object] = {}
 
-def _normalize_lang(lang: str | None) -> str:
+_LANG_ALIASES = {
+    # German aliases
+    "de-de": "de",
+    "de_de": "de",
+    "de-deu": "de",
+    "de-deu": "de",
+    "de-deu": "de",
+    "deu": "de",
+    "ger": "de",
+    "german": "de",
+    "de-de": "de",
+    "de-deu": "de",
+    # English aliases
+    "en-us": "en",
+    "eng": "en",
+    "english": "en",
+    # French aliases
+    "fr-fr": "fr",
+    "french": "fr",
+    # Chinese/Japanese common aliases
+    "zh-cn": "zh",
+    "chinese": "zh",
+    "japanese": "ja",
+}
+
+def normalize_lang(lang: str | None) -> str:
     if not lang:
         return "de"
     s = str(lang).strip().lower().replace("_", "-")
-    table = {
-        # German
-        "de": "de", "de-de": "de", "german": "de", "ger": "de", "deu": "de",
-        # English
-        "en": "en", "en-us": "en", "english": "en", "eng": "en",
-        # French
-        "fr": "fr", "fr-fr": "fr", "french": "fr",
-        # Japanese/Chinese
-        "ja": "ja", "japanese": "ja",
-        "zh": "zh", "zh-cn": "zh", "chinese": "zh",
-    }
-    return table.get(s, s)
+    return _LANG_ALIASES.get(s, s)
 
 
 def _is_supported_lang(norm: str) -> bool:
@@ -81,7 +95,7 @@ def _is_supported_lang(norm: str) -> bool:
 
 
 def _validate_lang(lang: str | None) -> str:
-    norm = _normalize_lang(lang)
+    norm = normalize_lang(lang)
     if not _is_supported_lang(norm):
         raise ValueError(f"Unsupported language '{lang}' (normalized '{norm}'). Supported: de,en,fr,ja,zh")
     return norm
@@ -98,8 +112,8 @@ def _pick_language(voice: Optional[str]) -> str:
         elif "ja" in v: lang = "ja"
         elif "zh" in v or "cn" in v: lang = "zh"
     if not lang:
-        lang = "de"  # Default
-    return _normalize_lang(lang)
+        lang = (os.getenv("ZONOS_LANG_DEFAULT") or os.getenv("ZONOS_LANG") or "de").strip()
+    return normalize_lang(lang)
 
 def _pick_model_id() -> str:
     # akzeptiere mehrere ENV-Varianten
@@ -480,8 +494,14 @@ class ZonosEngine:
         try:
             lang_norm = _validate_lang(lang)
         except ValueError as e:
+            # Ausführlichere Fehlermeldung
             raise ValueError(str(e))
-        log.debug("Zonos: cond lang=%s speaking_rate=%.2f pitch_std=%s", lang_norm, float(eff_rate), ("%.2f" % pitch_std) if pitch_std is not None else "default")
+        log.info(
+            "Zonos: cond lang=%s speaking_rate=%.2f pitch_std=%s",
+            lang_norm,
+            float(eff_rate),
+            ("%.2f" % pitch_std) if pitch_std is not None else "default",
+        )
 
         def _generate_bytes():
             spk = _get_speaker_embedding(voice_id)

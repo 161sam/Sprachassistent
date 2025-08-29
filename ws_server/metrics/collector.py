@@ -151,6 +151,22 @@ class MetricsCollector:
             "Total number of audio bytes sent to clients",
             registry=self.registry,
         )
+        # TTS specific output metrics
+        self.tts_out_samples_total = Counter(
+            "tts_out_samples_total",
+            "Total number of int16 samples produced by TTS",
+            registry=self.registry,
+        )
+        self.tts_out_bytes_total = Counter(
+            "tts_out_bytes_total",
+            "Total number of bytes produced by TTS",
+            registry=self.registry,
+        )
+        self.tts_out_avg_lufs = Gauge(
+            "tts_out_avg_lufs",
+            "Approximate moving average loudness of TTS output (LUFS ~ dBFS)",
+            registry=self.registry,
+        )
         self.network_bytes_sent_total = Counter(
             "network_bytes_sent_total",
             "Total number of bytes sent over all network interfaces",
@@ -174,6 +190,14 @@ class MetricsCollector:
             "Latency of TTS synthesis in seconds",
             registry=self.registry,
             buckets=(0.1, 0.5, 1, 2, 5, 10),
+        )
+        # Per‑Engine latency (milliseconds)
+        self.tts_engine_latency_ms = Histogram(
+            "tts_engine_latency_ms",
+            "Latency per TTS engine in milliseconds",
+            ["engine"],
+            registry=self.registry,
+            buckets=(50, 100, 250, 500, 1000, 2000, 5000, 10000),
         )
 
         self._system_task: Optional[asyncio.Task] = None

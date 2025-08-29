@@ -13,9 +13,11 @@
 </head>
 <body class="app-preload">
   <header class="top-nav">
+      <div class="nav-actions">
+      <button id="sidebarToggle" class="nav-button" aria-label="Einstellungen">⚙️</button>
+    </div>
     <div class="app-logo">🤖 KI-Assistent</div>
     <div class="nav-actions">
-      <button id="sidebarToggle" class="nav-button" aria-label="Einstellungen">⚙️</button>
       <button id="themeToggle" class="nav-button" aria-label="Theme wechseln">🌙</button>
       <button id="infoToggle" class="nav-button" aria-label="Info">ℹ️</button>
     </div>
@@ -29,8 +31,8 @@
       </div>
       <nav class="sidebar-nav">
         <button class="sidebar-nav-item active" data-tab="settings" title="Audio/TTS">🎤</button>
-        <button class="sidebar-nav-item" data-tab="llm" title="LLM Settings">🧠</button>
         <button class="sidebar-nav-item" data-tab="profiles" title="Voice Profiles">🎙️</button>
+        <button class="sidebar-nav-item" data-tab="llm" title="LLM Settings">🧠</button>
         <button class="sidebar-nav-item" data-tab="stats" title="Statistics">📊</button>
         <button class="sidebar-nav-item" data-tab="themes" title="Themes">🎨</button>
         <button class="sidebar-nav-item" data-tab="plugins" title="Plugins">🔌</button>
@@ -40,26 +42,224 @@
       <div class="sidebar-content">
         <div class="sidebar-panel active" data-tab="settings">
           <div class="sidebar-section">
-            <h3 class="sidebar-section-title">Audio/TTS</h3>
-            <label class="sidebar-label" for="ttsSelect">TTS-Engine</label>
-            <select id="ttsSelect" class="sidebar-select">
-              <option value="piper">Piper</option>
+            <h3 class="sidebar-section-title">🎤 Audio (STT/TTS)</h3>
+
+            <label class="sidebar-label" for="sttModel">STT-Modell</label>
+            <select id="sttModel" class="sidebar-select">
+              <option value="tiny">Tiny</option>
+              <option value="base" selected>Base</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large-v2">Large-v2</option>
+            </select>
+
+            <label class="sidebar-label" for="ttsEngine">TTS-Engine</label>
+            <select id="ttsEngine" class="sidebar-select">
+              <option value="zonos">Zonos</option>
+              <option value="piper" selected>Piper</option>
               <option value="kokoro">Kokoro</option>
             </select>
+
+            <label class="sidebar-label" for="ttsVoice">TTS-Stimme</label>
+            <select id="ttsVoice" class="sidebar-select">
+              <option value="de-thorsten-low">Thorsten (Deutsch)</option>
+              <option value="en-ljspeech">LJ Speech (English)</option>
+              <option value="de-karlsson">Karlsson (Deutsch)</option>
+              <option value="en-amy">Amy (English)</option>
+              <option value="es-mls_10246">Español</option>
+              <option value="fr-mls_1840">Français</option>
+            </select>
+
+            <label class="sidebar-label" for="ttsLanguage">TTS-Sprache</label>
+            <select id="ttsLanguage" class="sidebar-select">
+              <option value="de-DE" selected>Deutsch (de-DE)</option>
+              <option value="en-US">English (en-US)</option>
+              <option value="fr-FR">Français (fr-FR)</option>
+              <option value="es-ES">Español (es-ES)</option>
+              <option value="it-IT">Italiano (it-IT)</option>
+            </select>
+
+            <label class="sidebar-label" for="ttsSpeed">TTS-Geschwindigkeit <span id="ttsSpeedValue" class="range-value">0.92x</span></label>
+            <input type="range" id="ttsSpeed" class="sidebar-range" min="0.5" max="2.0" step="0.01" value="0.92" />
+
+            <label class="sidebar-label" for="ttsVolume">TTS-Lautstärke <span id="ttsVolumeValue" class="range-value">1.0</span></label>
+            <input type="range" id="ttsVolume" class="sidebar-range" min="0.0" max="3.0" step="0.1" value="1.0" />
+
+            <label class="sidebar-label" for="avatarStyle">Avatar-Stil</label>
+            <select id="avatarStyle" class="sidebar-select">
+              <option value="default" selected>Standard</option>
+              <option value="minimal">Minimal</option>
+              <option value="sci-fi">Sci-Fi</option>
+              <option value="nature">Natur</option>
+            </select>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Voice Visualization</div>
+                  <div class="sidebar-item-desc">Spektrum-Analyzer während Aufnahme</div>
+                </div>
+                <button id="voiceVisualization" class="sidebar-toggle active" type="button" aria-label="Voice Visualization"></button>
+              </div>
+            </div>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Rauschunterdrückung</div>
+                  <div class="sidebar-item-desc">Reduziert Hintergrundgeräusche</div>
+                </div>
+                <button id="noiseSuppression" class="sidebar-toggle active" type="button" aria-label="Rauschunterdrückung"></button>
+              </div>
+            </div>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Echo-Unterdrückung</div>
+                  <div class="sidebar-item-desc">Unterdrückt Echo und Rückkopplungen</div>
+                </div>
+                <button id="echoCancellation" class="sidebar-toggle active" type="button" aria-label="Echo-Unterdrückung"></button>
+              </div>
+            </div>
+
             <label class="sidebar-label" for="micSelect">Mikrofon</label>
             <select id="micSelect" class="sidebar-select"></select>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Audio Input Test</div>
+                  <div class="sidebar-item-desc">Pegel & VAD‑Schwelle prüfen</div>
+                </div>
+                <div class="sidebar-control">
+                  <button id="startAudioTest" class="sidebar-button secondary" type="button">Start</button>
+                  <button id="stopAudioTest" class="sidebar-button secondary" type="button">Stop</button>
+                </div>
+              </div>
+              <canvas id="audioTestCanvas" class="canvas-fluid" width="300" height="60"></canvas>
+              <label class="sidebar-label" for="vadThreshold">VAD Threshold <span id="vadThresholdValue" class="range-value">0.01</span></label>
+              <input type="range" id="vadThreshold" class="sidebar-range" min="0.001" max="0.1" step="0.001" value="0.01" />
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3 class="sidebar-section-title">🎭 Staged TTS</h3>
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Staged TTS aktivieren</div>
+                  <div class="sidebar-item-desc">Piper Intro + Zonos Hauptinhalt</div>
+                </div>
+                <button id="stagedTtsEnabled" class="sidebar-toggle active" type="button" aria-label="Staged TTS aktivieren"></button>
+              </div>
+            </div>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Chunked Output</div>
+                  <div class="sidebar-item-desc">Intro/Main als einzelne Chunks streamen</div>
+                </div>
+                <button id="chunkedOutput" class="sidebar-toggle active" type="button" aria-label="Chunked Output"></button>
+              </div>
+            </div>
+
+            <label class="sidebar-label" for="introEngine">Intro-Engine</label>
+            <select id="introEngine" class="sidebar-select">
+              <option value="auto" selected>Auto</option>
+              <option value="piper">Piper</option>
+              <option value="zonos">Zonos</option>
+              <option value="none">Aus</option>
+            </select>
+
+            <label class="sidebar-label" for="mainEngine">Main-Engine</label>
+            <select id="mainEngine" class="sidebar-select">
+              <option value="auto" selected>Auto</option>
+              <option value="zonos">Zonos</option>
+              <option value="piper">Piper</option>
+              <option value="none">Aus</option>
+            </select>
+
+            <label class="sidebar-label" for="introLength">Intro-Länge <span id="introLengthValue" class="range-value">120</span></label>
+            <input type="range" id="introLength" class="sidebar-range" min="50" max="200" step="10" value="120" />
+
+            <label class="sidebar-label" for="crossfadeMs">Crossfade <span id="crossfadeMsValue" class="range-value">60ms</span></label>
+            <input type="range" id="crossfadeMs" class="sidebar-range" min="50" max="150" step="10" value="60" />
+
+            <label class="sidebar-label" for="chunkSizeMin">Chunk Size Min <span id="chunkSizeMinValue" class="range-value">100</span></label>
+            <input type="range" id="chunkSizeMin" class="sidebar-range" min="40" max="200" step="10" value="100" />
+
+            <label class="sidebar-label" for="chunkSizeMax">Chunk Size Max <span id="chunkSizeMaxValue" class="range-value">220</span></label>
+            <input type="range" id="chunkSizeMax" class="sidebar-range" min="80" max="300" step="10" value="220" />
+
+            <label class="sidebar-label" for="mainMaxChunks">Max Main Chunks <span id="mainMaxChunksValue" class="range-value">6</span></label>
+            <input type="range" id="mainMaxChunks" class="sidebar-range" min="1" max="12" step="1" value="6" />
+
+            <div class="sidebar-control">
+              <button id="applyTtsPlan" class="sidebar-button" type="button">📝 Plan anwenden</button>
+              <span id="ttsPlanStatus" class="sidebar-item-desc"></span>
+            </div>
+
+            <div class="sidebar-control">
+              <button id="testStagedTTS" class="sidebar-button secondary" type="button">🔊 Test Staged TTS</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3 class="sidebar-section-title">🌐 Verbindung</h3>
+            <label class="sidebar-label" for="wsHost">WebSocket Host</label>
+            <input id="wsHost" class="sidebar-input" type="text" placeholder="127.0.0.1" />
+
+            <label class="sidebar-label" for="wsPort">WebSocket Port</label>
+            <input id="wsPort" class="sidebar-input" type="number" placeholder="48232" />
+
+            <label class="sidebar-label" for="wsToken">Token</label>
+            <input id="wsToken" class="sidebar-input" type="text" placeholder="devsecret" />
+
+            <div class="sidebar-control">
+              <button id="testConnection" class="sidebar-button" type="button">🧪 Verbindung testen</button>
+              <span id="connectionStatus" class="sidebar-item-desc"></span>
+            </div>
           </div>
         </div>
         <div class="sidebar-panel" data-tab="llm">
           <div class="sidebar-section">
-            <h3 class="sidebar-section-title">LLM</h3>
-            <label class="sidebar-label" for="llmSelect">Provider</label>
-            <select id="llmSelect" class="sidebar-select">
-              <option value="lmstudio">LM Studio</option>
+            <h3 class="sidebar-section-title">🧠 Language Model</h3>
+            <label class="sidebar-label" for="llmProvider">Provider</label>
+            <select id="llmProvider" class="sidebar-select">
+              <option value="lmstudio" selected>LM Studio</option>
               <option value="openai">OpenAI</option>
             </select>
-            <label class="sidebar-label" for="systemPrompt">System-Prompt</label>
-            <textarea id="systemPrompt" class="sidebar-textarea" rows="4" placeholder="System-Prompt…"></textarea>
+
+            <label class="sidebar-label" for="llmApiBase">API Base</label>
+            <input id="llmApiBase" class="sidebar-input" type="text" placeholder="http://127.0.0.1:1234/v1" />
+
+            <label class="sidebar-label" for="llmApiKey">API Key (optional)</label>
+            <input id="llmApiKey" class="sidebar-input" type="password" placeholder="sk-..." />
+            <label class="sidebar-label" for="llmModel">LLM-Modell</label>
+            <div class="sidebar-control">
+              <select id="llmModel" class="sidebar-select">
+                <option value="">Wird geladen...</option>
+              </select>
+              <button id="refreshLlmModels" class="sidebar-button secondary" type="button">🔄</button>
+            </div>
+
+            <label class="sidebar-label" for="llmTemperature">Temperatur <span id="llmTemperatureValue" class="range-value">0.7</span></label>
+            <input type="range" id="llmTemperature" class="sidebar-range" min="0.1" max="2.0" step="0.1" value="0.7" />
+
+            <label class="sidebar-label" for="llmMaxTokens">Max Tokens <span id="llmMaxTokensValue" class="range-value">256</span></label>
+            <input type="range" id="llmMaxTokens" class="sidebar-range" min="50" max="1000" step="50" value="256" />
+
+            <label class="sidebar-label" for="systemPromptPreset">System Prompt</label>
+            <div class="sidebar-control">
+              <select id="systemPromptPreset" class="sidebar-select"></select>
+              <input id="systemPromptName" class="sidebar-input" type="text" placeholder="Neuer Name…" />
+              <button id="saveSystemPrompt" class="sidebar-button secondary" type="button">💾</button>
+            </div>
+
+            <label class="sidebar-label" for="systemPromptText">System Prompt Text</label>
+            <textarea id="systemPromptText" class="sidebar-textarea chat-like" rows="6" placeholder="Schreiben Sie den System-Prompt…"></textarea>
           </div>
         </div>
         <div class="sidebar-panel" data-tab="profiles">
@@ -77,6 +277,35 @@
               <div class="theme-card theme-sci-fi" data-theme="sci-fi"><div class="theme-name">Sci-Fi</div></div>
               <div class="theme-card theme-nature" data-theme="nature"><div class="theme-name">Nature</div></div>
               <div class="theme-card theme-high-contrast" data-theme="high-contrast"><div class="theme-name">High Contrast</div></div>
+            </div>
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Auto Dark Mode</div>
+                  <div class="sidebar-item-desc">Automatisch bei Sonnenuntergang</div>
+                </div>
+                <button id="autoDarkMode" class="sidebar-toggle" type="button" aria-label="Auto Dark Mode"></button>
+              </div>
+            </div>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Avatar anzeigen</div>
+                  <div class="sidebar-item-desc">Pulsierenden Avatar einblenden</div>
+                </div>
+                <button id="showAvatar" class="sidebar-toggle active" type="button" aria-label="Avatar anzeigen"></button>
+              </div>
+            </div>
+
+            <div class="sidebar-item">
+              <div class="sidebar-item-header">
+                <div>
+                  <div class="sidebar-item-label">Reduzierte Bewegungen</div>
+                  <div class="sidebar-item-desc">Animationen minimieren</div>
+                </div>
+                <button id="reducedMotion" class="sidebar-toggle" type="button" aria-label="Reduzierte Bewegungen"></button>
+              </div>
             </div>
           </div>
         </div>

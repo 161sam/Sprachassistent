@@ -24,10 +24,14 @@ export const sidebarManager = {
   open() {
     SidebarCore.state.open = true;
     document.body.classList.add('sidebar-open');
+    const root = SidebarCore.els.root || document.getElementById('sidebar');
+    if (root) root.classList.add('open');
   },
   close() {
     SidebarCore.state.open = false;
     document.body.classList.remove('sidebar-open');
+    const root = SidebarCore.els.root || document.getElementById('sidebar');
+    if (root) root.classList.remove('open');
   }
 };
 

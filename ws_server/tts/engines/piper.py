@@ -46,6 +46,114 @@ except Exception:  # pragma: no cover - fallback for tests
 logger = logging.getLogger(__name__)
 
 
+def resolve_piper_model(voice: str | None, models_dir: Path) -> tuple[str, Path, int]:
+    """
+    Gibt (voice_canonical, model_path, sr) zurück.
+
+    - Wenn `voice` None oder 'default': Wähle bevorzugt ein vorhandenes deutsches Modell:
+      Reihenfolge: de-thorsten-low.onnx > de-thorsten-high.onnx > erstes de-*.onnx > erstes *.onnx
+    - Prüfe Existenz der Datei. Wenn nicht vorhanden: suche im Verzeichnis rekursiv.
+    - Ermittele SR aus JSON‑Sidecar ("*.onnx.json"). Für bekannte Thorsten‑Modelle Fallback 22050 Hz.
+    - Kla re Logs (INFO): gewählte Stimme, gefundener Pfad, sr.
+    - Raise ValueError, wenn nichts gefunden.
+    """
+    base = Path(models_dir).expanduser()
+    if not base.is_absolute():
+        # relative zu Repo‑Root interpretieren
+        base = Path(__file__).resolve().parents[2] / base
+    base = base.resolve()
+
+    def _sr_from_sidecar(p: Path) -> int:
+        try:
+            js1 = p.with_suffix(p.suffix + ".json")  # model.onnx.json
+            js2 = p.with_suffix(".json")  # model.json (falls vorhanden)
+            for js in (js1, js2):
+                if js.exists():
+                    data = json.loads(js.read_text(encoding="utf-8"))
+                    sr = int(data.get("sample_rate", 0) or 0)
+                    if sr > 0:
+                        return sr
+        except Exception as e:
+            logger.debug("Piper: Sidecar JSON konnte nicht gelesen werden (%s): %s", p, e)
+        # Bekannte Thorsten‑Modelle -> 22050 Hz
+        stem = p.stem.lower()
+        if "thorsten" in stem:
+            return 22050
+        # Letzter Fallback
+        return 22050
+
+    def _first(patterns: list[str]) -> Path | None:
+        for pat in patterns:
+            for cand in base.glob(pat):
+                if cand.is_file() and cand.suffix.lower() == ".onnx":
+                    return cand
+        return None
+
+    # Kandidatenliste je nach Voice
+    canon = canonicalize_voice(voice or "")
+    selected_path: Path | None = None
+
+    if not canon or canon == "default":
+        # 1) Präferenzliste
+        for name in (
+            "de-thorsten-low.onnx",
+            "de-thorsten-high.onnx",
+        ):
+            p = base / name
+            if p.exists():
+                selected_path = p
+                canon = name.replace(".onnx", "")
+                break
+        # 2) erstes deutsches Modell
+        if selected_path is None:
+            selected_path = _first(["de-*.onnx"]) or _first(["**/de-*.onnx"])  # rekursiv
+            if selected_path is not None:
+                canon = selected_path.stem
+        # 3) beliebiges erstes .onnx
+        if selected_path is None:
+            selected_path = _first(["*.onnx"]) or _first(["**/*.onnx"])  # rekursiv
+            if selected_path is not None:
+                canon = selected_path.stem
+    else:
+        # Konkrete Stimme: Versuche mehrere Namensschemata
+        names = [
+            f"{canon}.onnx",
+        ]
+        # Legacy de_DE-* Namensschema akzeptieren
+        try:
+            parts = canon.split("-", 1)
+            if len(parts) == 2 and len(parts[0]) == 2:
+                names.append(f"{parts[0]}_DE-{parts[1]}.onnx")  # de_DE-*
+                names.append(f"{parts[0]}-DE-{parts[1]}.onnx")  # de-DE-*
+                names.append(f"{parts[0].upper()}_DE-{parts[1]}.onnx")
+        except Exception:
+            pass
+        for name in names:
+            p = base / name
+            if p.exists():
+                selected_path = p
+                break
+        # rekursiv suchen, falls nicht direkt gefunden
+        if selected_path is None:
+            for name in names:
+                found = list(base.glob(f"**/{name}"))
+                if found:
+                    selected_path = found[0]
+                    break
+
+    if selected_path is None:
+        raise ValueError(
+            f"Kein Piper‑Modell gefunden für Stimme '{voice or 'default'}' in {base}. "
+            "Hinweis: Lege Modelle in 'models/piper/' ab oder setze PIPER_MODELS_DIR."
+        )
+
+    sr = _sr_from_sidecar(selected_path)
+    logger.info(
+        "Piper: Stimme='%s' → Modell='%s' (sr=%d)", canon, selected_path, sr
+    )
+    return canon, selected_path.resolve(), int(sr)
+
+
 class PiperTTSEngine(BaseTTSEngine):
     """Piper wrapper that always yields WAV bytes and propagates sample rate."""
 
@@ -93,69 +201,47 @@ class PiperTTSEngine(BaseTTSEngine):
         return canonicalize_voice(voice) in self.supported_voices
 
     def _resolve_model_path(self, voice: str) -> str:
+        # Nutze immer das robuste Resolver‑Verfahren, keine 'default.onnx' Annahmen.
         voice = canonicalize_voice(voice)
+        # Direkt gesetzter, existenter model_path bleibt gültig
         if self.config.model_path:
             p = Path(self.config.model_path)
-            if not p.is_absolute():
-                model_dir = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
-                project_root = Path(__file__).resolve().parents[2]
-                if str(p).startswith(f"{model_dir}/") or str(p).startswith(f"{model_dir}\\"):
-                    p = project_root / p
-                else:
-                    p = project_root / model_dir / p
             if p.exists():
                 return str(p.resolve())
-
-        normalized = self._normalize_voice(voice)
-        alias = VOICE_ALIASES.get(normalized, {}).get("piper")
-        if alias and alias.model_path:
-            model_filename = Path(alias.model_path).name
-        else:
-            model_filename = self.voice_model_mapping.get(normalized, f"{voice}.onnx")
-
-        base_from_env = os.getenv("TTS_MODEL_DIR") or os.getenv("MODELS_DIR") or "models"
-        project_root = Path(__file__).resolve().parents[2]
-        base_abs = Path(base_from_env) if os.path.isabs(base_from_env) else project_root / base_from_env
-        base_abs = base_abs.resolve()
-
-        candidates = [
-            base_abs / model_filename,
-            base_abs / "piper" / model_filename,
-            Path.home() / ".local/share/piper" / model_filename,
-            Path("/usr/share/piper") / model_filename,
-            Path(model_filename),
-        ]
-        for path in candidates:
-            if path.exists():
-                return str(path.resolve())
-
-        fallback = Path.home() / ".local/share/piper/de-thorsten-low.onnx"
-        if fallback.exists():
-            logger.warning("Verwende Fallback-Modell: %s", fallback)
-            return str(fallback.resolve())
-
-        # Provide clearer message with attempted alias and filename
-        raise TTSInitializationError(
-            f"Kein Piper-Modell gefunden (voice='{voice}', model='{model_filename}')"
-        )
+        # Modelle‑Verzeichnis aus ENV oder Config
+        models_dir = os.getenv("PIPER_MODELS_DIR") or self.config.model_dir or "models/piper"
+        try:
+            _vc, _mp, _sr = resolve_piper_model(voice, Path(models_dir))
+            # Sample‑Rate im Objekt hinterlegen
+            if not self.sample_rate:
+                self.sample_rate = int(_sr)
+            return str(_mp)
+        except Exception as e:
+            raise TTSInitializationError(str(e))
 
     def _read_sample_rate(self, model_path: str) -> int:
-        json_path = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
+        # Delegiere an Resolver‑Logik, die Sidecar JSON oder Thorsten‑Fallback nutzt
         try:
-            data = json.loads(json_path.read_text())
+            _ = Path(model_path)
+        except Exception:
+            raise TTSInitializationError(f"piper: ungültiger Modellpfad {model_path}")
+        # Versuch Sidecar zu lesen (wie in resolve_piper_model)
+        try:
+            js1 = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
+            js2 = Path(model_path).with_suffix(".json")
+            for js in (js1, js2):
+                if js.exists():
+                    data = json.loads(js.read_text(encoding="utf-8"))
+                    sr = int(data.get("sample_rate", 0) or 0)
+                    if sr > 0:
+                        return sr
         except Exception as e:
-            logger.error("piper: sample_rate JSON read failed for %s: %s", json_path, e)
-            raise TTSInitializationError(
-                f"piper: sample_rate JSON read error for model {model_path}"
-            ) from e
-
-        sr = int(data.get("sample_rate", 0))
-        if sr > 0:
-            return sr
-        if "de_DE-thorsten-low" in model_path:
-            logger.warning("piper: sample_rate missing – fallback 22050 Hz")
+            logger.debug("piper: sample_rate Sidecar konnte nicht gelesen werden (%s)", e)
+        # Thorsten‑Heuristik
+        if "thorsten" in Path(model_path).stem.lower():
+            logger.info("piper: sample_rate unbekannt – setze 22050 Hz für Thorsten‑Modell")
             return 22050
-        raise TTSInitializationError(f"piper: sample_rate missing for model {model_path}")
+        raise TTSInitializationError(f"piper: sample_rate fehlt für Modell {model_path}")
 
     # ---------------------------------------------------------------- info API
     def get_available_voices(self) -> list[str]:  # type: ignore[override]
@@ -172,18 +258,22 @@ class PiperTTSEngine(BaseTTSEngine):
     # ---------------------------------------------------------------- lifecycle
     async def initialize(self) -> bool:
         try:
-            model_path = self._resolve_model_path(self.config.voice or "de-thorsten-low")
-            self.sample_rate = self._read_sample_rate(model_path)
+            # Modelle‑Verzeichnis und Default‑Voice ermitteln
+            models_dir_env = os.getenv("PIPER_MODELS_DIR") or self.config.model_dir or "models/piper"
+            default_voice = os.getenv("PIPER_DEFAULT_VOICE", "de-thorsten-low")
+            v, mp, sr = resolve_piper_model(self.config.voice or default_voice, Path(models_dir_env))
+            model_path = str(mp)
+            self.sample_rate = int(sr)
             loop = asyncio.get_event_loop()
             voice_obj = await loop.run_in_executor(self.executor, PiperVoice.load, model_path)
-            self.voice_cache[self.config.voice or "de-thorsten-low"] = voice_obj
+            self.voice_cache[self.config.voice or v] = voice_obj
             self.config.model_path = model_path
             self.is_initialized = True
             logger.info(
-                "Voice alias '%s' resolved to model '%s' (sr=%dHz)",
-                self.config.voice or "de-thorsten-low",
+                "Piper Initialisiert: Stimme='%s' Modell='%s' sr=%d",
+                self.config.voice or v,
                 Path(model_path).name,
-                self.sample_rate,
+                int(self.sample_rate),
             )
             return True
         except Exception as e:  # pragma: no cover - logging only

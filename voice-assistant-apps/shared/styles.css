@@ -415,6 +415,20 @@
       background: rgba(99, 102, 241, 0.05);
     }
 
+    /* Chat-like System Prompt textarea */
+    .chat-like {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      line-height: 1.5;
+      padding: 12px;
+      resize: vertical;
+      background: var(--bg-secondary);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      min-height: 110px;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    }
+
     .sidebar-select option {
       background: var(--bg-secondary);
       color: var(--text-primary);
@@ -452,6 +466,11 @@
       min-width: 50px;
       text-align: right;
     }
+
+    /* Utility */
+    .hidden { display: none !important; }
+    #customPromptGroup { margin-top: 8px; }
+    .canvas-fluid { width: 100%; max-width: 320px; height: 60px; }
 
     .sidebar-button {
       background: var(--primary-color);
@@ -532,6 +551,46 @@
       color: white;
       font-size: 0.7rem;
       text-align: center;
+    }
+
+    /* TTS Progress UI */
+    .tts-progress {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-bg);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      width: fit-content;
+      margin-top: var(--spacing-sm);
+    }
+    .tts-progress.show { display: inline-flex; }
+    .tts-badge {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(99,102,241,0.15);
+      color: var(--text-primary);
+      border: 1px solid var(--glass-border);
+      font-size: 0.75rem;
+    }
+    .tts-bar {
+      position: relative;
+      width: 80px;
+      height: 6px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+    }
+    .tts-bar > span {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 0%;
+      background: var(--primary-color);
+      transition: width 0.2s linear;
     }
 
     /* Voice Profile Cards */

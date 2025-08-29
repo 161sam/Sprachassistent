@@ -13,11 +13,14 @@
 | `backend/ws-server/staged_tts/` | `ws_server/tts/staged_tts/` |
 | `backend/ws-server/` | `archive/legacy_ws_server/` |
 | `backend/ws-server/README.md` | `archive/legacy_ws_server/README.md` |
-| `ws_server/transport/fastapi_adapter.py` | _archived (unused)_ |
 | `archive/legacy_ws_server/skills/` | `ws_server/skills/` |
 | `voice-assistant-apps/shared/core/AudioStreamer.js` (manual queue) | sequence-based playback with prebuffered crossfade in same file |
 | `docs/GUI-TODO.md` | entries moved to `TODO-Index.md` |
 
+| File | New Location | Reason | Replacement |
+| --- | --- | --- | --- |
+| `uvicorn` | `archive_legacy/uvicorn` | Stray PostScript artifact | None |
+| `ws_server/tts/staged_tts/staged_processor.py` | (kept, deprecated) | Duplicated staged TTS implementation | Use `ws_server.tts.staged_tts.adapter` |
+
 
 ## Repo hygiene run at 2025-08-29 08:12:06
-

@@ -1,95 +1,107 @@
-
+// Electron preload bridge
+// Provides a safe, minimal API to the renderer and injects environment config.
 const { contextBridge, ipcRenderer } = require('electron');
-const backendUrl = process.env.BACKEND_URL || 'ws://127.0.0.1:48232/ws';
-contextBridge.exposeInMainWorld('BACKEND_URL', backendUrl);
 
-// Sichere API für den Renderer-Prozess
+// Resolve and normalize BACKEND_URL
+function resolveBackendUrl() {
+  const envUrl = process.env.BACKEND_URL;
+  if (envUrl && typeof envUrl === 'string') return envUrl;
+
+  const host = process.env.WS_HOST || '127.0.0.1';
+  const port = process.env.WS_PORT || '48232';
+  // Server is expected to expose WebSocket under /ws
+  return `ws://${host}:${port}/ws`;
+}
+
+const BACKEND_URL = resolveBackendUrl();
+
+// Expose simple env getter and platform flags
 contextBridge.exposeInMainWorld('electronAPI', {
-  // App-Informationen
-  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  
-  // Dialog-Funktionen
-  showErrorDialog: (title, message) => ipcRenderer.invoke('show-error-dialog', title, message),
-  showSaveDialog: () => ipcRenderer.invoke('show-save-dialog'),
-  
-  // Event Listener für Main-Process Nachrichten
-  onClearConversation: (callback) => ipcRenderer.on('clear-conversation', callback),
-  onOpenSettings: (callback) => ipcRenderer.on('open-settings', callback),
-  onStartRecording: (callback) => ipcRenderer.on('start-recording', callback),
-  onStopRecording: (callback) => ipcRenderer.on('stop-recording', callback),
-  onOpenAudioSettings: (callback) => ipcRenderer.on('open-audio-settings', callback),
-  onBackendLog: (callback) => ipcRenderer.on('backend-log', callback),
-  onBackendError: (callback) => ipcRenderer.on('backend-error', callback),
-  
-  // Event Listener entfernen
-  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
-  
-  // Platform-spezifische Informationen
-  platform: process.platform,
+  // Platform / environment
   isElectron: true,
+  platform: process.platform,
+  getEnv: (key) => (process.env ? process.env[key] || '' : ''),
 
-  getBackendUrl: () => backendUrl,
+  // App info (optional – requires ipcMain handlers if used)
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+
+  // Dialogs and window controls
+  showErrorDialog: (title, message) => ipcRenderer.invoke('show-error-dialog', title, message),
+  showSaveDialog: (options = {}) => ipcRenderer.invoke('show-save-dialog', options),
+  minimize: () => ipcRenderer.invoke('minimize'),
+
+  // Event subscriptions from main → renderer
+  onClearConversation: (callback) => { try { ipcRenderer.on('clear-conversation', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onOpenSettings: (callback) => { try { ipcRenderer.on('open-settings', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onStartRecording: (callback) => { try { ipcRenderer.on('start-recording', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onStopRecording: (callback) => { try { ipcRenderer.on('stop-recording', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onOpenAudioSettings: (callback) => { try { ipcRenderer.on('open-audio-settings', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onOpenLlmSettings: (callback) => { try { ipcRenderer.on('open-llm-settings', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onBackendLog: (callback) => { try { ipcRenderer.on('backend-log', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  onBackendError: (callback) => { try { ipcRenderer.on('backend-error', (_e, ...args) => callback?.(...args)); } catch (_) {} },
+  removeAllListeners: (channel) => { try { ipcRenderer.removeAllListeners(channel); } catch (_) {} },
+
+  // Event requests renderer → main → renderer broadcast
+  requestOpenSettings: () => ipcRenderer.invoke('request-open-settings'),
+  requestClearConversation: () => ipcRenderer.invoke('request-clear-conversation'),
+  requestStartRecording: () => ipcRenderer.invoke('request-start-recording'),
+  requestStopRecording: () => ipcRenderer.invoke('request-stop-recording'),
+  requestOpenAudioSettings: () => ipcRenderer.invoke('request-open-audio-settings'),
+  requestOpenLlmSettings: () => ipcRenderer.invoke('request-open-llm-settings'),
+
+  // DOM ready convenience
   onDomReady: (fn) => {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      fn();
+      try { fn(); } catch (_) {}
     } else {
-      window.addEventListener('DOMContentLoaded', fn, { once: true });
+      window.addEventListener('DOMContentLoaded', () => { try { fn(); } catch (_) {} }, { once: true });
     }
   },
-  
-  // Notification API
+
+  // Notifications (Renderer-side)
   showNotification: (title, body, options = {}) => {
-    if (Notification.permission === 'granted') {
-      return new Notification(title, { body, ...options });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          return new Notification(title, { body, ...options });
-        }
-      });
-    }
-  },
-  
-  // LocalStorage-Alternative für Electron
-  store: {
-    get: (key) => {
-      return localStorage.getItem(key);
-    },
-    set: (key, value) => {
-      localStorage.setItem(key, value);
-    },
-    delete: (key) => {
-      localStorage.removeItem(key);
-    },
-    clear: () => {
-      localStorage.clear();
-    }
-  },
-  
-  // File System (nur lesen, nicht schreiben für Sicherheit)
-  readFile: async (filePath) => {
     try {
-      const fs = require('fs').promises;
-      return await fs.readFile(filePath, 'utf8');
-    } catch (error) {
-      throw new Error(`Fehler beim Lesen der Datei: ${error.message}`);
-    }
-  }
+      if (Notification.permission === 'granted') {
+        return new Notification(title, { body, ...options });
+      }
+      if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then((permission) => {
+          if (permission === 'granted') new Notification(title, { body, ...options });
+        });
+      }
+      return null;
+    } catch (_) { return null; }
+  },
+
+  // Local storage helpers (guarded)
+  store: {
+    get: (key) => { try { return localStorage.getItem(key); } catch (_) { return null; } },
+    set: (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} },
+    delete: (key) => { try { localStorage.removeItem(key); } catch (_) {} },
+    clear: () => { try { localStorage.clear(); } catch (_) {} }
+  },
+
+  // Backend URL accessor
+  getBackendUrl: () => BACKEND_URL,
 });
 
-    // Frontend-Defaults überschreiben
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('wsHost', host);
-      localStorage.setItem('wsPort', String(port)); // WS = gleicher Port wie HTTP
-    }
-    // Für Code, der auf window.wsUtils hört
-    globalThis.wsUtils = {
-      getAuthToken: async () => 'dev-token', // austauschbar mit echter Auth
-    };
-  } catch (e) {
-    console.warn('[preload] Could not parse BACKEND_URL:', e);
-  }
-})();
+// Also expose BACKEND_URL as a simple global for convenience
+contextBridge.exposeInMainWorld('BACKEND_URL', BACKEND_URL);
 
-// Kleine Bridge, falls mal gebraucht
-contextBridge.exposeInMainWorld('electronAPI', { isElectron: true });
+// Persist WS host/port hints for frontend fallbacks
+try {
+  const u = new URL(BACKEND_URL.replace(/^ws(s)?:/, (m, s) => (s ? 'https:' : 'http:')));
+  const host = u.hostname || '127.0.0.1';
+  const port = u.port || '48232';
+  try { localStorage.setItem('wsHost', host); } catch (_) {}
+  try { localStorage.setItem('wsPort', String(port)); } catch (_) {}
+} catch (e) {
+  console.warn('[preload] Could not parse BACKEND_URL:', e?.message || e);
+}
+
+// Minimal wsUtils bridge for auth if frontend expects it
+try {
+  if (!globalThis.wsUtils) {
+    globalThis.wsUtils = { getAuthToken: async () => 'dev-token' };
+  }
+} catch (_) {}

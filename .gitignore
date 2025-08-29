@@ -239,6 +239,13 @@ coverage/
 # Package lock files (wir verwenden yarn)
 package-lock.json
 
+# Voice/training data (prevent accidental commits)
+spk_cache/
+data/
+*.pt
+*.safetensors
+*.ckpt
+
 # Yarn
 yarn.lock
 

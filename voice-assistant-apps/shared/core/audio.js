@@ -11,13 +11,56 @@
 import { DOMHelpers } from './dom-helpers.js';
 
 /**
+ * Helpers to comply with CSP: convert data/base64 → Blob URL (blob:)
+ */
+function toBlobUrl(input, mime = 'audio/wav') {
+  try {
+    if (!input) return '';
+    if (typeof input !== 'string') return '';
+    if (input.startsWith('blob:')) return input;
+    let byteArray = null;
+    if (input.startsWith('data:')) {
+      // data:[<mediatype>][;base64],<data>
+      const comma = input.indexOf(',');
+      const header = input.slice(0, comma);
+      const b64 = input.slice(comma + 1);
+      const isB64 = /;base64/i.test(header);
+      const contentType = (header.match(/^data:([^;]+)/i)?.[1]) || mime;
+      if (isB64) {
+        const bin = atob(b64);
+        const len = bin.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+        byteArray = new Blob([bytes], { type: contentType });
+      } else {
+        // URL-encoded
+        const decoded = decodeURIComponent(b64);
+        byteArray = new Blob([decoded], { type: contentType });
+      }
+    } else {
+      // Assume raw base64 WAV
+      const bin = atob(input);
+      const len = bin.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      byteArray = new Blob([bytes], { type: mime });
+    }
+    const url = URL.createObjectURL(byteArray);
+    return url;
+  } catch (e) {
+    console.warn('toBlobUrl failed', e);
+    return '';
+  }
+}
+
+/**
  * Audio Konfiguration
  */
 const AudioConfig = {
   // TTS Settings
   ttsVolume: 1.0,
   ttsSpeed: 1.0,
-  crossfadeDuration: 100, // ms
+  crossfadeDuration: 60, // ms
   
   // Recording Settings
   sampleRate: 16000,
@@ -40,6 +83,10 @@ const AudioConfig = {
   // Playback State
   currentAudio: null,
   audioQueue: [],
+  // Chunked TTS sequences
+  ttsSequences: new Map(),
+  currentSequenceId: null,
+  currentTtsAudio: null,
   
   // Visualization
   voiceAnalyzer: null,
@@ -115,17 +162,20 @@ export const TTSPlayer = {
     }
 
     try {
-      // Data URL Format sicherstellen
-      let audioUrl = audioData;
-      if (!audioData.startsWith('data:')) {
-        // Base64 -> Data URL
-        audioUrl = `data:audio/wav;base64,${audioData}`;
-      }
+      // Ensure blob: URL (CSP-friendly)
+      const audioUrl = toBlobUrl(audioData, 'audio/wav');
+      if (!audioUrl) throw new Error('Ungültige Audiodaten');
 
       // Audio Element erstellen
       const audio = new Audio(audioUrl);
       audio.volume = options.volume || AudioConfig.ttsVolume;
-      audio.playbackRate = options.speed || AudioConfig.ttsSpeed;
+      // TTS-Geschwindigkeit wird ausschließlich im Backend angewandt.
+      // Player manipuliert keine Abspielgeschwindigkeit, Pitch bleibt stabil.
+      try {
+        audio.preservesPitch = true;
+        audio.mozPreservesPitch = true;
+        audio.webkitPreservesPitch = true;
+      } catch (_) {}
 
       // Promise für Playback Ende
       const playPromise = new Promise(function(resolve, reject) {
@@ -135,7 +185,7 @@ export const TTSPlayer = {
           console.log('TTS Audio geladen:', {
             duration: audio.duration,
             volume: audio.volume,
-            playbackRate: audio.playbackRate
+            playbackRate: 1.0
           });
         });
       });
@@ -148,6 +198,7 @@ export const TTSPlayer = {
       }
 
       AudioConfig.currentAudio = audio;
+      audio.addEventListener('ended', function () { try { URL.revokeObjectURL(audioUrl); } catch (_) {} });
       await playPromise;
 
     } catch (error) {
@@ -262,7 +313,8 @@ export const RecordingManager = {
           channelCount: AudioConfig.channels,
           echoCancellation: options.echoCancellation !== false,
           noiseSuppression: options.noiseSuppression !== false,
-          autoGainControl: options.autoGainControl !== false
+          autoGainControl: options.autoGainControl !== false,
+          ...(options.deviceId ? { deviceId: { exact: options.deviceId } } : {})
         }
       };
 
@@ -518,8 +570,20 @@ export const AudioSettings = {
    */
   setTtsSpeed(speed) {
     AudioConfig.ttsSpeed = Math.max(0.5, Math.min(2, speed));
+    // Keine lokale Änderung der Abspielgeschwindigkeit – nur Volume anpassen
     if (AudioConfig.currentAudio) {
-      AudioConfig.currentAudio.playbackRate = AudioConfig.ttsSpeed;
+      try {
+        AudioConfig.currentAudio.preservesPitch = true;
+        AudioConfig.currentAudio.mozPreservesPitch = true;
+        AudioConfig.currentAudio.webkitPreservesPitch = true;
+      } catch (_) {}
+    }
+  },
+  setTtsVolume(vol) {
+    const v = Math.max(0.0, Math.min(2.0, parseFloat(vol)));
+    AudioConfig.ttsVolume = isFinite(v) ? v : 1.0;
+    if (AudioConfig.currentAudio) {
+      AudioConfig.currentAudio.volume = Math.min(1.0, AudioConfig.ttsVolume);
     }
   },
 
@@ -618,6 +682,90 @@ export const AudioManager = {
    */
   stopAudio() {
     TTSPlayer.stopCurrentAudio();
+  },
+
+  setTtsVolume(vol) {
+    const v = Math.max(0.0, Math.min(2.0, parseFloat(vol)));
+    AudioConfig.ttsVolume = isFinite(v) ? v : 1.0;
+    if (AudioConfig.currentAudio) {
+      AudioConfig.currentAudio.volume = Math.min(1.0, AudioConfig.ttsVolume);
+    }
+  },
+
+  /**
+   * Queue a TTS chunk for staged playback with crossfade.
+   * Expected data shape: { sequence_id, index, total, engine, audio }
+   */
+  addTtsChunk(data) {
+    if (!data || typeof data.index !== 'number') return;
+    const id = data.sequence_id || 'default';
+    if (!AudioConfig.ttsSequences.has(id)) {
+      AudioConfig.ttsSequences.set(id, { chunks: [], index: 0, ended: false, currentAudio: null });
+    }
+    const seq = AudioConfig.ttsSequences.get(id);
+    const src = toBlobUrl(data.audio || '', 'audio/wav');
+    const audio = new Audio(src);
+    try {
+      audio.preservesPitch = true;
+      audio.mozPreservesPitch = true;
+      audio.webkitPreservesPitch = true;
+    } catch (_) {}
+    audio.preload = 'auto';
+    audio.load();
+    seq.chunks[data.index] = audio;
+
+    if (!AudioConfig.currentSequenceId) AudioConfig.currentSequenceId = id;
+    if (id === AudioConfig.currentSequenceId && !seq.currentAudio && data.index === seq.index) {
+      this._playNextTtsChunk();
+    }
+  },
+
+  endTtsSequence(data) {
+    const id = (data && data.sequence_id) || AudioConfig.currentSequenceId;
+    const seq = id ? AudioConfig.ttsSequences.get(id) : null;
+    if (!seq) return;
+    seq.ended = true;
+    if (id === AudioConfig.currentSequenceId && !seq.currentAudio) {
+      this._playNextTtsChunk();
+    }
+  },
+
+  _playNextTtsChunk() {
+    if (!AudioConfig.currentSequenceId) {
+      const first = AudioConfig.ttsSequences.keys().next();
+      if (first.done) return;
+      AudioConfig.currentSequenceId = first.value;
+    }
+    const seq = AudioConfig.ttsSequences.get(AudioConfig.currentSequenceId);
+    if (!seq) { AudioConfig.currentSequenceId = null; return; }
+    const next = seq.chunks[seq.index];
+    if (!next) return;
+    seq.index++;
+    next.volume = 0;
+
+    next.addEventListener('loadedmetadata', () => {
+      const upcoming = seq.chunks[seq.index];
+      if (upcoming) upcoming.load();
+      const wait = Math.max((next.duration * 1000) - AudioConfig.crossfadeDuration, 0);
+      setTimeout(() => this._playNextTtsChunk(), wait);
+    });
+    next.addEventListener('ended', () => {
+      seq.currentAudio = null;
+      if (seq.ended && seq.index >= seq.chunks.length) {
+        AudioConfig.ttsSequences.delete(AudioConfig.currentSequenceId);
+        AudioConfig.currentSequenceId = null;
+        this._playNextTtsChunk();
+      }
+    });
+
+    next.play().then(() => {
+      TTSPlayer.crossfadeAudios(AudioConfig.currentTtsAudio, next);
+      AudioConfig.currentTtsAudio = next;
+      seq.currentAudio = next;
+      try { next.addEventListener('ended', () => { try { URL.revokeObjectURL(next.src); } catch(_){} }); } catch(_){}
+    }).catch((err) => {
+      console.warn('TTS chunk playback failed:', err);
+    });
   },
 
   /**

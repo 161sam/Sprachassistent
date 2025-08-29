@@ -3,11 +3,17 @@ import argparse, os, sys, time, subprocess, urllib.request
 __all__ = ["main"]
 
 def _parse_args(argv):
-    p = argparse.ArgumentParser(prog="va")
+    p = argparse.ArgumentParser(prog="va", description="Sprachassistent CLI (vereinigter Einstiegspunkt)")
     p.add_argument("--validate-models", action="store_true", help="TTS-Modelle prüfen und verfügbare Stimmen anzeigen")
     p.add_argument("--desktop", action="store_true", help="Desktop-App (Electron) zusammen mit Backend starten")
     p.add_argument("--host", default=os.getenv("WS_HOST", os.getenv("BACKEND_HOST", "127.0.0.1")), help="Backend-Host")
     p.add_argument("--port", type=int, default=int(os.getenv("WS_PORT", os.getenv("BACKEND_PORT", "48232"))), help="Backend-Port")
+    # TTS/Runtime overrides
+    p.add_argument("--tts-progress", choices=["0","1"], help="Terminal‑Progress erzwingen (0/1), überschreibt Config/Env")
+    p.add_argument("--zonos-local-dir", help="Lokaler Zonos‑Modellordner (config.json + model.safetensors)")
+    p.add_argument("--zonos-model-id", help="HuggingFace Model‑ID für Zonos (z. B. Zyphra/Zonos-v0.1-transformer)")
+    p.add_argument("--zonos-speaker", help="Zonos Sprechername (z. B. thorsten)")
+    p.add_argument("--language", help="Bevorzugte TTS‑Sprache (z. B. de-DE)")
     return p.parse_args(argv[1:])
 
 def _validate_models():
@@ -85,6 +91,28 @@ def _start_backend_foreground(host: str, port: int):
 
 def main(argv: list[str] | None = None):
     args = _parse_args(argv or sys.argv)
+    # Deprecated path notice when invoked via module
+    try:
+        if (argv or sys.argv)[0].endswith("ws_server/cli.py") or (argv or sys.argv)[0].endswith("ws_server.cli"):
+            print("[va] Hinweis: 'python -m ws_server.cli' ist veraltet. Verwende 'va'.")
+    except Exception:
+        pass
+
+    # Apply overrides to environment before any subprocess spawn
+    if getattr(args, "tts_progress", None):
+        os.environ["TTS_PROGRESS"] = args.tts_progress
+    if getattr(args, "zonos_local_dir", None):
+        os.environ["ZONOS_LOCAL_DIR"] = args.zonos_local_dir
+    if getattr(args, "zonos_model_id", None):
+        os.environ["ZONOS_MODEL_ID"] = args.zonos_model_id
+    if getattr(args, "zonos_speaker", None):
+        os.environ["ZONOS_SPEAKER"] = args.zonos_speaker
+        # also hint canonical voice
+        if not os.getenv("TTS_VOICE") and args.zonos_speaker.lower() == "thorsten":
+            os.environ["TTS_VOICE"] = "de-thorsten-low"
+    if getattr(args, "language", None):
+        os.environ["TTS_LANGUAGE"] = args.language
+
     if args.validate_models:
         _validate_models(); return
     if args.desktop:
