@@ -64,4 +64,23 @@ Checkliste:
    Modellspeicher angegeben sein.
 2. Wenn `TTS_MODEL_DIR` gesetzt ist, kein weiteres `models/` voranstellen.
 3. Alternativ einen absoluten Pfad zum Modell verwenden.
+## Zonos hat keine Stimme (thorsten)
 
+- Stelle sicher, dass die Stimme in `config/tts.json` gemappt ist:
+  - `voice_map.de-thorsten-low.zonos.voice_id = "thorsten"`
+- Lege ein Sprecher‑Sample in `spk_cache/` ab, z. B.: `spk_cache/thorsten.wav` (MP3/FLAC/OGG/M4A werden ebenfalls erkannt, Groß/Kleinschreibung egal).
+- Optional: Vorberechnetes Embedding: `spk_cache/thorsten.pt` (wird automatisch erzeugt, wenn ein Audio‑Sample vorhanden ist).
+- Ohne Sample verwendet Zonos die Default‑Stimme und protokolliert eine Warnung; die Synthese läuft weiter.
+
+Lokales Modell (optional):
+
+- Pfad via `ZONOS_LOCAL_DIR` setzen (Ordner mit `config.json` und `model.safetensors`), sonst nutzt die Engine `ZONOS_MODEL_ID` (z. B. `Zyphra/Zonos-v0.1-transformer`).
+
+
+- Zonos: "Please pick a supported language"
+  - Setze `ZONOS_LANGUAGE` oder `TTS_LANGUAGE` auf einen unterstützten Code.
+  - Unterstützt: de, en, fr, ja, zh. Aliasse wie de-de, en-us werden automatisch normalisiert.
+
+- Piper Default Voice
+  - Setze `TTS_DEFAULT_VOICE` (z. B. `de-thorsten-low`) oder konfiguriere Voice Aliases in `docs/TTS-VOICE-ALIASES.md`.
+  - Der Intro-Teil nutzt niemals `default`, sondern eine auflösbare Alias-Stimme.
