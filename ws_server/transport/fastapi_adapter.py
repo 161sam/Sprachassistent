@@ -376,8 +376,11 @@ _logging.getLogger("ws_server.tts.staged").debug(
     {k: STAGED_TTS_RUNTIME[k] for k in sorted(STAGED_TTS_RUNTIME.keys())},
 )
 try:
+    src = "env" if os.getenv("STAGED_TTS_CROSSFADE_MS") else "default"
     _logging.getLogger("ws_server.tts.staged").info(
-        "Crossfade final (ms)=%d (env>code)", int(STAGED_TTS_RUNTIME.get("crossfade_ms") or 100)
+        "Crossfade(ms)=%d [source=%s]",
+        int(STAGED_TTS_RUNTIME.get("crossfade_ms") or 100),
+        src,
     )
 except Exception:
     pass
@@ -822,20 +825,20 @@ async def _handle_gui_control(ws: WebSocket, payload: dict) -> bool:
                     except Exception:
                         pass
         if typ == "set_tts_options":
-            mgr = await _ensure_tts_manager()
-            if mgr and getattr(mgr, "config", None) is not None:
-                spd = payload.get("speed")
-                vol = payload.get("volume")
-                try:
+            try:
+                mgr = await _ensure_tts_manager()
+                if mgr and getattr(mgr, "config", None) is not None:
+                    spd = payload.get("speed")
+                    vol = payload.get("volume")
                     if spd is not None:
                         mgr.config.speed = float(spd)
-                except Exception:
-                    pass
-                try:
                     if vol is not None:
                         mgr.config.volume = float(vol)
-                except Exception:
-                    pass
+                await ws.send_text(json.dumps({"type": "ok", "action": "set_tts_options"}))
+                return True
+            except Exception as e:
+                await ws.send_text(json.dumps({"type": "error", "message": f"set_tts_options failed: {e}"}))
+                return True
         if typ == "set_tts_language":
             # accepts BCP-47 like 'de-DE'; engines handle mapping internally
             lang = (payload.get("value") or payload.get("language") or payload.get("lang") or "").strip()
