@@ -134,7 +134,10 @@ class PiperTTSEngine(BaseTTSEngine):
             logger.warning("Verwende Fallback-Modell: %s", fallback)
             return str(fallback.resolve())
 
-        raise TTSInitializationError(f"Kein Piper-Modell gefunden (voice='{voice}', model='{model_filename}')")
+        # Provide clearer message with attempted alias and filename
+        raise TTSInitializationError(
+            f"Kein Piper-Modell gefunden (voice='{voice}', model='{model_filename}')"
+        )
 
     def _read_sample_rate(self, model_path: str) -> int:
         json_path = Path(model_path).with_suffix(Path(model_path).suffix + ".json")
@@ -286,7 +289,20 @@ class PiperTTSEngine(BaseTTSEngine):
         except Exception:
             volume = 1.0
 
-        syn_cfg = SynthesisConfig(length_scale=1.0 / speed, volume=volume)
+        # Prefer calmer, less "spiky" defaults; allow env overrides
+        try:
+            noise_scale = float(os.getenv("PIPER_NOISE_SCALE", "0.45"))
+        except Exception:
+            noise_scale = 0.45
+        try:
+            noise_w = float(os.getenv("PIPER_NOISE_W", "0.5"))
+        except Exception:
+            noise_w = 0.5
+        try:
+            syn_cfg = SynthesisConfig(length_scale=1.0 / speed, volume=volume, noise_scale=noise_scale, noise_w=noise_w)
+        except TypeError:
+            # older piper versions may not accept noise_* params
+            syn_cfg = SynthesisConfig(length_scale=1.0 / speed, volume=volume)
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
             wf.setnchannels(1)
@@ -298,4 +314,3 @@ class PiperTTSEngine(BaseTTSEngine):
 
 
 __all__ = ["PiperTTSEngine"]
-

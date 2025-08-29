@@ -379,7 +379,10 @@ class TTSManager:
         return bool(ev and (ev.voice_id or ev.model_path))
 
     def get_canonical_voice(self, voice: Optional[str]) -> str:
-        return canonicalize_voice(voice or os.getenv("TTS_VOICE", "de-thorsten-low"))
+        v = canonicalize_voice(voice or os.getenv("TTS_VOICE", "de-thorsten-low"))
+        if v == "default":
+            v = canonicalize_voice(os.getenv("TTS_DEFAULT_VOICE", "de-thorsten-low"))
+        return v
 
     # ---------------------------
     # Audio-Nachbearbeitung
