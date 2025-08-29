@@ -23,13 +23,17 @@ import asyncio
 import logging
 import os
 import audioop
+import json
 from pathlib import Path
 from importlib import import_module
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
 import re
+import time
+import math
 
 from .base_tts_engine import BaseTTSEngine, TTSConfig, TTSResult
+from ws_server.metrics.collector import collector
 from ws_server.tts.voice_aliases import VOICE_ALIASES, EngineVoice
 from ws_server.tts.voice_utils import canonicalize_voice
 from ws_server.core.config import get_tts_engine_default
@@ -81,7 +85,40 @@ class TTSManager:
         logger.info("Initialisiere TTS-Manager...")
         self.engines: Dict[str, BaseTTSEngine] = {}
         self.default_engine: Optional[str] = None
-        self.config = TTSConfig()  # Basiskonfig (voice, speed, volume)
+        # Basiskonfig (voice, speed, volume, language)
+        self.config = TTSConfig()
+
+        # Load static defaults if present (ws_server/config/tts_defaults.json)
+        try:
+            repo_root = Path(__file__).resolve().parents[2]
+            # probe both ws_server/config and top-level config for flexibility
+            for p in [repo_root / "config" / "tts_defaults.json", repo_root / "ws_server" / "config" / "tts_defaults.json"]:
+                if p.exists():
+                    with p.open("r", encoding="utf-8") as fh:
+                        _defaults = json.load(fh) or {}
+                    # Only apply if env not overriding
+                    if not os.getenv("TTS_VOICE") and _defaults.get("default_voice"):
+                        self.config.voice = str(_defaults.get("default_voice"))
+                    if not os.getenv("TTS_LANGUAGE") and _defaults.get("default_language"):
+                        self.config.language = str(_defaults.get("default_language"))
+                    break
+        except Exception:
+            # Non-fatal; proceed with env/defaults
+            pass
+        try:
+            # Read runtime speed/volume from environment (defaults handled upstream)
+            sp = os.getenv("TTS_SPEED")
+            if sp is not None:
+                self.config.speed = float(sp)
+            vl = os.getenv("TTS_VOLUME")
+            if vl is not None:
+                self.config.volume = float(vl)
+            lang = os.getenv("TTS_LANGUAGE")
+            if lang:
+                self.config.language = str(lang)
+        except Exception:
+            # keep defaults on parse errors
+            pass
         self.unavailable_engines: Dict[str, str] = {}  # name -> reason
         self._loaded_classes: Dict[str, type] = {}
         logger.info("Geplante TTS-Engines: %s", list(ENGINE_IMPORTS.keys()))
@@ -140,6 +177,12 @@ class TTSManager:
 
         if kokoro_config:
             engine_configs["kokoro"] = kokoro_config
+        # Zonos: baue eine leichte Default‑Konfiguration, wenn keine explizite übergeben wurde
+        if zonos_config is None:
+            try:
+                zonos_config = self._build_zonos_config()
+            except Exception:
+                zonos_config = None
         if zonos_config:
             engine_configs["zonos"] = zonos_config
 
@@ -260,8 +303,30 @@ class TTSManager:
             voice=voice,
             speed=self.config.speed or 1.0,
             volume=self.config.volume or 1.0,
-            language="de",
+            language=(self.config.language or os.getenv("TTS_LANGUAGE") or "de-DE"),
             sample_rate=22050,
+            model_dir=self.config.model_dir,
+        )
+
+    def _build_zonos_config(self) -> TTSConfig:
+        """Leichte Default‑Konfiguration für Zonos (keine Model‑Pfad‑Pflege nötig)."""
+        voice = canonicalize_voice(os.getenv("TTS_VOICE", self.config.voice))
+        # Sprache heuristisch aus Voice ableiten (Engine selbst wählt später nochmal)
+        # derive language if not provided via config/env; prefer a BCP47 like 'de-DE'
+        lang_raw = (self.config.language or os.getenv("TTS_LANGUAGE") or "").strip()
+        lang = lang_raw or ("de" if voice.startswith("de-") or voice.startswith("de_") else "en-us")
+        try:
+            sr = int(os.getenv("ZONOS_TARGET_SR", "0"))
+        except Exception:
+            sr = 0
+        return TTSConfig(
+            engine_type="zonos",
+            model_path=os.getenv("ZONOS_MODEL", "Zyphra/Zonos-v0.1-transformer"),
+            voice=voice,
+            speed=self.config.speed or 1.0,
+            volume=self.config.volume or 1.0,
+            language=lang,
+            sample_rate=sr or 0,
             model_dir=self.config.model_dir,
         )
 
@@ -294,11 +359,15 @@ class TTSManager:
     def _postprocess_audio(self, audio: bytes, sample_rate: int) -> Tuple[bytes, int]:
         """
         Optionales Resampling & Loudness-Normalisierung (per ENV):
-          - TTS_TARGET_SR: gewünschte Ausgaberate (int)
-          - TTS_LOUDNESS_NORMALIZE: "1" aktiviert RMS-basierte Pegelanpassung
+          - TTS_TARGET_SR / TTS_OUTPUT_SR: gewünschte Ausgaberate (int)
+          - TTS_LOUDNESS_NORMALIZE: "1" aktiviert Loudness-Normalisierung
+          - TTS_LIMITER_CEILING_DBFS: Soft-Clipping bei z.B. -1.0 dBFS
         """
         try:
-            target_sr = int(os.getenv("TTS_TARGET_SR", "") or sample_rate)
+            # support both names; default 24kHz
+            target_sr = int((os.getenv("TTS_TARGET_SR") or os.getenv("TTS_OUTPUT_SR") or "24000"))
+            if not target_sr:
+                target_sr = sample_rate
         except Exception:
             target_sr = sample_rate
 
@@ -306,12 +375,55 @@ class TTSManager:
             audio, _ = audioop.ratecv(audio, 2, 1, sample_rate, target_sr, None)
             sample_rate = target_sr
 
-        if os.getenv("TTS_LOUDNESS_NORMALIZE", "0") == "1":
-            rms = audioop.rms(audio, 2)
-            if rms:
-                target = 20000
-                factor = min(4.0, target / max(rms, 1))
-                audio = audioop.mul(audio, 2, factor)
+        # Loudness normalization (approximate if pyloudnorm not available)
+        if os.getenv("TTS_LOUDNESS_NORMALIZE", "1") == "1":
+            try:
+                import numpy as _np  # noqa: F401
+                # Approximate to -16 LUFS by aiming for RMS ≈ -16 dBFS (speech)
+                rms = audioop.rms(audio, 2)  # int16 domain [0..32767]
+                if rms:
+                    # target RMS ~ 0.16 * 32767 ≈ -15.9 dBFS
+                    target_rms = int(0.16 * 32767)
+                    factor = max(0.25, min(4.0, target_rms / max(1, rms)))
+                    audio = audioop.mul(audio, 2, float(factor))
+            except Exception:
+                pass
+
+        # Soft limiter by hard clip to ceiling
+        try:
+            ceiling_db = float(os.getenv("TTS_LIMITER_CEILING_DBFS", "-1.0"))
+        except Exception:
+            ceiling_db = -1.0
+        try:
+            if ceiling_db < 0:
+                max_val = int(32767 * (10 ** (ceiling_db / 20.0)))
+                import array as _array
+                buf = _array.array('h')
+                buf.frombytes(audio)
+                for i in range(len(buf)):
+                    if buf[i] > max_val:
+                        buf[i] = max_val
+                    elif buf[i] < -max_val:
+                        buf[i] = -max_val
+                audio = buf.tobytes()
+        except Exception:
+            pass
+
+        # Update basic output metrics
+        try:
+            nbytes = len(audio or b"")
+            nsamples = nbytes // 2
+            if nbytes:
+                collector.audio_out_bytes_total.inc(nbytes)
+                collector.tts_out_bytes_total.inc(nbytes)
+                collector.tts_out_samples_total.inc(nsamples)
+                # Approximate LUFS with dBFS from RMS
+                rms = audioop.rms(audio, 2)
+                if rms > 0:
+                    dbfs = 20.0 * math.log10(max(1.0, rms) / 32767.0)
+                    collector.tts_out_avg_lufs.set(dbfs)
+        except Exception:
+            pass
 
         return audio, sample_rate
 
@@ -370,8 +482,41 @@ class TTSManager:
             )
 
         try:
-            ev = self._resolve_engine_voice(target_engine, canonical_voice)
+            try:
+                ev = self._resolve_engine_voice(target_engine, canonical_voice)
+            except Exception:
+                # Zonos: dynamischer Fallback – erlaube Voice-ID aus canonical zu leiten
+                if target_engine == "zonos":
+                    try:
+                        raw = canonical_voice or ""
+                        derived = raw.split("-", 1)[1] if ("-" in raw) else raw
+                        ev = EngineVoice(model_path=None, voice_id=derived)
+                    except Exception:
+                        # Als letzter Versuch: auf Default‑Voice fallen
+                        fallback_voice = self.get_canonical_voice(getattr(self.config, 'voice', None))
+                        canonical_voice = fallback_voice
+                        ev = self._resolve_engine_voice(target_engine, canonical_voice)
+                else:
+                    # Fallback auf Default‑Voice, wenn Mapping fehlt
+                    fallback_voice = self.get_canonical_voice(getattr(self.config, 'voice', None))
+                    canonical_voice = fallback_voice
+                    ev = self._resolve_engine_voice(target_engine, canonical_voice)
             engine_obj = self.engines[target_engine]
+
+            # Apply manager-level speed/volume to engine config when possible
+            try:
+                if hasattr(self, 'config') and getattr(self, 'config', None):
+                    spd = getattr(self.config, 'speed', None)
+                    vol = getattr(self.config, 'volume', None)
+                    if target_engine == 'piper' and hasattr(engine_obj, 'config') and engine_obj.config is not None:
+                        if spd is not None:
+                            try: engine_obj.config.speed = float(spd)
+                            except Exception: pass
+                        if vol is not None:
+                            try: engine_obj.config.volume = float(vol)
+                            except Exception: pass
+            except Exception:
+                pass
 
             # Piper: gewünschten model_path in die Engine-Config legen (keine Doppelübergabe)
             if target_engine == "piper" and hasattr(engine_obj, "config"):
@@ -382,16 +527,99 @@ class TTSManager:
 
             # Engine-Aufruf
             raw: Any
+            import inspect
+            # Merge manager speed/volume into kwargs passed to engines
+            merged_kw = dict(kwargs)
+            try:
+                if hasattr(self, 'config') and getattr(self, 'config', None):
+                    if 'speed' not in merged_kw and getattr(self.config, 'speed', None) is not None:
+                        merged_kw['speed'] = float(self.config.speed)
+                    if 'volume' not in merged_kw and getattr(self.config, 'volume', None) is not None:
+                        merged_kw['volume'] = float(self.config.volume)
+            except Exception:
+                pass
+            # Normalize voice parameters – only a single voice key is forwarded.
+            # We pass 'voice' explicitly for Piper, and 'voice_id' explicitly for engines
+            # that accept voice_id. Drop any aliases from merged_kw to avoid duplicates.
+            try:
+                merged_kw.pop('speaker', None)
+                merged_kw.pop('voice', None)
+                merged_kw.pop('voice_id', None)
+            except Exception:
+                pass
+            t0 = time.perf_counter()
             if hasattr(engine_obj, "speak"):
+                sig = None
+                try:
+                    sig = inspect.signature(engine_obj.speak)
+                except Exception:
+                    sig = None
+                has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in (sig.parameters.values() if sig else []))
                 if target_engine == "piper":
-                    raw = await engine_obj.speak(text, voice=canonical_voice, config=kwargs)
+                    # Piper akzeptiert voice als Name (canonical)
+                    if sig and "config" in sig.parameters:
+                        raw = await engine_obj.speak(text, voice=canonical_voice, config=merged_kw)
+                    else:
+                        raw = await engine_obj.speak(text, voice=canonical_voice)
                 else:
-                    raw = await engine_obj.speak(text, voice=ev.voice_id, config=kwargs)
+                    # Andere Engines: manche erwarten voice_id, andere voice
+                    if sig and "voice_id" in sig.parameters:
+                        if "config" in sig.parameters:
+                            raw = await engine_obj.speak(text, voice_id=getattr(ev, 'voice_id', None), config=merged_kw)
+                        else:
+                            raw = await engine_obj.speak(text, voice_id=getattr(ev, 'voice_id', None))
+                    elif sig and "voice" in sig.parameters:
+                        if "config" in sig.parameters:
+                            raw = await engine_obj.speak(text, voice=canonical_voice, config=merged_kw)
+                        else:
+                            raw = await engine_obj.speak(text, voice=canonical_voice)
+                    else:
+                        raw = await engine_obj.speak(text)
             else:
+                sig = None
+                try:
+                    sig = inspect.signature(engine_obj.synthesize)
+                except Exception:
+                    sig = None
+                has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in (sig.parameters.values() if sig else []))
                 if target_engine == "piper":
-                    raw = await engine_obj.synthesize(text, voice=canonical_voice, cfg=kwargs)
+                    # Piper nimmt voice + cfg
+                    if sig and "cfg" in sig.parameters:
+                        raw = await engine_obj.synthesize(text, voice=canonical_voice, cfg=merged_kw)
+                    else:
+                        # Nur bekannte Parameter übergeben
+                        if sig and ("voice" in sig.parameters) and has_varkw:
+                            raw = await engine_obj.synthesize(text, voice=canonical_voice, **merged_kw)
+                        else:
+                            raw = await engine_obj.synthesize(text, voice=canonical_voice)
                 else:
-                    raw = await engine_obj.synthesize(text, voice_id=ev.voice_id, **kwargs)
+                    # Andere Engines: je nach Signatur voice_id oder voice
+                    if sig and "voice_id" in sig.parameters:
+                        if has_varkw:
+                            raw = await engine_obj.synthesize(text, voice_id=getattr(ev, 'voice_id', None), **merged_kw)
+                        else:
+                            raw = await engine_obj.synthesize(text, voice_id=getattr(ev, 'voice_id', None))
+                    elif sig and "voice" in sig.parameters:
+                        if has_varkw:
+                            raw = await engine_obj.synthesize(text, voice=canonical_voice, **merged_kw)
+                        else:
+                            raw = await engine_obj.synthesize(text, voice=canonical_voice)
+                    else:
+                        raw = await engine_obj.synthesize(text)
+
+            # Engine-Latenz-Metriken
+            try:
+                dt = (time.perf_counter() - t0)
+                try:
+                    collector.tts_latency.observe(dt)
+                except Exception:
+                    pass
+                try:
+                    collector.tts_engine_latency_ms.labels(target_engine).observe(dt * 1000.0)
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
             # Vereinheitlichen -> TTSResult
             if isinstance(raw, dict) and "wav_bytes" in raw:
@@ -412,8 +640,14 @@ class TTSManager:
                     voice_used=canonical_voice,
                 )
 
-            # Andernfalls: raw ist bereits ein TTSResult
-            result: TTSResult = raw
+            # Tuple (bytes, sr) → TTSResult
+            if isinstance(raw, tuple) and len(raw) >= 1:
+                audio_bytes = raw[0]
+                sr = int(raw[1]) if len(raw) > 1 else 22050
+                result = TTSResult(audio_data=audio_bytes, success=bool(audio_bytes), error_message=None, engine_used=target_engine, sample_rate=sr, voice_used=canonical_voice)
+            else:
+                # Andernfalls: raw ist bereits ein TTSResult
+                result: TTSResult = raw
             if result.success and result.audio_data:
                 processed, sr = self._postprocess_audio(result.audio_data, result.sample_rate or 0)
                 result.audio_data = processed
