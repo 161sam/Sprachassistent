@@ -57,19 +57,49 @@ _SR = None
 _LOCK = asyncio.Lock()
 _SPEAKER_CACHE: Dict[str, object] = {}
 
+def _normalize_lang(lang: str | None) -> str:
+    if not lang:
+        return "de"
+    s = str(lang).strip().lower().replace("_", "-")
+    table = {
+        # German
+        "de": "de", "de-de": "de", "german": "de", "ger": "de", "deu": "de",
+        # English
+        "en": "en", "en-us": "en", "english": "en", "eng": "en",
+        # French
+        "fr": "fr", "fr-fr": "fr", "french": "fr",
+        # Japanese/Chinese
+        "ja": "ja", "japanese": "ja",
+        "zh": "zh", "zh-cn": "zh", "chinese": "zh",
+    }
+    return table.get(s, s)
+
+
+def _is_supported_lang(norm: str) -> bool:
+    # Keep conservative; Zonos commonly supports these bases
+    return norm in {"de", "en", "fr", "ja", "zh"}
+
+
+def _validate_lang(lang: str | None) -> str:
+    norm = _normalize_lang(lang)
+    if not _is_supported_lang(norm):
+        raise ValueError(f"Unsupported language '{lang}' (normalized '{norm}'). Supported: de,en,fr,ja,zh")
+    return norm
+
+
 def _pick_language(voice: Optional[str]) -> str:
     # Priorität: explicit TTS language (BCP47) > Zonos ENV > Voice-Heuristik > Default
     lang = (os.getenv("TTS_LANGUAGE") or os.getenv("ZONOS_LANGUAGE") or os.getenv("ZONOS_LANG") or "").strip().lower()
     if not lang and voice:
         v = (voice or "").lower()
-        if "de" in v: lang = "de"           # de, de-de, de_thorsten_low etc.
-        elif "en" in v: lang = "en-us"
-        elif "fr" in v: lang = "fr-fr"
+        if "de" in v: lang = "de"
+        elif "en" in v: lang = "en"
+        elif "fr" in v: lang = "fr"
         elif "ja" in v: lang = "ja"
         elif "zh" in v or "cn" in v: lang = "zh"
     if not lang:
         lang = "de"  # Default
-    return lang
+    return _normalize_lang(lang)
 
 def _pick_model_id() -> str:
     # akzeptiere mehrere ENV-Varianten
@@ -189,9 +219,9 @@ def _get_speaker_embedding(voice_id: Optional[str]) -> object:
                 return spk
             except Exception as e:
                 log.warning("Zonos: speaker build failed for %s: %s", sample, e)
-    # no explicit sample – warn and return default speaker
+    # no explicit sample – inform and return default speaker
     if voice_id:
-        log.warning("Zonos: kein Sprecher‑Sample für '%s' gefunden – nutze Default‑Stimme", voice_id)
+        log.info("Zonos: kein Sprecher‑Sample für '%s' gefunden – nutze Default‑Stimme", voice_id)
     return _SPEAKER
 
 def precompute_speaker_embedding(voice_id: str) -> bool:
@@ -446,14 +476,19 @@ class ZonosEngine:
 
         # Heavy CPU/GPU Arbeit in Thread auslagern
         loop = asyncio.get_running_loop()
-        log.debug("Zonos: cond lang=%s speaking_rate=%.2f pitch_std=%s", lang, float(eff_rate), ("%.2f" % pitch_std) if pitch_std is not None else "default")
+        # Validate and normalize language
+        try:
+            lang_norm = _validate_lang(lang)
+        except ValueError as e:
+            raise ValueError(str(e))
+        log.debug("Zonos: cond lang=%s speaking_rate=%.2f pitch_std=%s", lang_norm, float(eff_rate), ("%.2f" % pitch_std) if pitch_std is not None else "default")
 
         def _generate_bytes():
             spk = _get_speaker_embedding(voice_id)
             cond = make_cond_dict(
                 text=text,
                 speaker=spk,
-                language=lang,
+                language=lang_norm,
                 speaking_rate=float(eff_rate),
                 **({"pitch_std": float(pitch_std)} if pitch_std is not None else {}),
             )
