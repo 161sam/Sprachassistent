@@ -50,7 +50,7 @@ ls -l models/piper
 Symlinks like `de-thorsten-low.onnx -> de_DE-thorsten-low.onnx` must point to
 the real file next to a `*.onnx.json` metadata file.
 
-Neue, robuste Auflösung (kein „default.onnx“ mehr):
+Neue, robuste Auflösung (kein hartkodiertes Standard‑ONNX mehr):
 - Standard‑Suchpfad: `PIPER_MODELS_DIR` (Default: `models/piper`)
 - Priorität ohne gesetzte Stimme: `de-thorsten-low` > `de-thorsten-high` > erstes `de-*.onnx` > erstes `*.onnx` im Verzeichnis
 - Bei fehlendem Sidecar: Thorsten‑Modelle → 22050 Hz
@@ -119,3 +119,19 @@ antwortet mit:
 ```
 Die Werte werden protokolliert („TTS‑Optionen aktualisiert …“). Engine‑seitige
 Effekte bleiben davon entkoppelt.
+
+## HTTP Probe /api/tts
+Für deterministische Tests steht ein einfacher HTTP‑Endpunkt zur Verfügung:
+
+Beispiel:
+```
+POST http://127.0.0.1:48232/api/tts
+Content-Type: application/json
+
+{"text":"Hallo, dies ist ein Test der Sprachqualität.", "engine":"zonos", "speed":1.0}
+```
+
+Antwort enthält Base64‑kodiertes WAV:
+```
+{"audio":"<RIFF...base64>", "sample_rate": 24000}
+```

@@ -201,7 +201,7 @@ class PiperTTSEngine(BaseTTSEngine):
         return canonicalize_voice(voice) in self.supported_voices
 
     def _resolve_model_path(self, voice: str) -> str:
-        # Nutze immer das robuste Resolver‑Verfahren, keine 'default.onnx' Annahmen.
+        # Nutze immer das robuste Resolver‑Verfahren, keine hartkodierten Standard‑Modelle.
         voice = canonicalize_voice(voice)
         # Direkt gesetzter, existenter model_path bleibt gültig
         if self.config.model_path:

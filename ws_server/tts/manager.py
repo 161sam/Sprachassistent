@@ -268,7 +268,7 @@ class TTSManager:
 
         - Modelle‑Verzeichnis: PIPER_MODELS_DIR oder "models/piper"
         - Default‑Stimme: PIPER_DEFAULT_VOICE oder "de-thorsten-low"
-        - Kein starres "default.onnx" mehr.
+        - Kein hartkodiertes Standard-ONNX mehr.
         """
         models_dir = Path(os.getenv("PIPER_MODELS_DIR") or "models/piper")
         default_voice = canonicalize_voice(os.getenv("PIPER_DEFAULT_VOICE", "de-thorsten-low"))

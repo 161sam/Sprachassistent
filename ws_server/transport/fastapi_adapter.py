@@ -20,7 +20,7 @@ from typing import Dict, Optional, Tuple
 import aiohttp
 
 import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 import logging as _logging
 import sys as _sys
@@ -89,6 +89,26 @@ def handshake():
         "features": {"staged_tts": True, "stt": True, "tts": True},
     }
 
+
+@app.post("/api/tts")
+async def api_tts(
+    text: str = Body(..., embed=True),
+    engine: str = Body("zonos"),
+    speed: float = Body(1.0),
+):
+    """Synthesize text -> base64 WAV via HTTP for deterministic probes."""
+    try:
+        mgr = await _ensure_tts_manager()
+        if not mgr:
+            return {"audio": None, "sample_rate": 0, "error": "TTS disabled"}
+        # call manager directly to avoid staged pipeline here (deterministic)
+        res = await mgr.synthesize(text=text, engine=engine, speed=float(speed))
+        if not getattr(res, "success", False) or not getattr(res, "audio_data", None):
+            return {"audio": None, "sample_rate": int(getattr(res, "sample_rate", 0) or 0), "error": getattr(res, "error_message", "failed")}
+        b64 = base64.b64encode(res.audio_data).decode("ascii")
+        return {"audio": b64, "sample_rate": int(getattr(res, "sample_rate", 0) or 0)}
+    except Exception as e:  # pragma: no cover
+        return {"audio": None, "sample_rate": 0, "error": str(e)}
 
 @app.get("/api/tts/status")
 def tts_status():
@@ -419,7 +439,14 @@ async def _ensure_tts_manager():
     return _tts_mgr
 
 
-async def _speak_to_wav_b64(text: str) -> Optional[str]:
+def _get_ws_runtime(ws: WebSocket | None) -> Dict[str, object]:
+    try:
+        return dict(getattr(ws, "_tts_runtime", {}) or {}) if ws is not None else {}
+    except Exception:
+        return {}
+
+
+async def _speak_to_wav_b64(text: str, ws: WebSocket | None = None) -> Optional[str]:
     """
     Synthese text -> PCM WAV bytes -> base64. Rückgabe None, falls TTS inaktiv.
     """
@@ -428,14 +455,26 @@ async def _speak_to_wav_b64(text: str) -> Optional[str]:
         return None
     log = _logging.getLogger("ws_server.tts")
     log.debug("speak: single text len=%d", len(text or ""))
-    wav = await mgr.synthesize_text(text=text)
+    # Per‑Connection Overrides
+    rt = _get_ws_runtime(ws)
+    eng = rt.get("engine") if isinstance(rt.get("engine"), str) else None
+    spd: float | None
+    try:
+        spd = float(rt.get("speed")) if rt.get("speed") is not None else None
+    except Exception:
+        spd = None
+    if eng is not None or spd is not None:
+        res = await mgr.synthesize(text=text, engine=eng, speed=spd if spd is not None else mgr.config.speed)
+        wav = getattr(res, "audio_data", None)
+    else:
+        wav = await mgr.synthesize_text(text=text)
     if not wav:
         return None
     log.debug("speak: wav bytes=%d", len(wav))
     return base64.b64encode(wav).decode("ascii")
 
 
-async def _speak_staged_to_wav_b64(text: str) -> Optional[str]:
+async def _speak_staged_to_wav_b64(text: str, ws: WebSocket | None = None) -> Optional[str]:
     """Synthesize staged TTS (Piper intro + Zonos main) → WAV base64.
     Falls Staged‑TTS deaktiviert ist oder ein Fehler auftritt, gibt None zurück.
     """
@@ -445,8 +484,10 @@ async def _speak_staged_to_wav_b64(text: str) -> Optional[str]:
     if not mgr:
         return None
     # Apply runtime config via environment for the adapter helpers
+    rt = _get_ws_runtime(ws)
+    main_override = rt.get("engine") if isinstance(rt.get("engine"), str) else None
     os.environ["STAGED_TTS_INTRO_ENGINE"] = str(STAGED_TTS_RUNTIME.get("intro_engine") or "piper")
-    os.environ["STAGED_TTS_MAIN_ENGINE"] = str(STAGED_TTS_RUNTIME.get("main_engine") or "zonos")
+    os.environ["STAGED_TTS_MAIN_ENGINE"] = str(main_override or STAGED_TTS_RUNTIME.get("main_engine") or "zonos")
     os.environ["STAGED_TTS_CROSSFADE_MS"] = str(int(STAGED_TTS_RUNTIME.get("crossfade_ms") or 100))
     os.environ["STAGED_TTS_MAX_INTRO_LENGTH"] = str(int(STAGED_TTS_RUNTIME.get("max_intro_length") or 120))
 
@@ -454,7 +495,23 @@ async def _speak_staged_to_wav_b64(text: str) -> Optional[str]:
         from ws_server.tts.staged_tts.adapter import synthesize_staged
         log = _logging.getLogger("ws_server.tts.staged")
         log.debug("staged: synthesize text len=%d", len(text or ""))
-        pcm, sr = await synthesize_staged(mgr, text=text)
+        # optional speed override (temporary)
+        old_speed = getattr(mgr, "config", None).speed if getattr(mgr, "config", None) is not None else None
+        try:
+            if rt.get("speed") is not None and getattr(mgr, "config", None) is not None:
+                try:
+                    spd = float(rt.get("speed"))
+                    if spd > 0:
+                        mgr.config.speed = spd
+                except Exception:
+                    pass
+            pcm, sr = await synthesize_staged(mgr, text=text)
+        finally:
+            try:
+                if old_speed is not None and getattr(mgr, "config", None) is not None:
+                    mgr.config.speed = old_speed  # type: ignore[assignment]
+            except Exception:
+                pass
         if not pcm:
             return None
         import wave
@@ -474,7 +531,7 @@ async def _speak_staged_to_wav_b64(text: str) -> Optional[str]:
 
 _FIRST_MAIN_CALL_CHUNKED = True
 
-async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
+async def _speak_staged_chunked_b64(text: str, ws: WebSocket | None = None) -> Optional[list[dict]]:
     """Return staged chunks as list of {engine, wav_b64} dicts.
     Uses adapter._synth directly to avoid merging chunks; client will crossfade.
     """
@@ -484,8 +541,9 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
     if not mgr:
         return None
     log = _logging.getLogger("ws_server.tts.staged")
+    rt = _get_ws_runtime(ws)
     intro_engine = str(STAGED_TTS_RUNTIME.get("intro_engine") or "piper").lower()
-    main_engine  = str(STAGED_TTS_RUNTIME.get("main_engine") or "zonos").lower()
+    main_engine  = str((rt.get("engine") if isinstance(rt.get("engine"), str) else None) or STAGED_TTS_RUNTIME.get("main_engine") or "zonos").lower()
     log.debug("staged: chunked intro=%s main=%s text_len=%d", intro_engine, main_engine, len(text or ""))
     show_progress = bool(progress_enabled())
     try:
@@ -553,6 +611,7 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
     import wave
 
     # Try intro first (optional) and chunk it for faster start
+    # Speed-Override wird pro Synth-Aufruf angewandt (lokal, mit Restore)
     if intro_text and intro_engine:
         try:
             icmax = int(STAGED_TTS_RUNTIME.get("intro_chunk_size_max") or 80)
@@ -570,7 +629,23 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                     ito = int(os.getenv("STAGED_TTS_INTRO_TIMEOUT_MS", "2000"))
                 except Exception:
                     ito = 2000
-                ibuf, isr = await asyncio.wait_for(_adapter_synth(mgr, intro_engine, part, None), timeout=max(0.001, ito/1000.0))
+                # speed override (per-call)
+                _old_speed = getattr(mgr, "config", None).speed if getattr(mgr, "config", None) is not None else None
+                try:
+                    if rt.get("speed") is not None and getattr(mgr, "config", None) is not None:
+                        try:
+                            spd = float(rt.get("speed"))
+                            if spd > 0:
+                                mgr.config.speed = spd
+                        except Exception:
+                            pass
+                    ibuf, isr = await asyncio.wait_for(_adapter_synth(mgr, intro_engine, part, None), timeout=max(0.001, ito/1000.0))
+                finally:
+                    try:
+                        if _old_speed is not None and getattr(mgr, "config", None) is not None:
+                            mgr.config.speed = _old_speed  # type: ignore[assignment]
+                    except Exception:
+                        pass
                 log.debug("staged: intro part %d/%d bytes=%d sr=%d", idx+1, len(intro_parts), len(ibuf or b""), int(isr or 0))
                 buf = io.BytesIO()
                 with wave.open(buf, "wb") as wf:
@@ -600,7 +675,22 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                     f = 2.0
                 mto = int(mto * max(1.0, f))
                 _logging.getLogger("ws_server.tts.staged").info("Erster Aufruf Zonos – Timeout x%.1f", max(1.0, f))
-            _mbuf, _msr = await asyncio.wait_for(_adapter_synth(mgr, cand, main_parts[0] if main_parts else text, None), timeout=max(0.001, mto/1000.0))
+            _old_speed = getattr(mgr, "config", None).speed if getattr(mgr, "config", None) is not None else None
+            try:
+                if rt.get("speed") is not None and getattr(mgr, "config", None) is not None:
+                    try:
+                        spd = float(rt.get("speed"))
+                        if spd > 0:
+                            mgr.config.speed = spd
+                    except Exception:
+                        pass
+                _mbuf, _msr = await asyncio.wait_for(_adapter_synth(mgr, cand, main_parts[0] if main_parts else text, None), timeout=max(0.001, mto/1000.0))
+            finally:
+                try:
+                    if _old_speed is not None and getattr(mgr, "config", None) is not None:
+                        mgr.config.speed = _old_speed  # type: ignore[assignment]
+                except Exception:
+                    pass
             log.debug("staged: main engine selected=%s probe_bytes=%d sr=%d", cand, len(_mbuf or b""), int(_msr or 0))
             selected = (cand, _msr)
             # Erstes Stück direkt senden
@@ -628,7 +718,22 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                     mto2 = int(os.getenv("STAGED_TTS_MAIN_TIMEOUT_MS", "6000"))
                 except Exception:
                     mto2 = 6000
-                mbuf, msr2 = await asyncio.wait_for(_adapter_synth(mgr, cand, part, None), timeout=max(0.001, mto2/1000.0))
+                _old_speed2 = getattr(mgr, "config", None).speed if getattr(mgr, "config", None) is not None else None
+                try:
+                    if rt.get("speed") is not None and getattr(mgr, "config", None) is not None:
+                        try:
+                            spd = float(rt.get("speed"))
+                            if spd > 0:
+                                mgr.config.speed = spd
+                        except Exception:
+                            pass
+                    mbuf, msr2 = await asyncio.wait_for(_adapter_synth(mgr, cand, part, None), timeout=max(0.001, mto2/1000.0))
+                finally:
+                    try:
+                        if _old_speed2 is not None and getattr(mgr, "config", None) is not None:
+                            mgr.config.speed = _old_speed2  # type: ignore[assignment]
+                    except Exception:
+                        pass
                 log.debug("staged: main part %d/%d bytes=%d sr=%d", idx+1, len(main_parts), len(mbuf or b""), int(msr2 or 0))
                 buf2 = io.BytesIO();
                 with wave.open(buf2, "wb") as wf:
@@ -748,7 +853,7 @@ async def _handle_gui_control(ws: WebSocket, payload: dict) -> bool:
     if typ == "tts_test":
         text = payload.get("content") or payload.get("text") or "Test 1 2 3."
         try:
-            b64wav = await _speak_to_wav_b64(text)
+            b64wav = await _speak_to_wav_b64(text, ws)
             if b64wav:
                 await ws.send_text(
                     json.dumps({"type": "tts", "format": "wav_base64", "audio": b64wav})
@@ -836,28 +941,25 @@ async def _handle_gui_control(ws: WebSocket, payload: dict) -> bool:
                     except Exception:
                         pass
         if typ == "set_tts_options":
-            # Rein synchron: Optionen im lokalen State ablegen und OK senden
+            # Rein synchron: Optionen pro Verbindung speichern und OK senden
             try:
                 eng = payload.get("engine")
                 spd = payload.get("speed")
-                vol = payload.get("volume")
-                vce = payload.get("voice")
-                if eng is not None:
-                    TTS_OPTIONS_STATE["engine"] = eng
-                if spd is not None:
-                    try: TTS_OPTIONS_STATE["speed"] = float(spd)
-                    except Exception: pass
-                if vol is not None:
-                    try: TTS_OPTIONS_STATE["volume"] = float(vol)
-                    except Exception: pass
-                if vce is not None:
-                    TTS_OPTIONS_STATE["voice"] = vce
+                runtime = getattr(ws, "_tts_runtime", None)
+                if runtime is None:
+                    runtime = {}
+                    setattr(ws, "_tts_runtime", runtime)
+                if eng:
+                    runtime["engine"] = eng
+                if isinstance(spd, (int, float)):
+                    try:
+                        runtime["speed"] = float(spd)
+                    except Exception:
+                        pass
                 _logging.getLogger("ws_server.transport").info(
-                    "TTS-Optionen aktualisiert: engine=%s speed=%s volume=%s voice=%s",
-                    TTS_OPTIONS_STATE.get("engine"),
-                    TTS_OPTIONS_STATE.get("speed"),
-                    TTS_OPTIONS_STATE.get("volume"),
-                    TTS_OPTIONS_STATE.get("voice"),
+                    "TTS-Optionen aktualisiert: engine=%s, speed=%s",
+                    getattr(ws, "_tts_runtime", {}).get("engine"),
+                    getattr(ws, "_tts_runtime", {}).get("speed"),
                 )
                 await ws.send_text(json.dumps({"type": "ok", "action": "set_tts_options"}))
             except Exception as e:
@@ -1046,7 +1148,7 @@ async def ws_endpoint(ws: WebSocket):
                 if ENABLE_TTS and reply:
                     if STAGED_TTS_RUNTIME.get("enabled", True) and STAGED_TTS_RUNTIME.get("chunked", True):
                         seq = os.urandom(8).hex()
-                        chunks = await _speak_staged_chunked_b64(reply)
+                        chunks = await _speak_staged_chunked_b64(reply, ws)
                         if chunks:
                             total = len(chunks)
                             for idx, ch in enumerate(chunks):
@@ -1061,11 +1163,11 @@ async def ws_endpoint(ws: WebSocket):
                                 }))
                             await ws.send_text(json.dumps({"type":"tts_sequence_end", "sequence_id": seq}))
                         else:
-                            b64wav = await _speak_staged_to_wav_b64(reply) or await _speak_to_wav_b64(reply)
+                            b64wav = await _speak_staged_to_wav_b64(reply, ws) or await _speak_to_wav_b64(reply, ws)
                             if b64wav:
                                 await ws.send_text(json.dumps({"type": "tts", "format": "wav_base64", "audio": b64wav}))
                     else:
-                        b64wav = await _speak_staged_to_wav_b64(reply) or await _speak_to_wav_b64(reply)
+                        b64wav = await _speak_staged_to_wav_b64(reply, ws) or await _speak_to_wav_b64(reply, ws)
                         if b64wav:
                             await ws.send_text(json.dumps({"type": "tts", "format": "wav_base64", "audio": b64wav}))
                 await ws.send_text(
@@ -1088,7 +1190,7 @@ async def ws_endpoint(ws: WebSocket):
                     if ENABLE_TTS and text:
                         if STAGED_TTS_RUNTIME.get("enabled", True) and STAGED_TTS_RUNTIME.get("chunked", True):
                             seq = os.urandom(8).hex()
-                            chunks = await _speak_staged_chunked_b64(text)
+                            chunks = await _speak_staged_chunked_b64(text, ws)
                             if chunks:
                                 total = len(chunks)
                                 for idx, ch in enumerate(chunks):
@@ -1103,7 +1205,7 @@ async def ws_endpoint(ws: WebSocket):
                                     }))
                                 await ws.send_text(json.dumps({"type":"tts_sequence_end", "sequence_id": seq}))
                             else:
-                                b64wav = await _speak_staged_to_wav_b64(text) or await _speak_to_wav_b64(text)
+                                b64wav = await _speak_staged_to_wav_b64(text, ws) or await _speak_to_wav_b64(text, ws)
                                 if b64wav:
                                     await ws.send_text(json.dumps({
                                         "type": "tts",
@@ -1111,7 +1213,7 @@ async def ws_endpoint(ws: WebSocket):
                                         "audio": b64wav,
                                     }))
                         else:
-                            b64wav = await _speak_staged_to_wav_b64(text) or await _speak_to_wav_b64(text)
+                            b64wav = await _speak_staged_to_wav_b64(text, ws) or await _speak_to_wav_b64(text, ws)
                             if b64wav:
                                 await ws.send_text(json.dumps({
                                     "type": "tts",
@@ -1136,7 +1238,7 @@ async def ws_endpoint(ws: WebSocket):
                 if ENABLE_TTS and content:
                     if STAGED_TTS_RUNTIME.get("enabled", True) and STAGED_TTS_RUNTIME.get("chunked", True):
                         seq = os.urandom(8).hex()
-                        chunks = await _speak_staged_chunked_b64(reply)
+                        chunks = await _speak_staged_chunked_b64(reply, ws)
                         if chunks:
                             total = len(chunks)
                             for idx, ch in enumerate(chunks):
@@ -1151,11 +1253,11 @@ async def ws_endpoint(ws: WebSocket):
                                 }))
                             await ws.send_text(json.dumps({"type":"tts_sequence_end", "sequence_id": seq}))
                         else:
-                            b64wav = await _speak_staged_to_wav_b64(reply) or await _speak_to_wav_b64(reply)
+                            b64wav = await _speak_staged_to_wav_b64(reply, ws) or await _speak_to_wav_b64(reply, ws)
                             if b64wav:
                                 await ws.send_text(json.dumps({"type": "tts", "format": "wav_base64", "audio": b64wav}))
                     else:
-                        b64wav = await _speak_staged_to_wav_b64(reply) or await _speak_to_wav_b64(reply)
+                        b64wav = await _speak_staged_to_wav_b64(reply, ws) or await _speak_to_wav_b64(reply, ws)
                         if b64wav:
                             await ws.send_text(json.dumps({"type": "tts", "format": "wav_base64", "audio": b64wav}))
                 continue
