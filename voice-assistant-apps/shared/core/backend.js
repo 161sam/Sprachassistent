@@ -431,8 +431,13 @@ export const Backend = {
    * @param {Object} handlers
    */
   async init(handlers = {}) {
-      await detectLlmApiBase();
-    await detectLlmApiBase().catch(() => {});
+    // Fallback: ensure default handlers if none provided
+    if (!handlers || typeof handlers !== 'object') handlers = {};
+    handlers.onMessage = handlers.onMessage || this.defaultMessageHandler.bind(this);
+    handlers.onConnect = handlers.onConnect || this.defaultConnectHandler.bind(this);
+    handlers.onDisconnect = handlers.onDisconnect || this.defaultDisconnectHandler.bind(this);
+    handlers.onLlmModels = handlers.onLlmModels || this.defaultLlmModelsHandler.bind(this);
+    try { await detectLlmApiBase(); } catch (_) {}
 
     if (BackendConfig.initialized) {
       console.log('Backend bereits initialisiert');
@@ -467,7 +472,11 @@ export const Backend = {
       console.log('Backend erfolgreich initialisiert');
     } catch (e) {
       console.error('Backend Initialisierung fehlgeschlagen:', e);
-      throw e;
+      // Nicht erneut werfen – UI bleibt funktionsfähig; Reconnect-Logik aktiv
+      try {
+        if (handlers.onDisconnect) handlers.onDisconnect(e);
+      } catch (_) {}
+      return false;
     }
   },
 
@@ -539,4 +548,3 @@ window.BackendUtils = BackendUtils;
 window.Backend = Backend;
 
 export default Backend;
-
