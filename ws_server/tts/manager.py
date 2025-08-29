@@ -227,6 +227,35 @@ class TTSManager:
 
         if success_count > 0:
             logger.info("✅ TTS-Manager initialisiert mit %d Engine(s)", success_count)
+            # Log Ziel‑Samplerate once
+            try:
+                tsr = int((os.getenv("TTS_TARGET_SR") or os.getenv("TTS_OUTPUT_SR") or "24000"))
+            except Exception:
+                tsr = 24000
+            logger.info("Ziel-Samplerate (post-process) = %d Hz", tsr)
+
+            # Warmup Zonos if available
+            try:
+                if "zonos" in self.engines:
+                    import asyncio
+                    z = self.engines["zonos"]
+                    ok = False
+                    try:
+                        if hasattr(z, "ensure_loaded"):
+                            ok = await asyncio.wait_for(z.ensure_loaded(), timeout=3.0)
+                    except Exception:
+                        ok = False
+                    try:
+                        if hasattr(z, "warmup"):
+                            ok = await asyncio.wait_for(z.warmup(None, timeout_s=3.0), timeout=3.5) or ok
+                    except Exception:
+                        pass
+                    if ok:
+                        logger.info("Zonos Warmup abgeschlossen")
+                    else:
+                        logger.info("Zonos Warmup übersprungen/fehlgeschlagen")
+            except Exception:
+                logger.debug("Warmup-Phase übersprungen")
             return True
 
         logger.error("❌ Keine TTS-Engine verfügbar!")
@@ -406,6 +435,16 @@ class TTSManager:
                     elif buf[i] < -max_val:
                         buf[i] = -max_val
                 audio = buf.tobytes()
+        except Exception:
+            pass
+
+        # Debug dump of final post-processed audio
+        try:
+            if os.getenv("TTS_DEBUG_DUMP_WAVS", "0").lower() in ("1","true","yes","on"):
+                d = os.getenv("TTS_DEBUG_DUMP_DIR")
+                if d:
+                    from ws_server.tts.util_wav_dump import write_wav_mono_int16
+                    write_wav_mono_int16(os.path.join(d, "final_postproc.wav"), audio, sample_rate)
         except Exception:
             pass
 

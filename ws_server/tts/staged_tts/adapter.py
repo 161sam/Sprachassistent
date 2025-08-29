@@ -7,11 +7,28 @@ from typing import Optional, Tuple
 import numpy as np
 
 log = logging.getLogger(__name__)
+_FIRST_MAIN_CALL = True
+
+def _debug_dir() -> str | None:
+    try:
+        if os.getenv("TTS_DEBUG_DUMP_WAVS", "0").lower() not in ("1","true","yes","on"):
+            return None
+        import time, os as _os
+        d = _os.getenv("TTS_DEBUG_DUMP_DIR")
+        if d:
+            return d
+        ts = str(int(time.time() * 1000))
+        d = f"/tmp/tts_debug/{ts}"
+        _os.makedirs(d, exist_ok=True)
+        _os.environ["TTS_DEBUG_DUMP_DIR"] = d
+        return d
+    except Exception:
+        return None
 
 def _resample_mono(w: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
+    # Beibehalten für Backups – nicht mehr genutzt (ersetzt durch ratecv)
     if w.size == 0 or sr_in == sr_out:
         return w.astype(np.float32, copy=False)
-    # einfacher linearer Resampler
     ratio = float(sr_out) / float(sr_in)
     n_out = max(1, int(round(w.size * ratio)))
     x_old = np.linspace(0.0, 1.0, w.size, dtype=np.float32)
@@ -27,21 +44,43 @@ def _to_float32_mono(buf: Optional[bytes], sr: int) -> tuple[np.ndarray, int]:
     return a, sr
 
 def _to_int16(x: np.ndarray) -> np.ndarray:
+    """Konvertiere float32 [-1..1] → int16 ohne Peak‑Normalisierung.
+
+    Lautheitsanpassung erfolgt ausschließlich im Manager (ein Pfad, konsistent).
+    """
     if x.size == 0:
         return x.astype(np.int16)
-    m = max(1e-9, float(np.max(np.abs(x))))
-    y = np.clip(x / m, -1.0, 1.0)
+    y = np.clip(x, -1.0, 1.0)
     return (y * 32767.0).astype(np.int16)
 
-def _fade_join(a: np.ndarray, b: np.ndarray, sr: int, ms: int = 60) -> np.ndarray:
+def _fade_join(a: np.ndarray, b: np.ndarray, sr: int, ms: int = 100) -> np.ndarray:
+    """Equal‑Power Crossfade mit leichter Headroom (≈‑0.5 dB).
+
+    Vermeidet Pegeldip und minimiert Artefakte beim Engine‑Wechsel.
+    """
     if a.size == 0:
         return b
     if b.size == 0:
         return a
     n = max(1, int(sr * ms / 1000))
     n = min(n, a.size, b.size)
-    fade = np.linspace(0.0, 1.0, n, dtype=np.float32)
-    return np.concatenate([a[:-n], a[-n:] * (1.0 - fade) + b[:n] * fade, b[n:]]).astype(np.float32)
+    t = np.linspace(0.0, np.pi / 2.0, n, dtype=np.float32)
+    win_in = (np.sin(t) ** 2).astype(np.float32)   # b fade‑in
+    win_out = (np.cos(t) ** 2).astype(np.float32)  # a fade‑out
+    headroom = 0.97
+    mid = (a[-n:] * win_out + b[:n] * win_in) * headroom
+    return np.concatenate([a[:-n], mid, b[n:]]).astype(np.float32)
+
+
+def _resample_int16_ratecv(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
+    """Resample float32 mono via audioop.ratecv in int16 domain (HQ, fast)."""
+    import audioop
+    if sr_in == sr_out or x.size == 0:
+        return x.astype(np.float32, copy=False)
+    i16 = _to_int16(x)
+    y, _ = audioop.ratecv(i16.tobytes(), 2, 1, int(sr_in), int(sr_out), None)
+    j = np.frombuffer(y, dtype=np.int16).astype(np.float32) / 32767.0
+    return j.astype(np.float32, copy=False)
 
 # ---------- Engine Helpers ----------
 
@@ -119,11 +158,13 @@ async def _manager_synth(manager, engine_name: str, text: str, voice: str | None
     for meth in ("synthesize", "synth"):
         fn = getattr(manager, meth, None)
         if callable(fn):
+            log.debug("mgr synth call: engine=%s voice=%s text_len=%d", engine_name, voice, len(text or ""))
             res = await fn(text=text, engine=engine_name, voice=voice)
             # TTSResult-kompatibel
             buf = getattr(res, "audio_data", None)
             sr = getattr(res, "sample_rate", 22050)
             if buf:
+                log.debug("mgr synth ok: engine=%s bytes=%d sr=%d", engine_name, len(buf), int(sr))
                 return (bytes(buf), int(sr))
     raise RuntimeError("manager path unavailable")
 
@@ -150,6 +191,7 @@ async def _synth(manager, engine_name: str, text: str, voice: Optional[str]) -> 
     sr = getattr(res, "sample_rate", 22050)
     if buf is None:
         raise RuntimeError(f"Engine '{engine_name}' returned no audio_data")
+    log.debug("direct synth ok: engine=%s bytes=%d sr=%d", engine_name, len(buf or b""), int(sr or 0))
     return (buf, int(sr))
 
 # ---------- Public API used by TTSManager ----------
@@ -165,25 +207,30 @@ async def synthesize_staged(manager, text: str, voice: Optional[str] = None) -> 
     main_engine  = (os.getenv("STAGED_TTS_MAIN_ENGINE", "zonos") or "zonos").lower()
 
     try:
-        cross_ms = int(os.getenv("STAGED_TTS_CROSSFADE_MS", "60"))
+        cross_ms = int(os.getenv("STAGED_TTS_CROSSFADE_MS", "100"))
     except ValueError:
-        cross_ms = 60
+        cross_ms = 100
     try:
         max_intro = int(os.getenv("STAGED_TTS_MAX_INTRO_LENGTH", "150"))
     except ValueError:
         max_intro = 150
     try:
-        intro_to = max(1, int(os.getenv("STAGED_TTS_INTRO_TIMEOUT_MS", "5000")))
+        intro_to = max(1, int(os.getenv("STAGED_TTS_INTRO_TIMEOUT_MS", "2000")))
     except ValueError:
-        intro_to = 5000
+        intro_to = 2000
     try:
-        main_to = max(1, int(os.getenv("STAGED_TTS_MAIN_TIMEOUT_MS", "30000")))
+        main_to = max(1, int(os.getenv("STAGED_TTS_MAIN_TIMEOUT_MS", "6000")))
     except ValueError:
-        main_to = 30000
+        main_to = 6000
 
     intro_text = text[:max_intro]
     pieces: list[tuple[np.ndarray, int]] = []
-    target_sr = 22050
+    # Zielrate: ENV bevorzugt, sonst wird später SR der Haupt‑Engine genommen
+    try:
+        env_target = int(os.getenv("TTS_TARGET_SR", os.getenv("TTS_OUTPUT_SR", "24000")))
+    except Exception:
+        env_target = 24000
+    target_sr = int(env_target) if env_target else 0
 
     # Intro (mit Timeout)
     if max_intro > 0:
@@ -194,36 +241,80 @@ async def synthesize_staged(manager, text: str, voice: Optional[str] = None) -> 
             )
             ia, isr = _to_float32_mono(ibuf, isr)
             pieces.append((ia, isr))
-            target_sr = isr
+            if not target_sr:
+                target_sr = isr
             log.info("StagedTTS: Intro via %s ok (%d bytes @ %d Hz)", intro_engine, len(ibuf), isr)
+            # Debug dump
+            try:
+                dd = _debug_dir()
+                if dd:
+                    from ws_server.tts.util_wav_dump import write_wav_mono_int16
+                    write_wav_mono_int16(f"{dd}/intro_pre.wav", ibuf, isr)
+            except Exception:
+                pass
         except Exception as e:
             log.warning("StagedTTS: Intro via %s failed (%s) – skipping intro", intro_engine, e)
 
     # Main (+ Fallback Piper) mit Timeout
     main_ok = False
+    global _FIRST_MAIN_CALL
     for cand in (main_engine, "piper"):
         try:
+            to = main_to
+            if cand == "zonos" and _FIRST_MAIN_CALL:
+                try:
+                    f = float(os.getenv("STAGED_TTS_FIRST_CALL_FACTOR", "2.0"))
+                except Exception:
+                    f = 2.0
+                to = int(to * max(1.0, f))
+                log.info("Erster Aufruf Zonos – Timeout x%.1f", max(1.0, f))
             mbuf, msr = await asyncio.wait_for(
                 _synth(manager, cand, text, voice),
-                timeout=main_to / 1000.0,
+                timeout=to / 1000.0,
             )
             ma, msr = _to_float32_mono(mbuf, msr)
+            # Zielrate festlegen (falls nicht per ENV)
+            if not target_sr:
+                target_sr = msr
             if pieces:
-                # ggf. resample auf target_sr
                 if msr != target_sr:
-                    ma = _resample_mono(ma, msr, target_sr)
+                    ma = _resample_int16_ratecv(ma, msr, target_sr)
                     msr = target_sr
-                ma = _fade_join(pieces[-1][0], ma, target_sr, ms=cross_ms)
+                a_prev = pieces[-1][0]
+                if pieces[-1][1] != target_sr:
+                    a_prev = _resample_int16_ratecv(a_prev, pieces[-1][1], target_sr)
+                ma = _fade_join(a_prev, ma, target_sr, ms=cross_ms)
                 pieces[-1] = (ma, target_sr)
             else:
+                if msr != target_sr:
+                    ma = _resample_int16_ratecv(ma, msr, target_sr)
+                    msr = target_sr
                 pieces.append((ma, msr))
-                target_sr = msr
             log.info("StagedTTS: Main via %s ok (%d bytes @ %d Hz)", cand, len(mbuf), msr)
+            # Debug dump for main and joined (pre-postproc)
+            try:
+                dd = _debug_dir()
+                if dd:
+                    from ws_server.tts.util_wav_dump import write_wav_mono_int16
+                    write_wav_mono_int16(f"{dd}/main_pre.wav", mbuf, msr)
+                    j_i16 = _to_int16(pieces[-1][0]).tobytes()
+                    write_wav_mono_int16(f"{dd}/joined_prepostproc.wav", j_i16, target_sr)
+            except Exception:
+                pass
             main_ok = True
             break
         except Exception as e:
-            log.warning("StagedTTS: Main via %s failed: %s", cand, e)
-
+            # Provide extra status when Zonos fails
+            if cand == "zonos":
+                try:
+                    from ws_server.tts.engines.zonos import zonos_status
+                    log.warning("StagedTTS: Main via %s failed: %s (%s)", cand, e, zonos_status())
+                except Exception:
+                    log.warning("StagedTTS: Main via %s failed: %s", cand, e)
+            else:
+                log.warning("StagedTTS: Main via %s failed: %s", cand, e)
+        
+    _FIRST_MAIN_CALL = False
     if not pieces or not main_ok:
         # Harter Fallback: kompletter Text via Piper
         try:
@@ -232,6 +323,9 @@ async def synthesize_staged(manager, text: str, voice: Optional[str] = None) -> 
                 timeout=main_to / 1000.0,
             )
             ma, msr = _to_float32_mono(mbuf, msr)
+            if target_sr and msr != target_sr:
+                ma = _resample_int16_ratecv(ma, msr, target_sr)
+                msr = target_sr
             pieces = [(ma, msr)]
             target_sr = msr
             log.info("StagedTTS: full Piper fallback ok (%d bytes @ %d Hz)", len(mbuf), msr)
@@ -240,4 +334,5 @@ async def synthesize_staged(manager, text: str, voice: Optional[str] = None) -> 
             return b"", target_sr
 
     out = pieces[-1][0]
+    # joined pre-postproc already dumped above; return raw int16
     return _to_int16(out).tobytes(), target_sr

@@ -375,6 +375,12 @@ _logging.getLogger("ws_server.tts.staged").debug(
     "staged runtime: %s",
     {k: STAGED_TTS_RUNTIME[k] for k in sorted(STAGED_TTS_RUNTIME.keys())},
 )
+try:
+    _logging.getLogger("ws_server.tts.staged").info(
+        "Crossfade final (ms)=%d (env>code)", int(STAGED_TTS_RUNTIME.get("crossfade_ms") or 100)
+    )
+except Exception:
+    pass
 
 
 async def _ensure_tts_manager():
@@ -451,6 +457,8 @@ async def _speak_staged_to_wav_b64(text: str) -> Optional[str]:
     except Exception:
         return None
 
+
+_FIRST_MAIN_CALL_CHUNKED = True
 
 async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
     """Return staged chunks as list of {engine, wav_b64} dicts.
@@ -544,7 +552,11 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                 # progress: intro
                 try: await _ws_progress(_ws_progress.ws, "intro", idx, len(intro_parts), intro_engine)  # type: ignore[attr-defined]
                 except Exception: pass
-                ibuf, isr = await asyncio.wait_for(_adapter_synth(mgr, intro_engine, part, None), timeout=5.0)
+                try:
+                    ito = int(os.getenv("STAGED_TTS_INTRO_TIMEOUT_MS", "2000"))
+                except Exception:
+                    ito = 2000
+                ibuf, isr = await asyncio.wait_for(_adapter_synth(mgr, intro_engine, part, None), timeout=max(0.001, ito/1000.0))
                 log.debug("staged: intro part %d/%d bytes=%d sr=%d", idx+1, len(intro_parts), len(ibuf or b""), int(isr or 0))
                 buf = io.BytesIO()
                 with wave.open(buf, "wb") as wf:
@@ -559,10 +571,22 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
     main_parts = split_main(clean_text)
     selected = None
     main_parts_total = len(main_parts) if main_parts else 0
+    global _FIRST_MAIN_CALL_CHUNKED
     for cand in (main_engine, "piper"):
         try:
             # Probeklang generieren, um engine zu testen
-            _mbuf, _msr = await asyncio.wait_for(_adapter_synth(mgr, cand, main_parts[0] if main_parts else text, None), timeout=10.0)
+            try:
+                mto = int(os.getenv("STAGED_TTS_MAIN_TIMEOUT_MS", "6000"))
+            except Exception:
+                mto = 6000
+            if cand == "zonos" and _FIRST_MAIN_CALL_CHUNKED:
+                try:
+                    f = float(os.getenv("STAGED_TTS_FIRST_CALL_FACTOR", "2.0"))
+                except Exception:
+                    f = 2.0
+                mto = int(mto * max(1.0, f))
+                _logging.getLogger("ws_server.tts.staged").info("Erster Aufruf Zonos – Timeout x%.1f", max(1.0, f))
+            _mbuf, _msr = await asyncio.wait_for(_adapter_synth(mgr, cand, main_parts[0] if main_parts else text, None), timeout=max(0.001, mto/1000.0))
             log.debug("staged: main engine selected=%s probe_bytes=%d sr=%d", cand, len(_mbuf or b""), int(_msr or 0))
             selected = (cand, _msr)
             # Erstes Stück direkt senden
@@ -586,7 +610,11 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                 # progress: main
                 try: await _ws_progress(_ws_progress.ws, "main", idx, len(main_parts), cand)  # type: ignore[attr-defined]
                 except Exception: pass
-                mbuf, msr2 = await asyncio.wait_for(_adapter_synth(mgr, cand, part, None), timeout=30.0)
+                try:
+                    mto2 = int(os.getenv("STAGED_TTS_MAIN_TIMEOUT_MS", "6000"))
+                except Exception:
+                    mto2 = 6000
+                mbuf, msr2 = await asyncio.wait_for(_adapter_synth(mgr, cand, part, None), timeout=max(0.001, mto2/1000.0))
                 log.debug("staged: main part %d/%d bytes=%d sr=%d", idx+1, len(main_parts), len(mbuf or b""), int(msr2 or 0))
                 buf2 = io.BytesIO();
                 with wave.open(buf2, "wb") as wf:
@@ -598,6 +626,7 @@ async def _speak_staged_chunked_b64(text: str) -> Optional[list[dict]]:
                 continue
         pr_main.done()
 
+    _FIRST_MAIN_CALL_CHUNKED = False
     return chunks or None
 
 

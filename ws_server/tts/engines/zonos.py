@@ -327,6 +327,33 @@ class ZonosEngine:
         self.is_initialized = True
         return True
 
+    async def ensure_loaded(self) -> bool:
+        """Ensure model and speaker embedding are loaded (idempotent)."""
+        try:
+            await _load_once()
+            return True
+        except Exception as e:
+            log.warning("Zonos ensure_loaded fehlgeschlagen: %s", e)
+            return False
+
+    async def warmup(self, voice_id: Optional[str] = None, timeout_s: float = 2.5) -> bool:
+        """Run a tiny synthesis to warm caches/graphs; returns quickly if ready."""
+        try:
+            await _load_once()
+            async def _do():
+                try:
+                    txt = "ok."
+                    # Use current or derived speaker id
+                    vid = voice_id or None
+                    await self.synthesize(txt, voice_id=vid)
+                    return True
+                except Exception:
+                    return False
+            return bool(await __import__("asyncio").wait_for(_do(), timeout=timeout_s))
+        except Exception as e:
+            log.debug("Zonos warmup übersprungen/fehlgeschlagen: %s", e)
+            return False
+
     async def cleanup(self) -> None:
         """Räumt Singletons auf (freiwillig)."""
         global _MODEL, _SPEAKER, _SR
@@ -444,12 +471,24 @@ class ZonosEngine:
             log.debug("Zonos: synth len=%d sr=%d in %.2fs", len(audio_bytes or b""), int(sr or _SR or 0), time.perf_counter() - t0)
             return audio_bytes, int(sr or _SR or 22050)
         except Exception as e:
-            log.error("Zonos synth failed: %s", e)
+            # Provide a concise status line for diagnostics
+            try:
+                status = f"model={'ok' if _MODEL else 'none'} speaker={'ok' if _SPEAKER is not None else 'none'}"
+            except Exception:
+                status = "status=unknown"
+            log.error("Zonos synth failed: %s (%s)", e, status)
             # Lass Staged-TTS fallbacken (Piper übernimmt den Main-Part)
             raise
 
 # Backcompat alias expected by some managers
 ZonosTTSEngine = ZonosEngine
+
+def zonos_status() -> str:
+    """Return a short one-line internal status string for diagnostics."""
+    try:
+        return f"model={'ok' if _MODEL else 'none'} speaker={'ok' if _SPEAKER is not None else 'none'} sr={int(_SR or 0)}"
+    except Exception:
+        return "status=unknown"
 def _pick_device() -> str:
     # Env override wins; default to CPU to avoid CUDA/cuDNN issues on headless systems
     dev = (os.getenv("ZONOS_DEVICE") or "").strip().lower()
